@@ -1370,3 +1370,52 @@ absent du nœud (= 0, cf. [14:05]) : 100 % du capital était prêté et le dépo
 **ne pouvait pas sortir**. C'est très exactement le mismatch de duration d'un
 vault open-ended adossé à des prêts à terme fixe, observé sans avoir eu à le
 provoquer.
+
+---
+
+### [14:52] ✅ Étape 8 du minimum bar — use case joué de bout en bout, 13 transactions
+Phase : build
+Catégorie : information (récapitulatif de preuves)
+Sévérité : —
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Script rejouable : `node scripts/step-8-secondary.mjs`. Scène complète créée
+depuis zéro à chaque exécution. **13/13 transactions conformes aux attentes au
+premier essai**, y compris le rejet volontaire de la scène 2.
+
+  VaultID `52AD63C906F6F5FE5928F22DC2CFAADBABF6595BBDBFA53A512CF5AF9BD322D4`
+  LoanBrokerID `A9F0DA3110443A8C8C406EF59D0C0CD4A0FE55C65E03078B7690189C72891542`
+  LoanID `8FBF8105D07DEADCBB24BE0D7E7BA55C2F85DD45A74729536D0401F8473F70CC`
+  ShareMPTID `00000001E240843AD1F584CE6A9555ACC37659866B8AE49E`
+
+  | Scène | Transaction | Code | Hash |
+  |---|---|---|---|
+  | 1 | `VaultCreate` open-ended | `tesSUCCESS` | `4161747804C50C586639780CB05A48E82C1095D851C35B4E2837BEB159197C5A` |
+  | 1 | `VaultDeposit` 100 XRP | `tesSUCCESS` | `79D4C29313F13D19523944F366284D677A42EECFB1BC31DCCD688CEFB22DF64C` |
+  | 1 | `LoanBrokerSet` | `tesSUCCESS` | `05DC69130B8AA56507DE097C716B9F242093C14B64810370C041EEA663BF3D05` |
+  | 1 | `LoanBrokerCoverDeposit` 20 XRP | `tesSUCCESS` | `D1F73AD5343B901F2BF50F4861A4585FDF7DE93DFC78CC8295CBF1055320FAE0` |
+  | 1 | `LoanSet` — **100 % de la liquidité** | `tesSUCCESS` | `7B42A72A3F9199AA1BD7469901CA9F30AF033C6550B16349C928220B65A381AD` |
+  | 2 | `VaultWithdraw` par la déposante — **le mur** | `tecINSUFFICIENT_FUNDS` | `06D7AB5C199C0E4C2FEE354F314D93D2299491EF72881168AA0A6691F4CBFC64` |
+  | 3 | `MPTokenAuthorize` (acheteur) | `tesSUCCESS` | `6D784E1F1B25E870E5487531A9485840A988C0959AFAD98BC203ED213ED2C548` |
+  | 3 | `EscrowCreate` paiement, +2 h | `tesSUCCESS` | `53B67004BA47971B62E221AC942AE05B0FDF15873025FD68E25CAAF076656A84` |
+  | 3 | `EscrowCreate` parts, +1 h | `tesSUCCESS` | `3AEB61C46EFE7BEB25D3B1DBBC8CF3E2D952B601EC14A6283CB15621BBA5A792` |
+  | 3 | `EscrowFinish` parts → acheteur | `tesSUCCESS` | `90D53FC01F71EF4641FA5A2DEEBAD3AA8E5AA95BF5F7EFA92EB93A17932C52B9` |
+  | 3 | `EscrowFinish` XRP → vendeuse | `tesSUCCESS` | `A20D163BFB163FB96A3BCEE6C4C076B4CCAEDA85CD543E96BC94F35B49DBFFBB` |
+  | 4 | `LoanPay` 25,513701 XRP | `tesSUCCESS` | `A87152EB27C1414B1B6297DF9014AB59DF9A9FF67DE7671A270E39BBD166687E` |
+  | 4 | `VaultWithdraw` par le **porteur secondaire** | `tesSUCCESS` | `BF65DBA62F81111814BC43D4964762BD651019B9CB5A9F51CF919033D789CE5E` |
+
+**Le mismatch de duration est reproductible à volonté.** Un `LoanSet` portant sur
+100 % de `AssetsAvailable` est accepté sans avertissement. Le vault affiche alors
+100 % d'utilisation, le champ `AssetsAvailable` disparaît du nœud (cf. [14:05]),
+et le déposant est enfermé — alors que rien, ni à la création du vault ni à
+l'origination du prêt, ne l'a prévenu qu'un seul prêt pouvait absorber la
+totalité de la liquidité. Un `LiquidityBufferMinimum` sur le `LoanBroker`, ou un
+simple avertissement, changerait tout pour un déposant.
+
+**Le `Fulfillment` est bien relu depuis le ledger**, pas réutilisé depuis une
+variable locale : la transaction `90D53FC0…` expose le secret en clair, et la
+vendeuse s'en sert pour dénouer `A20D163B…`. C'est ce qui rend l'échange atomique
+démontrable plutôt que simplement affirmé.
+
+**Valeur de la part** : 1,000000000 avant remboursement, **1,000214800** après.
+Le rendement est porté par la part, donc transféré avec elle.
