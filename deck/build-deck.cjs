@@ -1,4 +1,4 @@
-// Deck Exit Lane — 9 slides.
+// Deck Exit Lane — 10 slides.
 //
 // Deux sources visuelles à réconcilier : le deck officiel Ripple / XRPL Lending
 // Protocol (« final lending intro.pdf », relevé au pixel) pour les slides, et
@@ -194,27 +194,32 @@ Passer au terminal, commande déjà tapée : node scripts/demo.mjs --auto (56 s 
 
 Si rien ne bouge pendant 15 s : Ctrl+C, revenir sur cette slide. Le terminal de droite est le run de référence, hashes dans le README.`,
 
-`2:00 → 2:15 (15 s)
+`2:00 → 2:10 (10 s)
 
-Les huit étapes du minimum bar dans un seul run, chaque hash dans le README. Les quinze types XLS-65 et XLS-66 soumis au ledger, tous typés dans xrpl 4.6.0.`,
+Les huit étapes du minimum bar dans un seul run, chaque hash dans le README. Les quinze types XLS-65 et XLS-66 soumis au ledger, tous typés dans xrpl 4.6.0. Maintenant, les trois frictions les plus importantes, chacune avec sa correction.`,
 
-`2:15 → 2:50 (35 s)
+`2:10 → 2:40 (30 s)
 
-Broker à couverture minimale 10 %, liquidation 5 %. On provoque un défaut sur un prêt de 4 XRP. L'explorer montre 0,02 XRP pris sur la couverture : 4 × 10 % × 5 %, au drop près. Le déposant perd 3,98 XRP. C'est la formule documentée, et le même ratio sur un prêt de 50 XRP. En dessous : 21 secondes après le défaut, le broker retire les 0,98 XRP restants, parce que la dette, et donc le plancher, sont à zéro.`,
+Un : fixCleanup3_4_0 est actif sur le devnet et absent d'xrpl.org. Il change deux choses. L'impairment : le tutoriel dit d'impairer avant l'échéance, le ledger répond tecTOO_SOON jusqu'à l'échéance, à gauche. La signature de l'emprunteur sur LoanSet : nouveau préfixe, que le helper de xrpl 4.6.0 n'utilise pas, à droite.
+Correction : lister l'amendement sur xrpl.org, mettre à jour le tutoriel, signer avec encodeForSigningCounterparty dans xrpl.js.`,
 
-`2:50 → 3:15 (25 s)
+`2:40 → 3:05 (25 s)
 
-Un prêt 10 secondes en retard, dans son délai de grâce. Sans flag : tecEXPIRED, à gauche. Avec tfLoanLatePayment : succès, à droite, et l'explorer affiche ce flag en hexadécimal. L'échec est défini dans XLS-66, mais pas dans la référence LoanPay d'xrpl.org.`,
+Deux : un prêt 10 secondes en retard, dans son délai de grâce. Sans flag : tecEXPIRED, à gauche. Avec tfLoanLatePayment : succès, à droite, et l'explorer affiche ce flag en hexadécimal. L'échec est défini dans XLS-66, mais pas dans la référence LoanPay d'xrpl.org.
+Correction : ajouter tecEXPIRED à la référence avec le flag comme remède, et nommer le flag dans l'explorer.`,
 
-`3:15 → 3:45 (30 s)
+`3:05 → 3:35 (30 s)
 
-Huit autres, tous dans le rapport. Dire les deux premiers :
-fixCleanup3_4_0 est actif et absent d'xrpl.org. Le tutoriel dit d'impairer avant l'échéance, le ledger répond tecTOO_SOON ; il change aussi le préfixe de signature de LoanSet, que xrpl 4.6.0 n'utilise pas.
-La branche du hackathon a retiré la restriction V1.1 sur LoanBrokerSet, et le brief ne le dit pas.`,
+Trois : broker à couverture minimale 10 %, liquidation 5 %. Défaut sur un prêt de 4 XRP. L'explorer montre 0,02 XRP pris sur la couverture : 4 × 10 % × 5 %, au drop près. Le déposant perd 3,98 XRP. C'est la formule documentée. En dessous : 21 secondes après le défaut, le broker retire les 0,98 XRP restants, parce que la dette, et donc le plancher, sont à zéro.
+Correction : afficher la part d'un défaut que la couverture absorbe, et un délai de retrait après un défaut.`,
 
-`3:45 → 3:55 (10 s)
+`3:35 → 3:50 (15 s)
 
-Tout est dans FEEDBACK.md, trois pages. Les 143 hashes cités ont été relus sur le ledger avant soumission. Merci.`,
+Sept autres constats, chacun avec sa sévérité et sa correction dans le rapport. Citer seulement le 7 : la branche du hackathon a retiré la restriction V1.1 sur LoanBrokerSet, et le brief ne le dit pas.`,
+
+`3:50 → 4:00 (10 s)
+
+Tout est dans FEEDBACK.md, et en trois pages dans FEEDBACK.pdf. Les 143 hashes cités ont été relus sur le ledger avant soumission. Merci.`,
 ];
 let slideNo = 0;
 const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
@@ -320,27 +325,45 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* ══ 6 — feedback : first-loss capital ═══════════════════════════════════ */
+/* lignes « constat | détail » sous les preuves, la dernière porte la correction proposée */
+const facts = (sl, y0, rows) => {
+  rule(sl, y0 - 0.25);
+  rows.forEach(([label, text], i) => {
+    const fixRow = i === rows.length - 1;
+    txt(sl, label, { x: ML, y: y0 + i * 0.47, w: 3.2, h: 0.35, fs: 15, color: fixRow ? BLUE : NAVY, ff: FMED });
+    txt(sl, text, { x: ML + 3.2, y: y0 + i * 0.47, w: 8.3, h: 0.35, fs: 15, color: fixRow ? NAVY : GREY });
+  });
+};
+
+/* ══ 6 — friction 1 : fixCleanup3_4_0 ════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "First-loss capital : 0,5 % d'un prêt en défaut");
+  title(sl, "fixCleanup3_4_0 : actif, absent d'xrpl.org");
+  txt(sl, "Deux comportements de prêt changent sur le devnet.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
 
-  stat(sl, "1 XRP", "de couverture posée par le broker", { x: ML, y: 1.95, w: 5.6 });
-  stat(sl, "0,02 XRP", "prélevés sur la couverture au défaut", { x: ML, y: 3.2, w: 5.6, color: ORANGE });
-  stat(sl, "3,98 XRP", "perdus par le déposant, 79,6 %", { x: ML, y: 4.45, w: 5.6 });
+  const W = (CW - 0.4) / 2;
+  term(sl, { x: ML, y: 2.45, w: W, fs: 12, step: 0.36, label: "LoanManage tfLoanImpair  ›  échéance T", lines: [
+    fail([["T − 31 s    ", X.dim], ["tecTOO_SOON", X.bad]]),
+    fail([["T − 13 s    ", X.dim], ["tecTOO_SOON", X.bad]]),
+    [["T +  5 s    ", X.dim], ["tesSUCCESS", X.ok]],
+    null,
+  ] });
+  term(sl, { x: ML + W + 0.4, y: 2.45, w: W, fs: 12, step: 0.36, label: "LoanSet  ›  CounterpartySignature", lines: [
+    fail([["signLoanSetByCounterparty", X.ink]]),
+    [["  Counterparty: Invalid signature.", X.bad]],
+    [["encodeForSigningCounterparty", X.ink]],
+    [["  tesSUCCESS   ", X.ok], ["23631C36…", X.dim]],
+  ] });
 
-  rule(sl, 5.72, LINE, ML, 5.9);
-  txt(sl, "4 XRP de dette × CoverRateMinimum 10 % × CoverRateLiquidation 5 %",
-    { x: ML, y: 5.9, w: 6.2, h: 0.25, fs: 10.5, color: GREY, ff: FM });
-  txt(sl, "Même ratio sur un prêt de 50 XRP : 0,25 XRP.", { x: ML, y: 6.25, w: 6, h: 0.3, fs: 12.5, color: MUT });
-
-  const W = 5.0, x = MR - W;
-  const h1 = explorer(sl, { x, y: 1.8, w: W, files: ["f3a-type", "f3a-meta"], label: "LoanManage tfLoanDefault  ›  923F7D61…" });
-  explorer(sl, { x, y: 1.8 + h1 + 0.22, w: W, files: ["f3b-type", "f3b-amount", "f3b-date"], label: "21 s après le défaut  ›  68DD97D9…" });
+  facts(sl, 5.45, [
+    ["Tutoriel Manage a Loan", "« impair a loan before a payment due date passes »"],
+    ["xrpl@4.6.0", "signLoanSetByCounterparty signe avec l'ancien préfixe."],
+    ["Correction proposée", "lister l'amendement, signer avec encodeForSigningCounterparty."],
+  ]);
   notes(sl);
 }
 
-/* ══ 7 — feedback : paiement en retard ═══════════════════════════════════ */
+/* ══ 7 — friction 2 : paiement en retard ═════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "Un LoanPay en retard exige tfLoanLatePayment");
@@ -350,22 +373,44 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   const h = explorer(sl, { x: ML, y: 2.45, w: W, files: ["f1a-type", "f1a-status"], label: "Flags 0  ›  96C38704…" });
   explorer(sl, { x: ML + W + 0.4, y: 2.45, w: W, h, files: ["f1b-type", "f1b-flags"], label: "Flags 262144  ›  EFAD383F…" });
 
-  rule(sl, 5.2);
-  txt(sl, "XLS-66, §3.11.4.2", { x: ML, y: 5.45, w: 3.2, h: 0.35, fs: 15, color: NAVY, ff: FMED });
-  txt(sl, "l'échec est défini (condition 11).", { x: ML + 3.2, y: 5.45, w: 8.3, h: 0.35, fs: 15, color: GREY });
-  txt(sl, "Référence LoanPay", { x: ML, y: 5.92, w: 3.2, h: 0.35, fs: 15, color: NAVY, ff: FMED });
-  txt(sl, "huit codes d'erreur listés sur xrpl.org, tecEXPIRED n'y figure pas.", { x: ML + 3.2, y: 5.92, w: 8.3, h: 0.35, fs: 15, color: GREY });
+  facts(sl, 5.45, [
+    ["XLS-66, §3.11.4.2", "l'échec est défini (condition 11)."],
+    ["Référence LoanPay", "huit codes d'erreur listés sur xrpl.org, tecEXPIRED n'y figure pas."],
+    ["Correction proposée", "tecEXPIRED dans la référence LoanPay, flag nommé dans l'explorer."],
+  ]);
   notes(sl);
 }
 
-/* ══ 8 — feedback : les huit autres ══════════════════════════════════════ */
+/* ══ 8 — friction 3 : first-loss capital ═════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Huit autres constats");
+  title(sl, "First-loss capital : 0,5 % d'un prêt en défaut");
+
+  stat(sl, "1 XRP", "de couverture posée par le broker", { x: ML, y: 1.85, w: 5.6 });
+  stat(sl, "0,02 XRP", "prélevés sur la couverture au défaut", { x: ML, y: 2.95, w: 5.6, color: ORANGE });
+  stat(sl, "3,98 XRP", "perdus par le déposant, 79,6 %", { x: ML, y: 4.05, w: 5.6 });
+
+  rule(sl, 5.2, LINE, ML, 5.9);
+  txt(sl, "4 XRP de dette × CoverRateMinimum 10 % × CoverRateLiquidation 5 %",
+    { x: ML, y: 5.36, w: 6.2, h: 0.25, fs: 10.5, color: GREY, ff: FM });
+  txt(sl, "Même ratio sur un prêt de 50 XRP : 0,25 XRP.", { x: ML, y: 5.68, w: 6, h: 0.3, fs: 12.5, color: MUT });
+  txt(sl, "Correction proposée", { x: ML, y: 6.12, w: 5.9, h: 0.3, fs: 13, color: BLUE, ff: FMED });
+  txt(sl, "Afficher la part d'un défaut que la couverture absorbe.\nUn délai sur LoanBrokerCoverWithdraw après un défaut.",
+    { x: ML, y: 6.44, w: 5.9, h: 0.62, fs: 13, color: NAVY, ls: 20 });
+
+  const W = 5.0, x = MR - W;
+  const h1 = explorer(sl, { x, y: 1.8, w: W, files: ["f3a-type", "f3a-meta"], label: "LoanManage tfLoanDefault  ›  923F7D61…" });
+  explorer(sl, { x, y: 1.8 + h1 + 0.22, w: W, files: ["f3b-type", "f3b-amount", "f3b-date"], label: "21 s après le défaut  ›  68DD97D9…" });
+  notes(sl);
+}
+
+/* ══ 9 — feedback : les sept autres ══════════════════════════════════════ */
+{
+  const sl = slide();
+  title(sl, "Sept autres constats");
 
   // numéro = section de FEEDBACK.md
   const F = [
-    [1, "fixCleanup3_4_0 actif, absent d'xrpl.org", "tecTOO_SOON · préfixe CPT"],
     [4, "Exception du porteur unique absente d'xrpl.org", "LossUnrealized"],
     [5, "loan_info et loan_broker_info absents", "unknownCmd"],
     [6, "Quatre codes, deux à trois causes chacun", "tecINSUFFICIENT_FUNDS"],
@@ -382,10 +427,12 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
     txt(sl, t, { x: x + 0.52, y: y + 0.26, w: w - 0.52, h: 0.34, fs: 14, color: NAVY, ff: FMED, valign: "middle" });
     chip(sl, code, { x: x + 0.52, y: y + 0.72, fs: 9 });
   });
+  txt(sl, "Sévérité et correction proposée pour chacun dans le rapport.",
+    { x: ML + w + gap + 0.52, y: 1.95 + 3 * 1.2 + 0.3, w: w - 0.52, h: 0.6, fs: 13, color: GREY, ff: FL });
   notes(sl);
 }
 
-/* ══ 9 — clôture ═════════════════════════════════════════════════════════ */
+/* ══ 10 — clôture ════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
   title(sl, "Dix constats, trois pages", true);
@@ -396,7 +443,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   rule(sl, 4.6, "1C3D85");
   txt(sl, "github.com/charlyppr/xrpl-lending", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });
   let cx = ML;
-  ["FEEDBACK.md", "deck/feedback-report.pdf"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 5.6, c: CHIPDARK }) + 0.14; });
+  ["FEEDBACK.md", "FEEDBACK.pdf"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 5.6, c: CHIPDARK }) + 0.14; });
   notes(sl);
 }
 

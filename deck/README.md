@@ -1,6 +1,6 @@
 # Deck — Exit Lane
 
-`exit-lane.pptx` : 9 slides, 16:9 en 13,333 × 7,5 pouces, notes orateur minutées dans chaque slide.
+`exit-lane.pptx` : 10 slides, 16:9 en 13,333 × 7,5 pouces, notes orateur minutées dans chaque slide.
 `exit-lane.pdf` — le même deck exporté par PowerPoint, filet de sécurité pour
 projeter sans dépendre d'une machine qui ait les bonnes polices.
 
@@ -65,11 +65,15 @@ Le texte à dire est dans les notes de chaque slide (mode présentateur).
 | 2 | Ouvert en droit, fermé en fait | 0:15 → 0:40 | 100 % prêté, retrait refusé (capture `7AB5622E`) |
 | 3 | Céder la part de vault, pas le prêt | 0:40 → 1:00 | Les 4 transactions de l'échange |
 | 4 | Démo live | 1:00 → 2:00 | `node scripts/demo.mjs --auto`, 56 s mesurées |
-| 5 | Minimum bar : 8 sur 8 | 2:00 → 2:15 | 8 étapes, 15/15 types |
-| 6 | First-loss capital : 0,5 % d'un prêt en défaut | 2:15 → 2:50 | Finding 3, captures `923F7D61` et `68DD97D9` |
-| 7 | Un LoanPay en retard exige tfLoanLatePayment | 2:50 → 3:15 | Finding 2, captures `96C38704` et `EFAD383F` |
-| 8 | Huit autres constats | 3:15 → 3:45 | Findings 1, 4 à 10 |
-| 9 | Dix constats, trois pages | 3:45 → 3:55 | 143/143 hashes, repo |
+| 5 | Minimum bar : 8 sur 8 | 2:00 → 2:10 | 8 étapes, 15/15 types |
+| 6 | fixCleanup3_4_0 : actif, absent d'xrpl.org | 2:10 → 2:40 | Friction 1 et sa correction, terminaux `tecTOO_SOON` et signature |
+| 7 | Un LoanPay en retard exige tfLoanLatePayment | 2:40 → 3:05 | Friction 2 et sa correction, captures `96C38704` et `EFAD383F` |
+| 8 | First-loss capital : 0,5 % d'un prêt en défaut | 3:05 → 3:35 | Friction 3 et sa correction, captures `923F7D61` et `68DD97D9` |
+| 9 | Sept autres constats | 3:35 → 3:50 | Findings 4 à 10 |
+| 10 | Dix constats, trois pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
+
+Les slides 6 à 8 sont les trois frictions les plus importantes demandées par le
+brief, dans l'ordre du rapport, chacune avec sa correction proposée.
 
 Avant de monter sur scène : terminal ouvert à la racine du repo, commande
 `node scripts/demo.mjs --auto` déjà tapée, `node scripts/check-connection.mjs`
@@ -82,21 +86,23 @@ Rendu par Microsoft PowerPoint et relu slide par slide sur le PDF exporté :
 pas de débordement, pas de chevauchement. À refaire après toute modification
 de `build-deck.cjs`.
 
-Contenu aligné sur `FEEDBACK.md` au 12/09 23h. Retirés du deck parce que
+Contenu aligné sur `FEEDBACK.md` au 13/09 0h30 (sévérités, catégories officielles, corrections proposées). Retirés du deck parce que
 l'audit de 22h45 les a invalidés : prix de part « surévalué de 150 % »,
 « `AssetsMaximum: 0` non documenté », « flag V1.1 qui ment », « `tfLoanLatePayment`
 non documenté », « PR xrpl.js pour signer `LoanSet` », « 8 appels RPC ».
 
 Capture supplémentaire du deck : `node deck/capture-explorer.mjs d-`.
 
-## `feedback-report.pdf` — le rapport de feedback
+## `FEEDBACK.pdf` : le rapport de feedback
 
 Même contenu que `FEEDBACK.md`, dans la DA du deck, avec de vraies captures de
-l'explorer. Trois pages, faits uniquement, sans recommandation.
+l'explorer. Trois pages : catégorie, sévérité et librairie par constat, une
+correction proposée par constat, les six questions du brief. Source
+`deck/feedback-report.tex`, PDF publié à la racine du repo.
 
 ```bash
 node deck/capture-explorer.mjs                             # captures → deck/shots/
-tectonic -X compile deck/feedback-report.tex --outdir deck
+tectonic -X compile deck/feedback-report.tex --outdir deck && mv deck/feedback-report.pdf FEEDBACK.pdf
 ```
 
 `capture-explorer.mjs` pilote Chrome headless (protocole DevTools, sans
