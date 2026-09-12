@@ -71,13 +71,47 @@ qui a failli nous arriver entre [13:05] et [13:34].
   concept. Reste (a) ou (b) : la restriction sur `LoanBrokerSet` n'est pas
   branchée dans ce build, ou elle dépend d'autre chose que le flag d'amendment.
 
-**Ce qu'il reste à faire pour verrouiller l'item :**
-- Un `VaultCreate` avec `VaultKind: 1` + dates, en JSON brut (cf. H14), puis
-  `LoanBrokerSet` dessus. Si les deux passent, on a les deux branches et on
-  peut affirmer proprement que la matrice de l'annexe A ne décrit pas ce build.
-  **Test décisif restant, ~10 minutes, avant d'écrire FEEDBACK.md.**
-- Demander à un mentor quelle version du protocole ce build implémente
-  réellement. C'est la question qui rend l'item actionnable pour Ripple.
+**Test décisif exécuté le 12/09 à 18:30 — les deux branches passent.**
+- `VaultCreate` avec `VaultKind: 1` + les deux dates : **`tesSUCCESS`**
+  (`70579886B58D3FC4C75F5D98C54024692EA612472BF5CC685CB1A73A5DFC5D6D`).
+  Les trois champs V1.1 sont persistés sur le nœud, `LEVersion` est mis à 1 par
+  le ledger, et `vault_info` les expose tous les quatre.
+- `LoanBrokerSet` sur ce vault closed-ended : **`tesSUCCESS`**
+  (`1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40`).
+- Donc `LoanBrokerSet` réussit sur **les deux sortes** de vault, et la matrice
+  de l'annexe A ne décrit pas ce build.
+
+**L'hypothèse (b) tombe.** Il n'y a rien de conditionnel : deux vaults créés à
+la suite sur le même ledger acceptent tous les deux un broker. Reste (a)/(c) —
+dans `rippled 3.4.0-rc1`, la partie « nouveaux champs + validation des dates »
+de `LendingProtocolV1_1` est livrée, la restriction de `LoanBrokerSet` ne l'est
+pas, alors que `feature` renvoie `enabled: true`.
+
+**La validation des dates, elle, est bien branchée et conforme à la doc :**
+`SubscriptionDate` dans le passé → `tecEXPIRED`
+(`7596E62BA8209558771DD19907BC6A4559CAE8055D03D1DCA1CDC25D475AD912`) ;
+`RedemptionDate` antérieure à `SubscriptionDate` → `temMALFORMED`. L'écart
+minimum de 180 s et la fenêtre de 30 ans sont documentés sur la page
+`updated-transactions` (pas sur celle qui décrit les champs — item [18:32]).
+
+**Les verrous de phase, eux, sont appliqués (testé 18:40).** Sur un vault
+closed-ended à fenêtre minimale (200 s), en phase d'investissement :
+`VaultDeposit` → `tecEXPIRED`
+(`85D62B2521FD08CC7BA9A3D0AC232DB5893C4A790E919D99CC16E3D2B42C92CA`),
+`VaultWithdraw` → `tecTOO_SOON`
+(`C5449EC0D1393C13FF4D04273655A71874A88AB15F8D04CA69A2985660386C5C`), les deux
+conformes à la doc. Donc l'écart est **chirurgical** : champs, validation des
+dates et verrous de phase sont livrés, seule la restriction de `LoanBrokerSet`
+manque. C'est ce qui rend l'item précis au lieu de « ce devnet est en retard ».
+
+**Reformulation de l'item pour le rapport :** le flag d'amendment n'est pas un
+indicateur fiable de ce qui est appliqué. C'est plus fort que « la doc se
+trompe », et ça vaut dans les deux sens : celui qui croit la restriction active
+refait son architecture pour rien, celui qui compte dessus pour sa sécurité se
+trompe plus gravement.
+
+**Reste à demander à un mentor** quelle version du protocole ce build
+implémente réellement, et si la restriction est prévue pour un `rc` ultérieur.
 
 **Note sur `tecNO_PERMISSION`.** D'après la doc, ce même code couvre au moins
 deux causes distinctes sur `LoanBrokerSet` : « le vault n'est pas closed-ended »
@@ -125,8 +159,23 @@ qu'un amendment est déployé, ou a minima documenter le décalage. Un test de
 non-régression comparant `definitions.json` aux interfaces déclarées
 attraperait cette classe de bug automatiquement — c'est un candidat de PR.
 
-**Résultat observé :** écart confirmé statiquement. Exécution à faire.
-**Tx :**
+**Résultat observé (12/09, 18:30) — exécuté, et l'item est à revoir à la
+baisse.** Le décalage est réel mais il ne coûte rien au runtime :
+
+    validate({...tx, VaultKind: 1, SubscriptionDate, RedemptionDate})   ne lève pas
+    encode() puis decode()                                             3/3 champs conservés
+    soumission par le chemin normal                                    tesSUCCESS
+
+`validateVaultCreate()` ne valide que les champs qu'il connaît — liste blanche
+de `validateOptionalField`, aucune liste noire — donc un champ hors interface
+traverse validation, encodage et ledger sans encombre. **En JavaScript il n'y a
+aucun contournement à faire ;** `raw-submit.mjs` n'était pas nécessaire ici,
+contrairement à ce que cette hypothèse annonçait. Le coût réel est un `as any`
+en TypeScript et la perte du typage sur deux dates et un montant. Sévérité
+ramenée de « moyenne à haute » à **basse** : footgun de typage, pas blocage.
+La proposition de PR (test comparant `definitions.json` aux interfaces) reste
+valable et échouerait aujourd'hui sur `VaultCreate`.
+**Tx :** `70579886B58D3FC4C75F5D98C54024692EA612472BF5CC685CB1A73A5DFC5D6D`
 
 ---
 

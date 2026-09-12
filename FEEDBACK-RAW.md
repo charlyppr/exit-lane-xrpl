@@ -3198,3 +3198,299 @@ Proposition :
      qu'il doit — c'est le premier écran de toute application de crédit.
   3. Documenter que `tfLoanLatePayment` n'impute qu'une échéance, contrairement
      au surpaiement sur un prêt à jour.
+
+---
+
+### [18:30] ✅🔴 H13 TRANCHÉE — les vaults closed-ended existent sur ce build, et `LoanBrokerSet` passe sur les DEUX sortes
+Phase : construction
+Catégorie : documentation/tutorials
+Sévérité : haute
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · network_id 4001 · `LendingProtocolV1_1` enabled=true supported=true
+
+Tenté : la branche manquante de H13. Jusqu'ici on avait seulement montré que
+`LoanBrokerSet` réussit sur un vault **open-ended** alors que la doc V1.1 le
+donne interdit (annexe A : ❌). Trois explications restaient en concurrence :
+(a) restriction pas branchée, (b) conditionnée à autre chose que le flag
+d'amendment, (c) doc décrivant un build plus récent. Pour départager il fallait
+créer un vault **closed-ended** et voir ce que le ledger en fait.
+
+Attendu : soit `VaultKind: 1` est rejeté (→ le build ignore le concept, (c)),
+soit il est accepté et `LoanBrokerSet` ne passe QUE là (→ restriction branchée,
+et notre observation open-ended devenait le bug).
+
+Obtenu : **les deux branches passent.**
+
+    VaultCreate VaultKind=1          tesSUCCESS  70579886B58D3FC4C75F5D98C54024692EA612472BF5CC685CB1A73A5DFC5D6D
+    LoanBrokerSet sur ce vault       tesSUCCESS  1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40
+    LoanBrokerSet sur open-ended     tesSUCCESS  781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4  (relevé [13:34])
+
+    VaultID closed-ended : B6D108A2839F33EB5AC78144C7495C685866276E2C23B0180929631ADC4BF123
+    LoanBrokerID         : 069AD8F844F462A8BAEF6195D7C4831D795E87B4A5F53E61EEAAF656201BB74E
+
+Le vault closed-ended est **pleinement matérialisé**, pas toléré puis ignoré :
+les trois champs V1.1 sont persistés sur le nœud, et `vault_info` les expose.
+
+    champs stockés  Account, AssetsMaximum, Data, LEVersion, Owner, RedemptionDate,
+                    Sequence, ShareMPTID, SubscriptionDate, VaultKind, WithdrawalPolicy
+    VaultKind=1  SubscriptionDate=842546425  RedemptionDate=842553025  LEVersion=1
+    vault_info → VaultKind, SubscriptionDate, RedemptionDate, LEVersion tous exposés
+
+La validation des dates, elle, **est** branchée et se comporte comme documenté :
+
+    SubscriptionDate dans le passé        tecEXPIRED     7596E62BA8209558771DD19907BC6A4559CAE8055D03D1DCA1CDC25D475AD912
+    RedemptionDate < SubscriptionDate     temMALFORMED   (tem → pas de hash exploitable, cf. [17:01])
+
+Donc (b) tombe : il n'y a rien de conditionnel, deux vaults créés à la suite
+sur le même ledger acceptent tous les deux un broker. Reste (a) ou (c) : dans
+`rippled 3.4.0-rc1`, la partie « nouveaux champs + validation des dates » de
+`LendingProtocolV1_1` est livrée, la partie « restriction de `LoanBrokerSet`
+aux vaults fermés » ne l'est pas — alors que le flag est `enabled: true`.
+
+Ce qui rend l'item actionnable : **le flag d'amendment n'est pas un indicateur
+fiable de ce qui est appliqué.** Un développeur qui lit `feature` puis la doc
+V1.1 déduit un jeu de règles que le ledger n'applique qu'en partie. Dans notre
+cas il a failli nous faire refaire l'architecture pour rien entre [13:05] et
+[13:34]. Dans l'autre sens — quelqu'un qui **compte** sur la restriction — le
+raisonnement est plus grave.
+
+Proposition :
+  1. Faire dire à la doc V1.1 **quelle version de rippled** implémente chaque
+     règle, et pas seulement quel amendment la gouverne. Une colonne « depuis
+     `rippled X.Y` » dans la matrice de l'annexe A suffirait.
+  2. Sur un devnet d'événement, publier la liste des règles V1.1 réellement
+     appliquées par le build déployé.
+  3. À défaut, dire explicitement dans l'annexe A que la matrice décrit la
+     cible et peut être en avance sur les builds `-rc`.
+
+### [18:30] ✅ H14 TRANCHÉE — le décalage codec/TypeScript est purement un décalage de types, pas un blocage runtime
+Phase : construction
+Catégorie : client libraries
+Sévérité : basse (corrigée à la baisse — H14 pressentait moyenne à haute)
+Lib : xrpl@4.6.0 · ripple-binary-codec 2.11.0
+
+Tenté : mesurer ce que coûte vraiment l'écart relevé à [17:4x] — le codec
+sérialise `VaultKind` / `SubscriptionDate` / `RedemptionDate`, l'interface
+`VaultCreate` de xrpl@4.6.0 ne les déclare pas. H14 prévoyait qu'il faudrait
+passer par `raw-submit.mjs`, et se demandait si `validateVaultCreate()`
+rejetterait les champs inconnus.
+
+Attendu : un rejet local, ou des champs silencieusement effacés à l'encodage.
+
+Obtenu : **ni l'un ni l'autre.**
+
+    validate({...tx, VaultKind: 1, SubscriptionDate, RedemptionDate})   ne lève pas
+    encode() puis decode()                                             3/3 champs conservés
+    soumission via le chemin normal                                    tesSUCCESS
+
+`validateVaultCreate()` ne valide que les champs qu'il connaît (liste blanche
+de `validateOptionalField`, aucune liste noire), donc un champ hors interface
+traverse la validation, l'encodage et le ledger sans encombre.
+
+Conséquence pratique, à corriger dans le rapport : **en JavaScript il n'y a
+aucun contournement à faire.** Le coût est un cast `as any` en TypeScript, et
+surtout la perte de l'autocomplétion et du contrôle de type sur trois champs
+qui portent des dates et une somme d'argent. C'est un footgun de typage, pas
+un blocage — `raw-submit.mjs` n'était pas nécessaire ici, contrairement à ce
+que H14 annonçait.
+
+Proposition : garder la proposition d'origine (aligner les modèles TS sur
+`definitions.json`, avec un test de non-régression qui compare les deux), mais
+la classer comme confort de typage. Le candidat de PR reste valable et devient
+facile à décrire : le test échouerait aujourd'hui sur `VaultCreate`.
+
+### [18:32] La doc V1.1 sépare les champs de leurs règles de validation, sur deux pages sans lien
+Phase : construction
+Catégorie : documentation/tutorials
+Sévérité : basse
+
+Tenté : trouver les contraintes sur `SubscriptionDate` / `RedemptionDate` avant
+d'écrire le test, en partant de la page qui décrit les champs
+(`lending-protocol-v1-1/updated-ledger-entries`).
+
+Attendu : les contraintes à côté des champs, ou un lien vers elles.
+
+Obtenu : cette page décrit les quatre nouveaux champs sans une seule règle de
+validation. J'en ai conclu qu'aucun ordre n'était imposé, et j'ai écrit un test
+« dates inversées » en pensant sonder un trou. Les règles existent bel et bien,
+mais sur `updated-transactions` : écart minimum de 180 s, maximum ~30 ans, les
+deux dates postérieures au close time du ledger parent, `temMALFORMED` sinon.
+Le ledger les applique exactement. **Testé, conforme à la doc** — mais trouvé
+après le test, pas avant.
+
+Proposition : sur la page des entrées de ledger, renvoyer depuis chaque champ
+vers la règle de validation qui le gouverne. C'est la page qu'on lit en premier
+quand on découvre un champ dans un nœud.
+
+### [18:32] `LEVersion` vaut 1 sur tous les vaults, y compris ceux qu'on n'a jamais marqués — et deux pages de doc se contredisent
+Phase : observabilite
+Catégorie : documentation/tutorials
+Sévérité : basse
+
+Obtenu : `LEVersion=1` sur le vault closed-ended créé à [18:30] **sans qu'on
+l'ait envoyé**, et `LEVersion=1` sur les 12 vaults open-ended du broker, créés
+bien avant qu'on lise la doc V1.1.
+
+La page `updated-ledger-entries` présente `LEVersion` comme le marqueur du type
+de comptabilité — « 1 indique une comptabilité de caisse ; si le champ est omis,
+le vault utilise une comptabilité whole-life » — et le donne comme fixé par
+`VaultCreate`. La page `updated-transactions`, qui liste les nouveaux champs de
+`VaultCreate`, **ne mentionne pas `LEVersion`**. Observé : le champ est imposé à
+1 par le ledger, jamais omis, et pas réglable. La branche « whole-life » de la
+doc est donc inatteignable sur ce build.
+
+Proposition : dire si `LEVersion` est un champ de version d'entrée de ledger
+(auquel cas il n'a pas à décrire une politique comptable) ou un champ de
+configuration (auquel cas il faut le lister dans `VaultCreate` et documenter
+comment obtenir la comptabilité whole-life). En l'état les deux pages ne
+décrivent pas le même champ.
+
+### [18:40] ✅ Les trois phases d'un vault closed-ended sont appliquées au code près — testé, conforme à la doc
+Phase : construction
+Catégorie : other (résultat négatif, à garder)
+Sévérité : —
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Tenté : après H13, la question naturelle était de savoir si les **verrous de
+phase** du closed-ended sont appliqués ou si, comme la restriction de
+`LoanBrokerSet`, ils sont documentés mais pas branchés. La doc V1.1 promet
+`tecEXPIRED` sur un dépôt en phase d'investissement ou de rachat, et
+`tecTOO_SOON` sur un retrait en phase d'investissement.
+
+Méthode : un vault avec la fenêtre la plus courte que la doc autorise
+(`RedemptionDate - SubscriptionDate = 200 s`, minimum documenté 180 s), pour
+traverser les trois phases en quatre minutes. Calage sur le `close_time` du
+ledger validé et non sur l'horloge locale — c'est le ledger qui arbitre.
+
+    VaultID 45BF2F44A84D64CE11D69A6D66900337467DE35CE43FA5E8683C6559D93FDE63
+
+    phase SOUSCRIPTION
+      VaultCreate closed C     tesSUCCESS   62E609AF93236A14258CDB362F2B8BB97A380B20DE4CAFD0A0D7D20CCD5A4555
+      VaultDeposit 20 XRP      tesSUCCESS   2F8B4C3A9F9AD15234AC4457585701D335A9B0D816B6EC89A87C3D213E25E149
+    phase INVESTISSEMENT
+      VaultDeposit 10 XRP      tecEXPIRED   85D62B2521FD08CC7BA9A3D0AC232DB5893C4A790E919D99CC16E3D2B42C92CA   ✓ doc
+      VaultWithdraw 5 XRP      tecTOO_SOON  C5449EC0D1393C13FF4D04273655A71874A88AB15F8D04CA69A2985660386C5C   ✓ doc
+
+Obtenu : **conforme, aux deux codes près.** Les verrous de phase sont bel et
+bien appliqués sur ce build. Donc l'écart de H13 est chirurgical : dans
+`LendingProtocolV1_1`, les nouveaux champs, la validation des dates et les
+verrous de phase sont livrés ; seule la restriction de `LoanBrokerSet` aux
+vaults fermés ne l'est pas. C'est ce qui rend l'item précis au lieu de « ce
+devnet est en retard ».
+
+**Correction d'un faux positif que j'ai moi-même fabriqué.** À 18:30 j'avais
+relevé un `VaultWithdraw` réussi sur un vault closed-ended avant sa
+`RedemptionDate`, fonds réellement sortis, parts brûlées :
+
+    VaultWithdraw 5 XRP    tesSUCCESS  8AAF1D7E81F8F24F105602A8650922E3EB12E1B1BF8934E70FB3BEB97376B75F
+    VaultWithdraw 15 XRP   tesSUCCESS  F835988B4478BB456DE22F20C2CD895D63AB3BB6CE7A51F4B166B47F6A2F3430
+                           lender +14,999988 XRP · 15 000 000 parts → 0
+
+Ça ressemblait à un verrou manquant sur de l'argent, donc à la règle n°5 de
+CLAUDE.md. **C'en était pas un** : ces deux retraits ont eu lieu avant
+`SubscriptionDate`, donc en phase de SOUSCRIPTION, où la doc n'interdit rien.
+Mon test était mal construit, pas le ledger. Aucun signalement mentor à faire.
+
+Ce qui vaut quand même d'être noté côté doc : la doc décrit les phases par
+leurs bornes (« quand la fenêtre de souscription se ferme », « quand la période
+d'investissement se termine ») sans jamais nommer les trois phases ni dire ce
+qui est permis dans chacune sous forme de tableau. Un tableau 3 phases × 3
+opérations aurait supprimé la confusion et m'aurait évité de croire à une
+faille pendant dix minutes. Les codes, eux, sont les bons : `tecTOO_SOON`
+« trop tôt » et `tecEXPIRED` « trop tard » sont parlants et opposés.
+
+### [18:45] 🔴 Le Wi-Fi accepte le TCP sur 51233/51234 puis n'achemine rien — et `xrpl.js` n'a aucun repli JSON-RPC
+Phase : construction
+Catégorie : client libraries + other (infrastructure)
+Sévérité : moyenne
+Lib : xrpl@4.6.0
+
+Obtenu : le `Client` WSS refuse le handshake (`connect() timed out after
+20000 ms`) en pleine sonde, d'abord dans la boucle d'attente de la phase 3
+(`Timeout for request: {"command":"ledger"}`), puis à la reconnexion.
+
+Mesures prises immédiatement après, qui isolent la cause :
+
+    github.com (443)                 http=200 en 0,047 s        → le 443 sort sans problème
+    faucet (443)                     http=404 en 0,320 s        → l'infra Ripple répond sur 443
+    nc -z port 51233                 succeeded                  → TCP accepté
+    nc -z port 51234                 succeeded                  → TCP accepté
+    curl POST 51234 (3 essais)       http=000, 0 octet, 10 s    → rien au-dessus du TCP
+    node fetch 51234                 UND_ERR_CONNECT_TIMEOUT
+
+**Cause identifiée, et ce n'est pas le nœud :** la machine venait de basculer
+sur le Wi-Fi (confirmé par le développeur), et les mêmes endpoints répondaient
+quelques minutes plus tôt sur l'autre connexion. Le nœud est sain — c'est le
+chemin réseau qui filtre les ports non standard. La même signature avait déjà
+coûté 45 minutes ce matin sur le Wi-Fi invité : trois occurrences aujourd'hui,
+une seule cause.
+
+Et juste avant la coupure franche, un état intermédiaire encore plus trompeur :
+`curl` a renvoyé `http=000` **tout en écrivant un corps JSON valide**
+(`build_version 3.4.0-rc1`, `complete_ledgers 3-70597`) — la réponse arrive,
+la connexion est coupée sans terminaison HTTP propre.
+
+Deux conséquences pour un développeur :
+
+1. **`nc -z` est un faux positif comme test de santé.** Le port accepte la
+   connexion TCP — probablement un équipement du réseau qui répond à sa place —
+   alors que rien ne s'établit au-dessus. Le seul test fiable est un
+   `server_info` complet. C'est exactement le diagnostic qu'on avait déjà écrit
+   ce matin, et il s'est vérifié trois fois aujourd'hui.
+2. **`xrpl.js` n'expose aucun transport JSON-RPC.** `Client` est WebSocket
+   uniquement, alors que `rippled` sert le même API sur 51234. Pendant la
+   fenêtre où 51234 répondait encore et 51233 non, le SDK était inutilisable
+   sur un ledger joignable. Il a fallu réécrire à la main `autofill`
+   (Fee, Sequence, LastLedgerSequence, `NetworkID` obligatoire au-delà de
+   1024) et `submitAndWait` (submit + boucle sur `tx` jusqu'à `validated`) —
+   une trentaine de lignes, cf. `scripts/_probe-rpc-fallback.mjs`.
+
+Proposition :
+  1. Un transport JSON-RPC dans `xrpl.js`, ou au minimum un exemple officiel
+     « soumettre sans WebSocket » — c'est le repli dont on a besoin le jour où
+     le port WSS est filtré, ce qui est le cas sur beaucoup de réseaux invités.
+  2. **Servir aussi le WSS et le RPC sur 443 pour les devnets d'événement.**
+     C'est la proposition la plus rentable des trois : sur les trois coupures
+     de la journée, le 443 a répondu chaque fois (GitHub, faucet), et seuls
+     51233/51234 ont été filtrés. Un événement où les participants sont sur un
+     Wi-Fi invité perd des heures sur ce seul point.
+  3. Dans le guide de dépannage, remplacer le conseil `nc -z` par un
+     `server_info` : le premier réussit alors que le nœud est injoignable.
+
+Conséquence sur notre état : 20 XRP du `lender` restent dans le vault C, en
+phase de rachat, récupérables dès le retour d'un réseau qui achemine 51233
+ou 51234. Rien n'est perdu, le
+retrait est ouvert sans limite de temps une fois `RedemptionDate` passée.
+Relancer `node scripts/_probe-rpc-fallback.mjs` (RPC) ou son équivalent WSS.
+
+### [19:20] Phase 3 confirmée, capital récupéré, et la coupure était bien le Wi-Fi
+Phase : construction
+Catégorie : other
+Sévérité : —
+Lib : xrpl@4.6.0
+
+Retour en 4G, et le nœud répond parfaitement : `server_info` en **0,77 s,
+`http=200`**, `complete_ledgers 3-71166`. Le WSS se reconnecte du premier coup.
+**Confirmation définitive de l'attribution de [18:45]** : le nœud était sain
+tout du long, c'est le Wi-Fi qui accepte le TCP sur 51233/51234 puis
+n'achemine rien. L'item du rapport est donc bien « pas de repli sur 443 » et
+non « devnet instable » — la nuance compte pour Ripple.
+
+Phase 3 du vault closed-ended, le maillon qui manquait :
+
+    VaultWithdraw en phase de RACHAT   tesSUCCESS  F95FA55FF8DE52EE3B23DFA974734F1EE2EDA8B3213FAE7FE5DFD9E023F8D8E2
+
+Les trois phases sont donc vérifiées de bout en bout, chacune conforme à la
+doc : dépôt permis puis `tecEXPIRED`, retrait `tecTOO_SOON` puis permis. Les
+20 XRP du `lender` sont rentrés (952,377863 XRP).
+
+Nettoyage, qui donne au passage une séquence de suppression non documentée
+mais parfaitement signalée par les codes :
+
+    VaultDelete sur vault avec broker   tecHAS_OBLIGATIONS  A3E9C1A431AD1C4D5B9504067A3173B6DE7A52A84DED5AA2B9F19F7CBD1D7BE1
+    LoanBrokerDelete                    tesSUCCESS          541384D1E8CD3DE40FEAF2FF9D5787D220D6C35565AA78EAEB0C9B7819F215F4
+    VaultDelete (même vault, ensuite)   tesSUCCESS          D73B9A7A6DF028959682A92DBAE6C4E4F96866885A691F83DAF92DF15F76E865
+
+`tecHAS_OBLIGATIONS` nomme sa cause et se corrige sans lire la doc — à opposer
+au `temINVALID` de [17:01] et au `tecINSUFFICIENT_FUNDS` à deux causes de
+[17:07]. Les vaults de test sont supprimés, `spare` est revenu à son
+`OwnerCount` de départ (7).

@@ -15,7 +15,7 @@ a bug in the provided script. Cleared, the setup script runs in 13 s.
 validator to ask the ledger something it would not express.
 **Coverage:** all 15 XLS-65/66 types submitted at least once, the full
 `tfLoanImpair` → `tfLoanDefault` cycle, 5 guardrails triggered on purpose.
-Raw log with every hash: [`FEEDBACK-RAW.md`](./FEEDBACK-RAW.md), 60 entries.
+Raw log with every hash: [`FEEDBACK-RAW.md`](./FEEDBACK-RAW.md), 64 entries.
 
 | # | Phase | Category | Finding | Sev. |
 |---|---|---|---|---|
@@ -138,9 +138,9 @@ so an accidental `0` is **irreversible while depositors remain**.
 | **`VaultWithdraw` is in shares, its limit `AssetsAvailable` in assets**, with no conversion offered: integer division lands a drop over the limit | — | 9 of 10 withdrawals partial |
 | **One code for two opposite remedies**: cover saturated with liquidity ample at 8.5 XRP, then liquidity short with cover ample at capacity 52. "Deposit cover" vs "wait for depositors" | `tecINSUFFICIENT_FUNDS` | `5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B` (cover) · liquidity case in the raw log |
 | **`signLoanSetByCounterparty` signs the wrong payload** (`encodeForSigning` where `rippled` wants `encodeForSigningCounterparty`), so `LoanSet` is unusable through the documented helper | local rejection | fix in [`raw-submit.mjs`](./scripts/raw-submit.mjs) |
-| **The documented V1.1 matrix contradicts the ledger**: brokers are said to attach only to closed-ended vaults. We nearly redesigned the project around it | `tesSUCCESS` | `781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4` |
+| **An enabled amendment flag does not mean its rules are enforced.** `LendingProtocolV1_1` reports `enabled: true`, and `LoanBrokerSet` then succeeds on **both** vault kinds — though the V1.1 matrix marks open-ended ❌. We nearly redesigned the project around it. The gap is surgical, not a stale devnet: the new fields, the date validation (`tecEXPIRED`, `temMALFORMED`) and the phase locks (`tecEXPIRED` on deposit, `tecTOO_SOON` on withdrawal during the investment period) are all enforced as documented. Only the broker restriction is absent. Someone *relying* on it reasons worse than we did | `tesSUCCESS` on both | open-ended `781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4` · closed-ended `1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40` |
 | **`tfLoanImpair` is refused *before* the due date**, though the tutorial presents pre-emptive impairment as its purpose | `tecTOO_SOON` | refused at due−13 s, accepted at due+5 s |
-| **Only ports 51233/51234, no 443 fallback** — guest Wi-Fi drops both silently; two later outages had the same signature (`nc -z` on 51233 succeeds, `curl` on 51234 returns nothing). The faucet also **cannot refill an existing account**, ignoring `destination` | — | 45 min lost; faucet 5/5, ~160 ms |
+| **Only ports 51233/51234, no 443 fallback** — guest Wi-Fi accepts the TCP handshake on both, then routes nothing above it, so `nc -z` is a false positive and only a full `server_info` detects it. Three outages, one cause: 443 answered every time (GitHub 47 ms, faucet 320 ms). And `xrpl.js` has **no JSON-RPC transport** — `Client` is WebSocket-only — so during the window where 51234 still answered we hand-rolled `autofill` and `submitAndWait` over HTTP to reach a live ledger. The faucet also **cannot refill an existing account**, ignoring `destination` | — | 45 min lost; ~30 lines of fallback |
 
 ### One code, several causes — the recurring shape
 

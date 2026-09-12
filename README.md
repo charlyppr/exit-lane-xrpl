@@ -183,7 +183,7 @@ ledger cannot honour, and it is what pushed us to escrows.
 Full report: [`FEEDBACK.md`](./FEEDBACK.md) · Raw capture log:
 [`FEEDBACK-RAW.md`](./FEEDBACK-RAW.md)
 
-Sixty entries with hashes, ten findings in the report. The three that would cost
+Sixty-seven entries with hashes, ten findings in the report. The three that would cost
 another team the most time:
 
 1. **A borrower one second late cannot pay at all** unless `LoanPay` carries
