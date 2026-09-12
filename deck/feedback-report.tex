@@ -1,5 +1,5 @@
 % XRPL Lending Protocol Hackathon · CY-HACK · Developer Feedback (3 pages)
-% Build : tectonic -X compile deck/feedback-report.tex --outdir deck
+% Build : tectonic -X compile deck/feedback-report.tex --outdir deck && mv deck/feedback-report.pdf FEEDBACK.pdf
 % Captures : node deck/capture-explorer.mjs   (→ deck/shots/*.png)
 % DA du deck : navy 001C5C · bleu 006AFF · ciel 6DC3FF · corps 5F666E
 \documentclass[a4paper,10pt]{extarticle}
@@ -77,6 +77,8 @@
 \newcommand{\hs}[1]{{\color{navy}\bfseries #1}}
 \newcommand{\tm}[1]{{\ttfamily\color{navy}#1}}
 \newcommand{\lab}[1]{{\color{blue}\bfseries #1}\enspace}
+% correction proposée : dernier paragraphe de chaque constat
+\newcommand{\fix}[1]{\par\addvspace{1pt}{\color{navy}\bfseries Proposed fix.}\enspace #1\par}
 % hash abrégé 8+8 dans les tableaux ; le hash complet est dans FEEDBACK.md
 \newcommand{\hsh}[2]{{\ttfamily\fontsize{6}{7}\selectfont\color{body}#1…#2}}
 % hashes sous une preuve : jamais séparés de ce qui précède, jamais coupés entre deux colonnes
@@ -109,7 +111,7 @@
 \begin{minipage}[c]{0.32\linewidth}\raggedleft
 {\hdfont\color{white}\fontsize{9}{10}\selectfont\bfseries CY-HACK}\\[1.5pt]
 {\fontsize{6.4}{7.6}\selectfont\color{sky}Track 1 · open-ended vault\\
-XLS-65, XLS-66 and TokenEscrow\\
+Flavour Loaded: XLS-65, XLS-66, TokenEscrow\\
 \texttt{github.com/charlyppr/xrpl-lending}}
 \end{minipage}
 \end{tcolorbox}
@@ -119,36 +121,48 @@ XLS-65, XLS-66 and TokenEscrow\\
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X@{}}
 {\color{blue}\bfseries NETWORK} & {\color{blue}\bfseries LIBRARY} & {\color{blue}\bfseries FIRST TRANSACTION} & {\color{blue}\bfseries VERIFICATION}\\
 Custom Hackathon Devnet · \tm{rippled} 3.4.0-rc1, hackathon branch · \tm{LendingProtocolV1\_1} and \tm{fixCleanup3\_4\_0} enabled &
-\hs{\texttt{xrpl@4.6.0}} · the 15 XLS-65/66 transaction types are typed · no raw JSON &
+\hs{\texttt{xrpl@4.6.0}}, for every finding · the 15 XLS-65/66 transaction types are typed · no raw JSON · one helper replaced (finding 1) &
 \hs{50 minutes}, of which 45 on blocked ports (finding 8) &
 \hs{143 of 143} cited hashes validated on the ledger · docs checked against XLS-65, XLS-66 and xrpl.org · library claims against the \tm{rippled} and \tm{xrpl.js} source\\
 \end{tabularx}}
 
 \vspace{5pt}
 {\renewcommand{\arraystretch}{1.2}\setlength{\tabcolsep}{3.5pt}\fontsize{7}{8.4}\selectfont
-\begin{tabularx}{\linewidth}{@{}c >{\raggedright\arraybackslash}X l l@{}}
+\begin{tabularx}{\linewidth}{@{}c >{\raggedright\arraybackslash}X l l l@{}}
 \rowcolor{card}
-{\bfseries\color{navy}\#} & {\bfseries\color{navy}Finding} & {\bfseries\color{navy}Category} & {\bfseries\color{navy}Checked against}\\
+{\bfseries\color{navy}\#} & {\bfseries\color{navy}Finding} & {\bfseries\color{navy}Category} & {\bfseries\color{navy}Severity} & {\bfseries\color{navy}Library}\\
 \midrule
-1 & \tm{fixCleanup3\_4\_0} changes impairment timing and the \tm{LoanSet} counterparty signature. xrpl.org does not list it. & docs, amendments & ledger, XLS-66, rippled\\
+1 & \tm{fixCleanup3\_4\_0} changes impairment timing and the \tm{LoanSet} counterparty signature. xrpl.org does not list it, and the \tm{xrpl.js} signing helper predates it. & client libraries & \hs{High} & \tm{xrpl@4.6.0}\\
 \rowcolor{card}
-2 & A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}. The xrpl.org \tm{LoanPay} reference does not list this failure. & docs, error codes & ledger, XLS-66, xrpl.org\\
-3 & The first-loss capital covered 0.5\,\% of a defaulted loan. The broker then withdrew the remaining cover. & design, naming & ledger, xrpl.org\\
+2 & A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}. The xrpl.org \tm{LoanPay} reference does not list this failure. & documentation/tutorials & \hs{High} & \tm{xrpl@4.6.0}\\
+3 & The first-loss capital covered 0.5\,\% of a defaulted loan. The broker then withdrew the remaining cover. & UX & \hs{High} & \tm{xrpl@4.6.0}\\
 \rowcolor{card}
-4 & xrpl.org omits the sole-holder exception to share value. \tm{LossUnrealized} is absent from the node while zero. & docs, UX & ledger, XLS-65, xrpl.org\\
-5 & \tm{loan\_info} and \tm{loan\_broker\_info} do not exist. \tm{mpt\_holders} needs Clio, which the devnet does not expose. & missing primitive & ledger, xrpl.org\\
+4 & xrpl.org omits the sole-holder exception to share value. \tm{LossUnrealized} is absent from the node while zero. & documentation/tutorials & Medium & \tm{xrpl@4.6.0}\\
+5 & \tm{loan\_info} and \tm{loan\_broker\_info} do not exist. \tm{mpt\_holders} needs Clio, which the devnet does not expose. & missing primitive & Medium & \tm{xrpl@4.6.0}\\
 \rowcolor{card}
-6 & Four result codes each cover situations that call for different actions. & error codes & ledger\\
-7 & The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction. The event brief does not mention it. & event docs & ledger, rippled\\
+6 & Four result codes each cover situations that call for different actions. & UX & Medium & \tm{xrpl@4.6.0}\\
+7 & The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction. The event brief does not mention it. & documentation/tutorials & Medium & \tm{xrpl@4.6.0}\\
 \rowcolor{card}
-8 & The devnet listens only on ports 51233 and 51234. A filtered port and a stalled node show the same signature. & infrastructure & network tests\\
-9 & Closing a vault to deposits requires setting \tm{AssetsMaximum} to \tm{AssetsTotal}. & missing primitive & ledger, xrpl.org\\
+8 & The devnet listens only on ports 51233 and 51234. A filtered port and a stalled node show the same signature. & other & Medium & \tm{xrpl@4.6.0}\\
+9 & Closing a vault to deposits requires setting \tm{AssetsMaximum} to \tm{AssetsTotal}. & missing primitive & Low & \tm{xrpl@4.6.0}\\
 \rowcolor{card}
-10 & Vault shares carry \tm{lsfMPTCanTrade}. \tm{OfferCreate} with a share amount returns \tm{temDISABLED}. & docs, MPT & ledger, xrpl.org\\
+10 & Vault shares carry \tm{lsfMPTCanTrade}. \tm{OfferCreate} with a share amount returns \tm{temDISABLED}. & documentation/tutorials & Medium & \tm{xrpl@4.6.0}\\
 \end{tabularx}}
+{\fontsize{6.3}{7.6}\selectfont\color{muted}\hs{Severity.} High: blocks a minimum bar step for any team, or misstates the risk a depositor carries. Medium: costs time or a wrong design decision, with a workaround. Low: documented elsewhere or cosmetic.\par}
 
 \vspace{4pt}
 \begin{multicols}{2}\RaggedRight
+
+\hh{The six questions of the brief}
+\begin{enumerate}[leftmargin=10pt,itemsep=1.7pt,topsep=2.4pt,parsep=0pt,label={\color{blue}\bfseries\arabic*}]
+\item \hs{Vault, broker and loan.} Clear in the references: only the vault owner can submit \tm{LoanBrokerSet}, so owner and broker are one account. The minimum bar's drawdown has no transaction: \tm{LoanSet} moves the principal out of the vault.
+\item \hs{First-loss parameters.} No. \tm{CoverRateLiquidation} applies to the minimum cover, not to the defaulted debt (finding 3).
+\item \hs{Multi-party \tm{LoanSet}.} The broker signs, the borrower adds \tm{CounterpartySignature} and submits. Both wallets ran in one script. The \tm{xrpl@4.6.0} helper for the second signature is rejected on this devnet (finding 1).
+\item \hs{SDK or raw JSON.} All 15 types are typed. No raw JSON. One helper replaced (finding 1).
+\item \hs{Position value, utilisation, liquidity, yield.} Not from ledger objects: five calls and six values computed client-side (finding 5), fields absent while zero (finding 4).
+\item \hs{Explorer and docs against the ledger.} The docs differ on findings 1, 2, 4 and 10. The explorer shows \tm{tfLoanLatePayment} in hex (finding 2) and no \tm{Vault} field values in its \emph{Detailed} tab (finding 4).
+\end{enumerate}
+\ev{drawdown in LoanSet D19CD59FB93CCF28547533C76CC1AFA71CF592FD0EC9D0A9E217A9F6EAAD85DA}
 
 % ───────────── 1 ─────────────
 \hh{1 · \tm{fixCleanup3\_4\_0} is enabled and not listed on xrpl.org}
@@ -181,6 +195,8 @@ signature}. The same \tm{LoanSet} signed with \tm{encodeForSigningCounterparty} 
 \tm{ripple-binary-codec} returned \tm{tesSUCCESS}.
 \ev{23631C3610DA97926E8BF9FC5BC4E76E504C9DFB2683C928E825DE0138397B2B}
 
+\fix{List \tm{fixCleanup3\_4\_0} on \emph{Known Amendments} with its two lending changes. Update \emph{Manage a Loan}: impairment is accepted once \tm{NextPaymentDueDate} has passed. In \tm{xrpl.js}, sign \tm{CounterpartySignature} with \tm{encodeForSigningCounterparty}, with the previous prefix as an option for networks without the amendment.}
+
 % ───────────── 2 ─────────────
 \hh{2 · A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}}
 
@@ -191,10 +207,11 @@ full balance, and a payment with \tm{tfLoanFullPayment}. The same payment with
 
 \begin{itemize}
 \item XLS-66, section 3.11.4.2, condition 11 defines this failure. The xrpl.org \tm{LoanPay} reference lists eight error codes, and \tm{tecEXPIRED} is not among them.
-\item xrpl.org describes \tm{tfLoanLatePayment} as ``\emph{Indicates that the borrower is making a late loan payment}''.
 \item The explorer shows \tm{tfLoanImpair} and \tm{tfLoanDefault} by name, and \tm{tfLoanLatePayment} as \tm{0x00040000}.
 \item No field of the \tm{Loan} node changed during 85 s of lateness, and no field holds the accrued late interest. A payment of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returned \tm{tecINSUFFICIENT\_PAYMENT}. A payment of 2\,765\,001 drops returned \tm{tesSUCCESS}, and 765\,003 drops were taken.
 \end{itemize}
+
+\fix{Add \tm{tecEXPIRED} to the \tm{LoanPay} error table, with \tm{tfLoanLatePayment} as the remedy. Name the flag in the explorer. Expose the amount due now, late interest included, in a \tm{Loan} field or a read command.}
 
 \begin{shotblock}
 \begin{screen}
@@ -251,6 +268,8 @@ Second vault, in ledger order:\par\nobreak
 3338BA629F8772CDEC07B6F714F2AF3A1ADC8E93642429A54B95CF372FDB2880\\
 first vault default 91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7}
 
+\fix{Next to the formula, state the share of a defaulted debt the cover absorbs: \tm{CoverRateMinimum $\times$ CoverRateLiquidation}, 0.5\,\% at 10\,\% and 5\,\%. Hold \tm{LoanBrokerCoverWithdraw} for a set delay after a default, or state that no delay exists.}
+
 \begin{shotblock}
 \begin{screen}
 \shot{f3a-badge}\shot{f3a-flags}\shot{f3a-meta}
@@ -279,6 +298,8 @@ xrpl.org Single Asset Vault page gives the formula and does not mention the exce
 \item \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining} and \tm{TotalValueOutstanding} are also absent from their node when zero.
 \item The explorer's \emph{Detailed} tab shows ``\emph{It modified a node with type Vault}'' without field values. \tm{LossUnrealized} appears in the \emph{Raw} tab once the node is expanded.
 \end{itemize}
+
+\fix{Add the sole-holder exception to the xrpl.org formula. Return zero-valued fields as \tm{"0"} in \tm{vault\_info}, or document their absence. Show changed field values in the explorer's \emph{Detailed} tab.}
 
 \begin{shotblock}
 \begin{screen}
@@ -313,6 +334,8 @@ Clio-only. The devnet endpoints serve \tm{rippled}, where \tm{mpt\_holders} retu
 Six values are computed client-side: gross and net share value, position value, withdrawable
 amount, utilisation and broker debt capacity.
 
+\fix{Add \tm{loan\_broker\_info} and \tm{loan\_info}, or list a vault's brokers and loans in \tm{vault\_info}. Return share value, withdrawable amount and utilisation. Expose Clio on the devnet.}
+
 % ───────────── 6 ─────────────
 \hh{6 · Four result codes cover situations that call for different actions}
 
@@ -341,6 +364,8 @@ amount, utilisation and broker debt capacity.
 \tm{tecHAS\_OBLIGATIONS} names a single cause on \tm{VaultDelete}, \tm{LoanBrokerDelete} and
 \tm{LoanDelete}.
 
+\fix{Where one transaction type maps two causes to one code (\tm{LoanSet}, \tm{LoanManage}, a \tm{Payment} of shares), return distinct codes or a result message naming the check that failed.}
+
 \begin{shotblock}
 \begin{screen}
 \shot{f6a-badge}\shot{f6a-status}
@@ -368,6 +393,8 @@ enforced. The event brief does not mention the revert.
 \ev{open-ended 781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4\\
 closed-ended 1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40}
 
+\fix{State in the event brief which V1.1 rules the hackathon build enforces, and that the \#8076 restriction is reverted.}
+
 % ───────────── 8 ─────────────
 \hh{8 · Ports 51233 and 51234}
 
@@ -378,6 +405,8 @@ five times during the event: three occurrences were traced to the local network,
 be attributed. The first cost 45 minutes. The \tm{xrpl.js} \tm{Client} uses WebSocket only. The
 faucet ignores the \tm{destination} field and creates a new account.
 
+\fix{Serve JSON-RPC and WebSocket on port 443. Fund the \tm{destination} account from the faucet instead of creating a new one.}
+
 % ───────────── 9 ─────────────
 \hh{9 · Closing a vault to deposits}
 
@@ -387,20 +416,8 @@ and \tm{DomainID}, and no flag closes a vault to deposits. Setting \tm{AssetsMax
 \tm{AssetsTotal} blocks deposits: a 1 XRP deposit then returns \tm{tecLIMIT\_EXCEEDED}.
 \ev{132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F}
 
-\begin{shotblock}
-\begin{screen}
-\shot{f5a-badge}\shot{f5a-max}\shot{f5a-date}
-\end{screen}
-\capt{Explorer. \texttt{VaultSet} with \texttt{AssetsMaximum} 0 on a vault capped at 5 XRP and holding 3.}
-\ev{A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2}
-\end{shotblock}
-\begin{shotblock}
-\begin{screen}
-\shot{f5b-badge}\shot{f5b-amount}\shot{f5b-date}
-\end{screen}
-\capt{Explorer. Two seconds later, a 4 XRP \texttt{VaultDeposit} brings the same vault to 7 XRP.}
-\ev{D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956}
-\end{shotblock}
+\fix{Add a \tm{VaultSet} flag that closes a vault to deposits. Repeat ``\tm{0} means no cap'' on the \tm{VaultSet} reference.}
+
 
 % ───────────── 10 ─────────────
 \hh{10 · Vault shares carry \tm{lsfMPTCanTrade}}
@@ -413,99 +430,24 @@ Ledger DEX or AMM}''. On the devnet, an \tm{OfferCreate} with a share amount ret
 \tm{temDISABLED}. The \tm{feature} list contains \tm{MPTokensV1} and \tm{DynamicMPT}, and no
 amendment for MPT trading.
 
+\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs an amendment not yet available, or leave \tm{lsfMPTCanTrade} unset on vault shares until then.}
+
 % ───────────── fin ─────────────
-\hh{What we ran}
+\hh{Minimum bar, guardrails, escrow swap}
+The minimum bar run, the six guardrails, the closed-ended vault control and the escrow swap are
+listed with explorer links in the README. All 15 XLS-65/66 transaction types were submitted at
+least once, including a full \tm{tfLoanImpair} then \tm{tfLoanDefault} cycle.
 
-{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
-\rowcolor{card}
-{\bfseries\color{navy}Step} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Hash}\\
-\midrule
-Open-ended vault & \tm{VaultCreate} & \hsh{A14CB64F}{159502E4}\\
-\rowcolor{card}
-Deposit, 25 XRP & \tm{VaultDeposit} & \hsh{98A6A315}{FB772A0A}\\
-Loan broker & \tm{LoanBrokerSet} & \hsh{A4A619AA}{6480C5A5}\\
-\rowcolor{card}
-First-loss capital, 5 XRP & \tm{LoanBrokerCoverDeposit} & \hsh{9DEA76E2}{30BF79BB}\\
-Origination and drawdown & \tm{LoanSet} & \hsh{7E3006E8}{5F63BAB0}\\
-\rowcolor{card}
-Repayment & \tm{LoanPay} & \hsh{41B2EAAE}{0E8EDC8C}\\
-Withdrawal with yield & \tm{VaultWithdraw} & \hsh{53133F76}{642895BE}\\
-\end{tabularx}}
-
-All seven returned \tm{tesSUCCESS}. All 15 XLS-65/66 transaction types were submitted at least
-once, with a full \tm{tfLoanImpair} then \tm{tfLoanDefault} cycle.
-
-\hh{Guardrails triggered on purpose}
-{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
-\rowcolor{card}
-{\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Result} & {\bfseries\color{navy}Hash}\\
-\midrule
-\tm{LoanSet} of 5000 XRP, vault holding 25 & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{B92A90F5}{259F9CAA}\\
-\rowcolor{card}
-\tm{LoanPay} of 1 XRP, instalment 25.5 XRP & \tm{tecINSUFFICIENT\_PAYMENT} & \hsh{77F708D6}{1E0541B4}\\
-\tm{LoanBrokerCoverWithdraw} below \tm{CoverRateMinimum} & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{D91DEFCE}{2595A60F}\\
-\rowcolor{card}
-\tm{LoanBrokerSet} by a non-owner of the vault & \tm{tecNO\_PERMISSION} & \hsh{33742272}{A0FA40A8}\\
-\tm{VaultWithdraw} above unlent liquidity & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{FB47313D}{D76DAAC4}\\
-\rowcolor{card}
-Cover withdrawal above the floor (control) & \tm{tesSUCCESS} & \hsh{90BF019F}{8C4279B2}\\
-\end{tabularx}}
-
-\hh{Closed-ended vault, one transaction per phase}
-{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
-\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X l r@{}}
-\rowcolor{card}
-{\bfseries\color{navy}Phase} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Result} & {\bfseries\color{navy}Hash}\\
-\midrule
-Subscription & \tm{VaultDeposit} 20 XRP & \tm{tesSUCCESS} & \hsh{2F8B4C3A}{3E25E149}\\
-\rowcolor{card}
-Investment & \tm{VaultDeposit} 10 XRP & \tm{tecEXPIRED} & \hsh{85D62B25}{B42C92CA}\\
-Investment & \tm{VaultWithdraw} 5 XRP & \tm{tecTOO\_SOON} & \hsh{C5449EC0}{60386C5C}\\
-\rowcolor{card}
-Redemption & \tm{VaultWithdraw} & \tm{tesSUCCESS} & \hsh{F95FA55F}{23F8D8E2}\\
-\end{tabularx}}
-
-\hh{Secondary sale of vault shares with TokenEscrow}
-{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
-\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
-\rowcolor{card}
-{\bfseries\color{navy}Step} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Hash}\\
-\midrule
-Buyer opts in to the share MPT & \tm{MPTokenAuthorize} & \hsh{79F48365}{B32C5E31}\\
-\rowcolor{card}
-Buyer locks the payment & \tm{EscrowCreate} & \hsh{1F29F998}{E539FBF8}\\
-Seller locks the shares & \tm{EscrowCreate} & \hsh{795D6AFE}{FB204099}\\
-\rowcolor{card}
-Buyer claims the shares with the preimage & \tm{EscrowFinish} & \hsh{029559F0}{1D26A179}\\
-Seller claims the payment with the same preimage & \tm{EscrowFinish} & \hsh{5F359ADB}{50BEF991}\\
-\end{tabularx}}
-
-\hh{Lending-related amendments enabled}
-\tm{LendingProtocol}, \tm{LendingProtocolV1\_1}, \tm{SingleAssetVault}, \tm{MPTokensV1},
-\tm{DynamicMPT}, \tm{TokenEscrow}, \tm{fixTokenEscrowV1}, \tm{fixCleanup3\_2\_0},
-\tm{fixCleanup3\_4\_0}, \tm{BatchV1\_1}, \tm{PermissionedDomains}, \tm{Credentials}.
-
-\hh{What worked}
-\begin{itemize}
-\item \tm{tecHAS\_OBLIGATIONS} names its cause on the three delete transactions.
-\item \tm{VaultDelete} removes third-party \tm{MPToken} objects and refunds their reserve.
-\item The cover floor is enforced to the drop. \tm{CoverRateMinimum}, \tm{CoverRateLiquidation} and \tm{ManagementFeeRate} return \tm{temINVALID} when changed on an existing broker.
-\item The closed-ended vault phases behave as XLS-65 describes: deposits accepted then \tm{tecEXPIRED}, withdrawals \tm{tecTOO\_SOON} then accepted.
-\end{itemize}
-
-\hh{Limits}
-XRP only, so neither clawback transaction was tested with an issued asset. Payment schedules of
-60 to 90 seconds. One build: the hackathon branch of \tm{rippled} 3.4.0-rc1.
-
-\hh{Material in the repo}
-\begin{itemize}
-\item \tm{scripts/raw-submit.mjs}: a \tm{LoanSet} counterparty signer using \tm{encodeForSigningCounterparty}.
-\item \tm{scripts/\_probe-audit-hashes.mjs}: checks every hash cited in a document against the ledger, and separates transaction hashes from ledger object IDs.
-\item \tm{deck/capture-explorer.mjs}: the explorer screenshots in this PDF.
-\item Observed in passing: the Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. \tm{validateVaultCreate} in \tm{xrpl@4.6.0} accepts any number for \tm{WithdrawalPolicy}; the values 0, 2, 3, 99 and 255 reach the network and return \tm{temMALFORMED}.
-\end{itemize}
+\hh{What worked, limits, material}
+\tm{tecHAS\_OBLIGATIONS} names its cause on the three delete transactions. \tm{VaultDelete} removes
+third-party \tm{MPToken} objects and refunds their reserve. The cover floor is enforced to the drop,
+and cover rates return \tm{temINVALID} when changed on an existing broker. The closed-ended vault
+phases behave as XLS-65 describes. Limits: XRP only, so neither clawback was tested with an issued
+asset; payment schedules of 60 to 90 seconds; one build. In the repo: \tm{scripts/raw-submit.mjs}
+(counterparty signer), \tm{scripts/\_probe-audit-hashes.mjs} (hash audit),
+\tm{deck/capture-explorer.mjs} (these screenshots). In passing: the Lending Protocol concept page
+spells \tm{PrincipleOutstanding} and \tm{depostitor}; \tm{validateVaultCreate} in \tm{xrpl@4.6.0}
+accepts any number for \tm{WithdrawalPolicy}, and 0, 2, 3, 99 and 255 return \tm{temMALFORMED}.
 
 \end{multicols}
 \end{document}
