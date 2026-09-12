@@ -1533,7 +1533,7 @@ Obtenu :
 
 ---
 
-### [15:21] `GracePeriod` a un minimum non documenté de 60 s, et `temINVALID` ne dit pas lequel
+### [15:21] `GracePeriod` : `temINVALID` ne dit pas quel champ est hors bornes  ⚠️ **titre corrigé à [16:44] — le minimum de 60 s EST documenté**
 Phase : build
 Catégorie : documentation/tutorials + error messages
 Sévérité : moyenne
@@ -1562,10 +1562,21 @@ Obtenu :
   transaction a passé la validation locale et a atteint le ledger. Aucune
   transaction coûteuse n'est consommée pour sonder une borne.
 
+⚠️ **CORRECTION [16:44]** — le minimum de 60 s **est documenté**, dans les
+error cases de `LoanSet` : « *One or more of the numeric fields are outside
+their valid ranges. For example, the `GracePeriod` can't be longer than the
+`PaymentInterval` or less than `60` seconds.* » Nous l'avions cherché sur la
+page de référence des champs, pas dans le tableau d'erreurs. Le grief
+« non documenté » tombe ; **le grief sur l'erreur reste entier** : la doc ne
+sert à rien si `temINVALID` ne nomme pas le champ, puisqu'il faut déjà
+soupçonner `GracePeriod` pour aller lire la ligne qui en parle. Sept
+soumissions pour isoler une borne qui était écrite.
+
 Proposition :
-  Documenter le minimum sur la page `LoanSet`, et faire dire à l'erreur quel
-  champ est hors bornes. `temMALFORMED` avec le nom du champ vaudrait dix fois
-  `temINVALID` seul.
+  Faire dire à l'erreur quel champ est hors bornes. `temMALFORMED` avec le nom
+  du champ vaudrait dix fois `temINVALID` seul. Et remonter la contrainte de
+  bornes dans le tableau des champs de `LoanSet`, pas seulement dans le
+  tableau des erreurs : c'est là qu'on la cherche.
 
 ---
 
@@ -1913,3 +1924,1265 @@ Effet de bord favorable pour la démo : avec des échéances mensuelles, un seul
 remboursement fait passer la part de 1,000000000 à 1,006443880, contre
 1,000214800 en quotidien. Le rendement devient **lisible à l'écran** pendant le
 pitch, là où il fallait auparavant pointer la sixième décimale.
+
+---
+
+### [16:18] ⚠️ `AssetsMaximum = 0` ne gèle pas les dépôts, il SUPPRIME le plafond — et le champ disparaît du nœud
+Phase : build
+Catégorie : **UX** + documentation/tutorials
+Sévérité : **haute — le geste naturel produit l'effet exactement inverse de l'intention**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Tenté :
+  Fermer un vault open-ended aux nouveaux dépôts. `VaultSet` n'expose que
+  `Data`, `AssetsMaximum` et `DomainID` ; le geste évident est donc
+  `AssetsMaximum: 0` — « plus rien ne rentre ».
+
+Attendu :
+  Plafond à zéro → tout nouveau dépôt refusé.
+
+Obtenu :
+  `tesSUCCESS`, puis **le plafond est désactivé** : un dépôt qui dépasse
+  l'ancien plafond passe. Vérifié sur un vault plafonné à 5 XRP :
+
+    AssetsTotal 3 XRP · AssetsMaximum 5 XRP
+    VaultSet AssetsMaximum = 0        → tesSUCCESS
+    lecture du nœud                   → AssetsMaximum **ABSENT** (pas 0)
+    VaultDeposit 4 XRP (total 7 > 5)  → tesSUCCESS
+
+  Le vault est passé de « plafonné à 5 » à « illimité » par la transaction
+  censée le fermer. Aucun avertissement, aucune trace : le champ ne vaut pas 0,
+  il n'existe plus dans le nœud — même piège de lecture que `AssetsAvailable`
+  ([14:05]). Un client qui lit `AssetsMaximum` obtient `undefined` et ne peut
+  pas distinguer « pas de plafond » de « champ non renvoyé ».
+
+Le bon geste, trouvé par essais :
+    VaultSet AssetsMaximum = AssetsTotal   → tesSUCCESS
+    VaultDeposit 1 XRP                     → tecLIMIT_EXCEEDED
+
+  Geler un vault s'écrit donc « plafonner à ce qu'il contient déjà », ce qui
+  n'est écrit nulle part et ne vient pas à l'esprit.
+
+Effet de cliquet, non documenté :
+  Après un passage à 0, on ne peut plus reposer un plafond inférieur à
+  l'encours (`VaultSet max=5` sur un total de 7 → `tecLIMIT_EXCEEDED`).
+  Le seul plafond réadmissible est ≥ `AssetsTotal`. Un `0` posé par erreur
+  est donc **irréversible tant que les déposants ne sont pas sortis**.
+
+Repro :
+  1. `VaultCreate` `AssetsMaximum` = 5 000 000 drops.
+  2. `VaultDeposit` 3 XRP.
+  3. `VaultSet` `AssetsMaximum` = `"0"` → `tesSUCCESS`.
+  4. `VaultDeposit` 4 XRP → `tesSUCCESS`, `AssetsTotal` = 7 XRP > 5.
+
+Tx / code :
+  VaultSet max=0     `BC83AEB1A369CB773B8566BBBCC6D7FA62E8A3720C0AA9B6AC9872064F512612`
+  Dépôt au-delà      `tesSUCCESS` (série du 16:16, vault de contrôle)
+  Gel par max=total  `tesSUCCESS` puis dépôt `tecLIMIT_EXCEEDED`
+
+Proposition :
+  1. Documenter noir sur blanc, sur la référence `VaultSet`, que
+     `AssetsMaximum = 0` **désactive** le plafond. C'est une convention
+     défendable, mais c'est l'inverse de ce que lit un opérateur pressé.
+  2. Documenter le geste de gel (`AssetsMaximum = AssetsTotal`), ou mieux :
+     exposer un flag `tfVaultFreezeDeposits`, qui est la primitive réellement
+     demandée — fermer aux dépôts sans toucher aux retraits.
+  3. Renvoyer `AssetsMaximum: "0"` explicitement plutôt que d'omettre le champ.
+     Trois champs du vault disparaissent déjà à zéro ; chacun est un `NaN` en
+     puissance dans un client naïf.
+
+---
+
+### [16:18] `VaultClawback` est inutilisable sur un vault en XRP, et rien ne le dit
+Phase : build
+Catégorie : **documentation/tutorials** + client libraries
+Sévérité : moyenne
+
+Tenté :
+  Exercer `VaultClawback` — jamais soumis par personne dans notre équipe — sur
+  un vault open-ended en XRP, depuis le compte **propriétaire du vault**,
+  contre un déposant tiers.
+
+Obtenu :
+  - Sans `Amount` (clawback total) → `tecNO_PERMISSION`
+    `E110F2CA3B076B2B36F7089DFD9D3C352C3DB340FA50831776CA0014A2C3534F`
+  - Avec `Amount` partiel en drops, en contournant le validateur du SDK
+    → **`temMALFORMED`** côté ledger.
+
+  Les deux refus sont cohérents entre eux : le droit de clawback appartient à
+  l'**émetteur de l'actif**, et XRP n'a pas d'émetteur — donc aucun compte ne
+  peut jamais l'exercer sur un vault en XRP. Mais :
+
+  1. `tecNO_PERMISSION` laisse croire à un problème d'autorisation
+     réparable (« ce n'est pas le bon signataire »), alors que l'opération est
+     **structurellement impossible** sur ce vault. On perd du temps à chercher
+     qui a le droit avant de comprendre que personne ne l'a.
+  2. Le type `ClawbackAmount` du SDK ne permet pas d'exprimer un montant en
+     XRP (`isClawbackAmount("1000000")` = `false`), donc un clawback partiel
+     sur un vault XRP est irreprésentable côté client **avant** même d'être
+     refusé côté ledger. Même famille que H14.
+
+Repro :
+  1. `VaultCreate` en `{ currency: "XRP" }`, un déposant tiers.
+  2. `VaultClawback` `{ VaultID, Holder: <déposant> }` depuis l'owner
+     → `tecNO_PERMISSION`.
+  3. Ajouter `Amount: "1000000"` → le SDK refuse en local
+     (« invalid field Amount ») ; en contournant, le ledger répond
+     `temMALFORMED`.
+
+Proposition :
+  1. Dire explicitement, sur la page `VaultClawback`, que la transaction ne
+     s'applique qu'aux vaults dont l'actif a un émetteur (IOU, MPT) et jamais
+     à un vault en XRP.
+  2. Distinguer les codes : un `tecNO_ISSUER` (ou un message de rejet dédié)
+     vaudrait mieux que `tecNO_PERMISSION` pour une opération que la nature de
+     l'actif interdit.
+
+---
+
+### [16:18] ✅ Les refus de `VaultDelete` sont nets — et la suppression nettoie les parts chez les tiers
+Phase : build
+Catégorie : other (comportement correct, à garder tel quel)
+Sévérité : basse
+
+Trois refus, tous parlants du premier coup, sur des types jamais soumis :
+
+  `VaultDelete` sur vault non vide     → **`tecHAS_OBLIGATIONS`**
+      `8D6A6599351309819969296F9E06AFC8B5363BF98EF4A56E0A0CFF7FE645C097`
+  `VaultDelete` par un non-propriétaire → `tecNO_PERMISSION`
+      `BE784FA17B7B656BAF6A939CDFB12A758AE5D2002DC57893D5E2F4F2588E8CD0`
+  `VaultSet` par un non-propriétaire    → `tecNO_PERMISSION`
+      `679E29241C81A67197284B20ED27053CC0E07F1C88A18B25317D629D45CC18E4`
+
+`tecHAS_OBLIGATIONS` est exactement le bon code : il nomme la cause sans
+qu'on ait à lire le nœud. À signaler comme contre-exemple utile — c'est la
+clarté qui manque à `tecLIMIT_EXCEEDED` (entrée suivante).
+
+Bonne surprise vérifiée, qui n'est écrite nulle part :
+  Sur un vault vidé mais dont **deux comptes tiers détenaient encore un objet
+  `MPToken` de parts à solde nul**, `VaultDelete` réussit et **supprime aussi
+  ces objets chez les tiers**, en leur rendant leur réserve.
+      `6EDE2FDD3EC0855D2AE58252DC6F63566A316C2C07E72E3DAB50FDAD4028679F`
+  Contrôle après coup : `OwnerCount` de `spare` revenu de 8 à 7, aucun
+  `MPToken` orphelin, `MPTokenIssuance` et `Vault` introuvables
+  (`entryNotFound`). Pas de fuite de réserve — nous nous attendions à l'inverse.
+  C'est une propriété rassurante et surprenante (une transaction de l'owner
+  supprime des objets dans le compte d'autrui) : elle mérite d'être documentée
+  plutôt que découverte.
+
+---
+
+### [16:18] `tecLIMIT_EXCEEDED` recouvre deux situations opposées, et `WithdrawalPolicy` est immuable sans le dire
+Phase : build
+Catégorie : **UX** + documentation/tutorials
+Sévérité : basse à moyenne
+
+Deux observations sur `VaultSet`, premier passage de ce type.
+
+1. Le même code pour deux causes contraires :
+   - dépôt qui dépasserait le plafond → `tecLIMIT_EXCEEDED`
+     `2121434A2BDAC38AD925C1C3526C233326F82A2789FFB0F01EA246D6922C5B42`
+   - plafond qu'on veut poser **sous** l'encours → `tecLIMIT_EXCEEDED`
+     `A964C7CD371F0FED745B58F0B8449B3D2F460FFACD7B6C3293C229F0D82897A4`
+
+   Dans le premier cas c'est le déposant qui est en cause, dans le second
+   l'opérateur du vault. Un client qui automatise ne peut pas distinguer
+   « refuse ce dépôt » de « ton plafond est invalide » sans reconstruire le
+   contexte. Réponse au passage à une question ouverte de notre côté :
+   **non, on ne peut pas réduire `AssetsMaximum` sous `AssetsTotal`.**
+
+2. `WithdrawalPolicy` n'est pas modifiable, et le refus vient du **codec**,
+   pas du protocole. En glissant le champ dans un `VaultSet` (JSON brut, pour
+   contourner le modèle TS qui ne le connaît pas) :
+
+       Field 'WithdrawalPolicy' found in disallowed location.
+
+   Message d'implémentation de `ripple-binary-codec`, émis **en local**, qui
+   n'apprend pas ce qu'il faut retenir : la politique de retrait est figée à
+   la création du vault. Le développeur ne sait pas s'il a mal écrit le champ
+   ou si l'opération est interdite.
+
+Proposition :
+  1. Scinder `tecLIMIT_EXCEEDED`, ou au minimum lister dans la doc `VaultSet`
+     les deux causes qui le produisent.
+  2. Écrire dans la référence `Vault` quels champs sont immuables après
+     création (`WithdrawalPolicy`, `Asset`), et le dire dans la page
+     `VaultSet` plutôt que de le laisser déduire d'un message de codec.
+
+---
+
+### [16:25] `tfLoanImpair` est permis dès l'échéance, PAS après la période de grâce — frontière mesurée
+Phase : build
+Catégorie : **documentation/tutorials**
+Sévérité : moyenne
+
+Contexte :
+  À 15:10 nous avions relevé que `LoanManage tfLoanImpair` répond
+  `tecTOO_SOON` sans jamais dire **à partir de quand**. Un prêt à échéances
+  mensuelles ne permet pas de le mesurer dans le temps d'un hackathon. Nous
+  avons donc originé un prêt à `PaymentInterval: 60` / `GracePeriod: 60` et
+  sondé la frontière toutes les 15 s.
+
+Mesure :
+
+    échéance dans 31 s (grâce dans 91 s)   → tecTOO_SOON
+    échéance dans 13 s (grâce dans 73 s)   → tecTOO_SOON
+    échéance DÉPASSÉE de 5 s (grâce dans 55 s) → **tesSUCCESS**
+      `5486020BA8FF227C58409042F96BDC07246FDACC3F9B0EF24749555E319E972E`
+
+Conclusion :
+  La dépréciation devient possible **au passage de `NextPaymentDueDate`**, et
+  la période de grâce n'y change rien : un prêt peut être déprécié alors qu'il
+  est encore dans sa grâce contractuelle. C'est défendable côté prêteur, mais
+  c'est le contraire de ce que « période de grâce » suggère, et aucune page ne
+  le dit. Un opérateur qui attend la fin de la grâce pour déprécier laisse
+  passer toute la fenêtre utile.
+
+Effet de la dépréciation sur le vault — ⚠️ **rectifié à [16:44]** :
+nous avions écrit « aucun effet », c'était **faux**, et l'erreur venait de
+notre propre outil. `AssetsTotal`, `AssetsAvailable`, `CoverAvailable` et
+`DebtTotal` sont effectivement inchangés, mais la perte latente est inscrite
+dans un champ que notre `lib/nav.mjs` ne lisait pas : **`LossUnrealized`**.
+Relevé sur un vault de 5,000002 XRP portant un prêt déprécié de 3 XRP :
+
+    "AssetsTotal": "5000002", "AssetsAvailable": "2000001",
+    "LossUnrealized": "3000001"
+
+Le provisionnement existe donc. Le vrai grief est ailleurs, et il est pire :
+**`LossUnrealized` ne se déduit pas de `AssetsTotal`**, donc la valeur de part
+calculée de la façon évidente — `AssetsTotal / OutstandingShares` — vaut
+1,000000 alors que la valeur économique est
+`(AssetsTotal − LossUnrealized) / OutstandingShares` ≈ **0,40**. Un client qui
+affiche la NAV sans connaître l'existence de `LossUnrealized` **surévalue la
+part de 150 %** au moment précis où son porteur aurait besoin de savoir.
+Nous sommes tombés dans le piège nous-mêmes, avec un helper écrit exprès pour
+lire ce vault : c'est la démonstration en acte de l'hypothèse H9.
+Voir l'entrée [16:44] pour le détail.
+
+`tfLoanUnimpair` sur un prêt réellement déprécié : `tesSUCCESS`, `Flags`
+retombe à 0, vault toujours inchangé.
+  `708B185B7D36E6322A034AB4861E43EA2ECCDC6239D1861533F3E8F1AC291D61`
+
+Proposition :
+  1. Écrire dans la référence `LoanManage` la condition exacte de
+     `tfLoanImpair` (`now >= NextPaymentDueDate`) et dire explicitement que
+     `GracePeriod` n'entre pas dans cette condition.
+  2. Faire figurer le nombre de prêts dépréciés d'un broker, ou l'encours
+     déprécié, dans `vault_info`. Sans cela, la dépréciation est un signal
+     que seul le broker voit — et c'est le seul acteur qui n'a pas intérêt à
+     le publier.
+
+---
+
+### [16:25] ⚠️ `LoanManage` sans flag répond `tesSUCCESS` en ne faisant rien
+Phase : build
+Catégorie : **UX**
+Sévérité : **moyenne — un succès qui ne fait rien est pire qu'une erreur**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Tenté :
+  `LoanManage { LoanID }` sans champ `Flags`.
+
+Obtenu :
+  `tesSUCCESS` — `3B9E1C273EB9A0C4DC86729FCB6D96A7222139C3421F977AC83BB8A6D71BABDA`
+  Le prêt n'a pas changé d'état. La transaction a coûté ses frais, occupé un
+  numéro de séquence, et renvoyé un succès.
+
+Pourquoi c'est coûteux :
+  `LoanManage` n'existe **que** pour porter un flag. Sans flag, elle n'a
+  aucune sémantique. Un code qui construit ses flags dynamiquement — et qui
+  en perd un en route — reçoit `tesSUCCESS` et conclut que le prêt est
+  déprécié alors qu'il ne l'est pas. La vérification « ma transaction est-elle
+  passée ? » ne suffit plus, il faut relire le nœud `Loan` et comparer les
+  flags. C'est le genre de faux positif qui se découvre en production.
+
+Proposition :
+  Refuser `LoanManage` sans flag reconnu (`temINVALID_FLAG`, comme pour une
+  combinaison invalide). Le protocole sait déjà le faire : voir l'entrée
+  suivante.
+
+---
+
+### [16:25] `tecNO_PERMISSION` désigne à la fois « tu n'as pas le droit » et « l'état ne le permet pas »
+Phase : build
+Catégorie : **UX** + documentation/tutorials
+Sévérité : moyenne
+
+Deux situations sans rapport, un seul code :
+
+  `tfLoanUnimpair` par le **broker légitime**, sur un prêt **non déprécié**
+      → `tecNO_PERMISSION`
+      `13975FD33EFA2F97D3120920E6F613BAFB95D09459350E7693C207E66AA24537`
+
+  `tfLoanImpair` par l'**emprunteur**, qui n'a effectivement aucun droit
+      → `tecNO_PERMISSION`
+      `F030419492FB6A9A8CD4BA3015E8A55A9A86B9A1288A6458C5CC36475DE2C112`
+
+⚠️ **Nuance ajoutée à [16:44]** : le premier cas **est documenté**, dans les
+error cases de `LoanManage` — `tecNO_PERMISSION` couvre explicitement « *the
+transaction is attempting to change the loan's impairment status to the one it
+already has* ». Ce n'est donc pas un code imprévu, c'est un code **surchargé
+en connaissance de cause** : la doc elle-même liste deux causes sans rapport
+sous la même entrée. Le grief passe de « code faux » à « code ambigu par
+conception », ce qui reste un grief mais doit être formulé honnêtement.
+
+Dans le premier cas le signataire est le bon et l'opération est simplement
+sans objet (rien à annuler) ; dans le second le signataire est illégitime.
+Le premier se corrige en changeant d'opération, le second en changeant de
+clé — et le code ne permet pas de savoir lequel. Nous avons d'abord cru à un
+problème de signataire sur le `tfLoanUnimpair`, et cherché du côté du
+`LoanBroker.Owner`.
+
+Même famille que le `tecLIMIT_EXCEEDED` surchargé de l'entrée [16:18] et que
+le `tecNO_PERMISSION` de `VaultClawback`, où l'opération est en réalité
+structurellement impossible. Trois occurrences du même défaut : les codes de
+retour du Lending Protocol décrivent la **classe** de refus, pas la cause.
+
+Proposition :
+  Un code d'état distinct pour « transition d'état impossible »
+  (`tecINVALID_STATE`, ou réutiliser `tecNO_ENTRY`) et garder
+  `tecNO_PERMISSION` pour les seuls refus d'autorisation.
+
+---
+
+### [16:25] Le SDK laisse passer une combinaison de flags que le ledger refuse (`LoanManage`)
+Phase : build
+Catégorie : **client libraries**
+Sévérité : basse à moyenne
+Lib : xrpl@4.6.0
+
+Tenté :
+  `LoanManage` avec `tfLoanDefault | tfLoanImpair` (196608).
+
+Obtenu :
+  - `validate()` du SDK : **accepte**.
+  - Ledger : **`temINVALID_FLAG`** (« The transaction has an invalid flag »),
+    donc aucune trace on-chain — tx envoyée :
+    `{ TransactionType: "LoanManage", LoanID: "07D9FB2C…5E64", Flags: 196608 }`.
+
+Cause exacte, lue dans le SDK :
+  `node_modules/xrpl/dist/npm/models/transactions/loanManage.js` reconstruit
+  les flags à la main pour son contrôle d'exclusion mutuelle, et **n'y met que
+  `tfLoanImpair` et `tfLoanUnimpair`** :
+
+      if (txFlags.tfLoanImpair)   { flags |= LoanManageFlags.tfLoanImpair }
+      if (txFlags.tfLoanUnimpair) { flags |= LoanManageFlags.tfLoanUnimpair }
+
+  `tfLoanDefault` est absent de cette reconstruction. Le seul couple interdit
+  localement est donc `impair + unimpair` ; toute combinaison contenant
+  `tfLoanDefault` passe la validation locale et part sur le réseau pour se
+  faire refuser. (La conversion objet → nombre, elle, est correcte : c'est
+  bien le contrôle de cohérence qui est incomplet, pas l'encodage.)
+
+Proposition :
+  Faire porter le contrôle sur les trois flags, ou mieux : le dériver de
+  `convertTxFlagsToNumber` au lieu de le réécrire à la main — c'est la
+  duplication qui a créé l'oubli.
+
+---
+
+### [16:25] ✅ `tecHAS_OBLIGATIONS` en cascade : les trois suppressions refusent proprement
+Phase : build
+Catégorie : other (comportement correct)
+Sévérité : basse
+
+Sur un vault portant un broker portant un prêt vivant, les trois types de
+suppression — dont deux jamais soumis jusqu'ici — refusent avec le même code
+explicite, sans qu'on ait à deviner l'ordre de démontage :
+
+  `LoanDelete`        → `tecHAS_OBLIGATIONS`  `EBACB9A7787326501AF6C18A360FC9BD18356FA7609854E8C463A1186DAD5E0B`
+  `LoanBrokerDelete`  → `tecHAS_OBLIGATIONS`  `8024101A0F7DBDD5D68579101DF1FFD78FA8A2DE34C379DD06C975EFD7B5372B`
+  `VaultDelete`       → `tecHAS_OBLIGATIONS`  `80CF578E955A35BAB856AF2D969C71B4E6C5FB380B8D64E608C4094C5F87FC29`
+
+À garder tel quel. C'est le contre-exemple qui rend les trois entrées
+précédentes recevables : le protocole SAIT produire des codes qui nomment leur
+cause, donc `tecNO_PERMISSION` sur un problème d'état n'est pas une fatalité.
+
+---
+
+### [16:33] 🔴 Cycle de défaut joué en entier — H1 répliquée à une autre échelle, et le broker récupère 98 % de sa couverture juste après
+Phase : build
+Catégorie : **protocole (design)** + documentation/tutorials
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-default-cycle.mjs` + `_probe-pay-blocked.mjs`
+
+Décor : vault de **5 XRP** (déposant unique), prêt de **4 XRP** (80 % du vault),
+first-loss capital **1 XRP**, `CoverRateMinimum` 10 %, `CoverRateLiquidation` 5 %,
+échéances de 60 s, grâce 60 s. Aucun remboursement, défaut provoqué.
+
+Résultat du `tfLoanDefault`
+(`923F7D616B094C82197506CF2867907A93067041E3990D24BD07A19035F73EAC`) :
+
+  | Grandeur | Avant | Après |
+  |---|---|---|
+  | `CoverAvailable` | 1,000000 | 0,980000 |
+  | **ponction du first-loss** | — | **0,020000 XRP** |
+  | `DebtTotal` | 4,000000 | 0,000000 |
+  | `AssetsTotal` (vault) | 5,000000 | 1,020000 |
+  | **perte du déposant** | — | **3,980000 XRP** |
+  | `AssetsAvailable` | 1,000000 | 1,020000 |
+  | **valeur de la part** | 1,000000000 | **0,204000000 (−79,6 %)** |
+
+**H1 est répliquée exactement, à une échelle 12,5 fois plus petite** :
+`DebtTotal × CoverRateMinimum × CoverRateLiquidation` = 4 × 10 % × 5 %
+= 0,020000 XRP, soit au drop près ce qui a été ponctionné. La formule tient
+donc sur deux décors indépendants (50 XRP de dette le 15:21, 4 XRP ici), ce
+qui écarte l'erreur de mesure.
+
+Fait nouveau par rapport à H1, et plus parlant que la formule :
+  **le broker a récupéré tout le reste de son first-loss capital immédiatement
+  après le défaut**, sans délai ni condition —
+  `LoanBrokerCoverWithdraw` de 980 000 drops → `tesSUCCESS`
+  `68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E`
+
+  Bilan net de l'événement : le déposant perd 79,6 % de sa position, le broker
+  perd 2 % de sa couverture et reprend les 98 % restants dans la minute.
+  C'est la formule documentée qui produit ce résultat — pas un bug — mais le
+  nom « first-loss capital » décrit l'inverse de ce qui se passe.
+
+La ponction est reversée dans `AssetsAvailable` (1,000000 → 1,020000), donc le
+déposant peut sortir : `VaultWithdraw` de ses 5 000 000 parts → `tesSUCCESS`,
+pour 1,020000 XRP encaissés.
+  `3338BA629F8772CDEC07B6F714F2AF3A1ADC8E93642429A54B95CF372FDB2880`
+Avant le défaut, le même retrait était refusé `tecINSUFFICIENT_FUNDS`
+  `D91BA47E816FDA60F9BBAD7F100B383099D87021B08DE065E841B9E8E34AFE2D`
+— le défaut est donc, paradoxalement, ce qui **rend sa liquidité** au déposant.
+Rien n'en avertit : le déposant ne peut ni voir venir la perte, ni savoir
+qu'elle débloque sa sortie.
+
+Seuil de `tfLoanDefault` — deux seuils différents sous un seul code :
+
+    tfLoanDefault, prêt sain avant échéance          → tecTOO_SOON  6EC160A78664E7975E3C9B3CDC3402EBF83CD3B8BB33F92741BCF5B06FD3C11F
+    tfLoanDefault, prêt déprécié, DANS la grâce      → tecTOO_SOON  1251BD0C771BE4A3D676F1CB1094747C435DD8F20E2D68D01AA6C0CA6488EEA0
+    tfLoanDefault, grâce dépassée de 146 s           → tesSUCCESS   923F7D61…
+
+  `tfLoanImpair` est permis dès l'échéance (entrée [16:25]), `tfLoanDefault`
+  ne l'est pas : il faut au moins attendre la fin de la grâce. **Deux
+  conditions temporelles distinctes, un seul `tecTOO_SOON` pour les deux.**
+
+  ⚠️ **Corrigé à [16:44]** : nous avions écrit « aucune ne figure dans la
+  doc ». Faux pour le défaut — les error cases de `LoanManage` disent
+  « *the loan can't be marked as defaulted before its payment due date and
+  grace period have passed* », et le tutoriel « Manage a Loan » dit « *after
+  the grace period expires* ». Le seuil du **défaut** est donc documenté et
+  notre mesure le confirme. Ce qui n'est pas documenté, c'est le seuil de
+  l'**impairment** — et pour lui la doc dit l'inverse de ce que fait le
+  ledger (entrée [16:25]).
+
+  Honnêteté de mesure : au moment du succès, la fin du **terme** du prêt était
+  aussi dépassée (de 26 s) ; nous n'avons donc pas isolé « fin de grâce » de
+  « fin de terme ».
+
+Ménage après défaut, tous les types jamais soumis jusqu'ici, tous nets :
+    `LoanDelete`       → `tesSUCCESS`  `D081B4A128C57FFA4F6149512549936B5E46AFBE95DE01E27EC587164FBE9840`
+    `LoanBrokerDelete` → `tesSUCCESS`  `604C28B3075477182F41503FBC4030A1092977E4DCE76D70EF50AB1731C1C432`
+    `VaultDelete`      → `tesSUCCESS`  `E23FD79766486B2FDC038569CC1B9EBAE3FCF5E626DB5BB212B5699DEE1318BC`
+
+Proposition :
+  1. Reprendre les trois propositions de H1 ([15:21]) — elles tiennent, et
+     cette réplication les appuie.
+  2. Ajouter : **conditionner ou différer `LoanBrokerCoverWithdraw` après un
+     défaut.** Qu'un broker puisse retirer sa couverture dans la minute qui
+     suit une perte encaissée par ses déposants vide de sens l'engagement que
+     cette couverture représente.
+  3. Documenter les deux seuils temporels (`tfLoanImpair` vs `tfLoanDefault`)
+     et rendre `tecTOO_SOON` informatif — l'horodatage à partir duquel
+     l'opération devient possible est connu du ledger.
+
+---
+
+### [16:44] 🔴 Un paiement en retard exige le flag `tfLoanLatePayment`, sinon `tecEXPIRED` — un code absent de la doc de `LoanPay`
+Phase : build
+Catégorie : **documentation/tutorials** + error messages
+Sévérité : **haute — sans le flag, un emprunteur solvable et volontaire ne peut PAS payer**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-pay-states.mjs`, `_probe-latepayment.mjs`
+
+Tenté :
+  Comprendre pourquoi `LoanPay` répondait `tecEXPIRED` sur un prêt en retard.
+  Quatre états du **même** prêt (échéances de 90 s, grâce 60 s), montant exact
+  recalculé à chaque fois depuis le nœud :
+
+  | État du prêt | Montant | Code | Hash |
+  |---|---|---|---|
+  | en avance, sain | échéance + `LoanServiceFee` | **`tesSUCCESS`** | `B8F3C411D2DEFA015BCCCF9D49ED37705F64BE468D20A6C02F5D66CAD2DED98E` |
+  | **en retard de 10 s**, sain, **dans la grâce** | + `LatePaymentFee` | **`tecEXPIRED`** | `96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4` |
+  | en retard, déprécié | + `LatePaymentFee` | `tecEXPIRED` | `160F640817AFA0286556B97D5A8DB13B5D4FEB7BE9D513BA51FA63FB7403C2A9` |
+  | en retard, dé-déprécié | + `LatePaymentFee` | `tecEXPIRED` | `160B14BD184DA9161CEBCE80E22D01D9494EC826F5AD74B603C114B6B13E2E45` |
+  | en retard, solde total entier | `TotalValueOutstanding` + 1 XRP | `tecEXPIRED` | `D95005034838241508892C96CDAE1490CC2DDBFBFE7EF62AAA6F2B7F879ABA6F` |
+
+  Nous avons d'abord conclu « la dépréciation bloque le paiement », puis
+  « le retard bloque le paiement ». **Les deux étaient faux.** La cause est un
+  flag :
+
+  | Tentative sur le prêt en retard | Code | Hash |
+  |---|---|---|
+  | `tfLoanLatePayment` (262144) + échéance + `LatePaymentFee` | **`tesSUCCESS`** | `EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F` |
+  | `tfLoanLatePayment` + échéance seule (sans `LatePaymentFee`) | `tecINSUFFICIENT_PAYMENT` | `70A639238DA0604B557B545E2918173BF2C756998C2B35CC8D5777DE1F756740` |
+  | `tfLoanFullPayment` (131072) + solde total | `tecEXPIRED` | `0715BE7DAF70EDDF0DFB05136217393A66C57644804A964B10E13996517F1D20` |
+  | aucun flag | `tecEXPIRED` | `8A441EB2527D962A42D86919B52C4179A74CD250241D6D58888D4B7A0A3AECAC` |
+
+  Un paiement en retard doit donc porter `tfLoanLatePayment` **et** inclure
+  `LatePaymentFee`. Le paiement a été imputé normalement : `PaymentRemaining`
+  3 → 2, `Flags` du prêt 131072 → **0** (la dépréciation est levée
+  automatiquement par le paiement, comme annoncé par la doc), `LossUnrealized`
+  du vault effacé.
+
+Pourquoi ça coûte cher :
+  1. **`tecEXPIRED` n'est pas dans les error cases de `LoanPay`.** La page
+     liste `temINVALID`, `temBAD_AMOUNT`, `tecNO_ENTRY`, `tecNO_PERMISSION`,
+     `tecTOO_SOON`, `tecKILLED`, `tecWRONG_ASSET`, `tecFROZEN`. Pas
+     `tecEXPIRED`. Le développeur reçoit un code introuvable dans la doc de
+     la transaction qu'il vient de soumettre.
+  2. **Le nom du code oriente vers la mauvaise piste.** « Expired » se lit
+     « le prêt est expiré, il est trop tard, passe au défaut » — donc on
+     cherche du côté du terme et de la dépréciation. Nous avons brûlé deux
+     sondes et un prêt entier sur cette fausse piste. Le code qui décrit la
+     situation existe déjà ailleurs dans le protocole : `tecNO_PERMISSION`
+     avec « late payment requires tfLoanLatePayment », ou un
+     `temMALFORMED`/`tecINVALID_FLAG` nommant le flag manquant.
+  3. **Le flag existe, est correctement typé dans le SDK
+     (`LoanPayFlags.tfLoanLatePayment`) et documenté dans le tableau des
+     flags** — mais rien ne relie le tableau des flags au tableau des
+     erreurs. Les trois flags de `LoanPay` sont décrits comme des
+     *indications* (« Indicates that the borrower is making a late loan
+     payment »), ce qui se lit comme facultatif et déclaratif. Il est en
+     réalité **obligatoire et bloquant**.
+  4. Conséquence produit : un intégrateur qui construit un bouton « payer mon
+     échéance » sans connaître ce flag livre une application où **tout
+     emprunteur en retard d'une seconde est définitivement bloqué**, avec un
+     code d'erreur qu'il ne trouvera pas dans la doc. C'est le scénario le
+     plus courant du crédit à la consommation.
+
+Repro (5 min, échéances de 90 s) :
+  1. `LoanSet` `PaymentInterval: 90`, `GracePeriod: 60`, `PaymentTotal: 4`.
+  2. Attendre `NextPaymentDueDate` + 10 s (donc encore dans la grâce).
+  3. `LoanPay` `Amount` = `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`,
+     sans `Flags` → **`tecEXPIRED`**.
+  4. Même transaction avec `Flags: 262144` → **`tesSUCCESS`**.
+
+Proposition :
+  1. Ajouter `tecEXPIRED` au tableau des error cases de `LoanPay`, avec sa
+     cause réelle : « the payment is past its due date and the transaction
+     doesn't set `tfLoanLatePayment` ».
+  2. Écrire dans la description du flag qu'il est **requis** pour tout
+     paiement postérieur à `NextPaymentDueDate`, et non « indicatif ».
+  3. Dans le tutoriel « Pay Off a Loan », ajouter le cas du paiement en
+     retard. Le tutoriel ne montre aujourd'hui que le chemin heureux, et
+     c'est le seul chemin qui ne nécessite pas de flag.
+  4. Idéalement : accepter un paiement en retard sans flag. Le ledger connaît
+     `NextPaymentDueDate` ; exiger du client qu'il redéclare un fait que le
+     ledger possède déjà n'apporte aucune sécurité et crée cette classe de
+     panne.
+
+---
+
+### [16:44] 🔴 `LossUnrealized` : la perte latente existe, mais la valeur de part « évidente » la rate — et nous sommes tombés dedans
+Phase : observabilite
+Catégorie : **documentation/tutorials** + UX
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Contexte :
+  À [16:25] nous avons écrit que la dépréciation d'un prêt n'avait **aucun**
+  effet sur le vault. C'était faux, et la façon dont nous nous sommes trompés
+  est le vrai sujet.
+
+Obtenu :
+  Nœud `Vault` brut d'un vault de 5 XRP portant un prêt déprécié de 3 XRP :
+
+    "AssetsTotal":      "5000002",
+    "AssetsAvailable":  "2000001",
+    "LossUnrealized":   "3000001",
+
+  La perte latente est donc bien inscrite. Mais **elle n'est pas déduite de
+  `AssetsTotal`**. Or la valeur d'une part se calcule naturellement
+  `AssetsTotal / OutstandingShares` — c'est la formule qu'on écrit sans y
+  penser, et c'est celle que nous avions écrite dans `lib/nav.mjs`. Elle donne
+  **1,000000** alors que la valeur économique est
+  `(AssetsTotal − LossUnrealized) / OutstandingShares` ≈ **0,400000**.
+
+  **Surévaluation de 150 %, au moment exact où le porteur de part aurait
+  besoin de savoir que son vault a un problème.**
+
+Ce qui rend l'observation solide plutôt que théorique :
+  `lib/nav.mjs` a été écrit **exprès** pour lire l'état d'un vault, en
+  connaissance des pièges de ce protocole (il commente déjà le piège de
+  `AssetsAvailable` absent à zéro). Il a quand même raté `LossUnrealized`,
+  parce que :
+  - le champ est **optionnel** dans le modèle TS (`LossUnrealized?: string`)
+    et **absent du nœud** quand il vaut zéro — donc invisible en lecture
+    d'un vault sain, c'est-à-dire pendant tout le développement ;
+  - il n'apparaît dans aucun des exemples de `vault_info` que nous avons lus ;
+  - rien, dans la page du Single Asset Vault, ne dit que la valeur d'une part
+    doit se calculer nette des pertes latentes.
+
+  C'est le troisième champ de ce protocole qui disparaît à zéro
+  (`AssetsAvailable` [14:05], `AssetsMaximum` [16:18], `LossUnrealized` ici),
+  et c'est le plus dangereux des trois : les deux premiers produisent un
+  `NaN` bruyant, celui-ci produit **un chiffre faux et plausible**.
+
+Preuve à charge pour H9 : nous avons désormais deux implémentations de la
+valeur de part dans ce dépôt — la naïve et la correcte — et elles divergent de
+150 % sur le même nœud. Aucune n'est fournie par le protocole.
+
+Proposition :
+  1. Exposer dans `vault_info` une valeur de part calculée par le nœud, nette
+     de `LossUnrealized`. C'est **la** grandeur que tout intégrateur va
+     afficher ; laisser chaque client la recalculer garantit des divergences,
+     et celle-ci n'est pas une divergence d'arrondi mais un facteur 2,5.
+  2. Renvoyer `LossUnrealized: "0"` explicitement plutôt que d'omettre le
+     champ, pour que son existence soit découvrable en lisant un vault sain.
+  3. Dire dans la doc du Single Asset Vault, à l'endroit où `AssetsTotal` est
+     défini, que `AssetsTotal` est **brut de pertes latentes**.
+
+---
+
+### [16:44] Le devnet redevient muet — deuxième occurrence, même signature
+Phase : build
+Catégorie : other (infrastructure d'événement)
+Sévérité : moyenne
+
+Deuxième panne du même type après celle de [15:46], à ~1 h d'intervalle :
+`xrpl.js` échoue en `connect() timed out after 20000 ms`, alors que
+
+    nc -z lending-hackathon.dev.ripplex.io 51233   → succeeded
+    curl -m 15 -X POST https://…:51234 server_info → réponse VIDE, exit 0
+
+TCP accepte la connexion, HTTP ne répond rien. La procédure de [15:46] est
+donc validée une seconde fois, et mérite d'être dans un README d'événement :
+**avant de soupçonner son wifi, tester les deux couches séparément.** Sans ce
+réflexe on débogue son propre code pendant dix minutes — ce qui est exactement
+ce qui s'est passé la première fois.
+
+Proposition :
+  Une page de statut du devnet, ou un point de terminaison `/health`. Sur un
+  hackathon de 30 h, deux pannes silencieuses de plusieurs minutes coûtent
+  collectivement des heures, et chaque équipe les rediagnostique seule.
+
+---
+
+### [16:54] Un emprunteur en retard ne peut PAS solder son prêt en une transaction : `tfLoanFullPayment` est refusé tant qu'il est en retard
+Phase : build
+Catégorie : **missing primitive** + documentation/tutorials
+Sévérité : moyenne à haute
+
+Tenté :
+  Solder un prêt en retard (2 échéances restantes, échéance dépassée de 595 s)
+  en une seule transaction. Trois chemins, dans l'ordre où on les essaie :
+
+  | Chemin | Couche qui refuse | Code |
+  |---|---|---|
+  | `tfLoanFullPayment` seul, solde total | ledger | `tecEXPIRED` `0715BE7DAF70EDDF0DFB05136217393A66C57644804A964B10E13996517F1D20` |
+  | `tfLoanLatePayment` + `tfLoanFullPayment` (393216) | **SDK en local** puis ledger | `ValidationError` puis `temINVALID_FLAG` |
+  | aucun flag, solde total | ledger | `tecEXPIRED` `D95005034838241508892C96CDAE1490CC2DDBFBFE7EF62AAA6F2B7F879ABA6F` |
+
+  Les flags de `LoanPay` sont **mutuellement exclusifs**, confirmé par les deux
+  couches : le SDK refuse (« *Only one of tfLoanLatePayment, tfLoanFullPayment,
+  or tfLoanOverpayment flags can be set* ») et le ledger répond
+  `temINVALID_FLAG` quand on contourne le SDK.
+
+Le seul chemin qui fonctionne :
+  **rattraper échéance par échéance**, chaque fois avec `tfLoanLatePayment` et
+  chaque fois en payant `LatePaymentFee` :
+
+    LoanPay LATE, échéance 1/2 → tesSUCCESS  `75DF16C471B6B395F46ECDA0FFCE514403946801BB0C5429985FD04E1944FFBC`
+    LoanPay LATE, échéance 2/2 → tesSUCCESS  `ACD9AA1983C394445E08DC4E384CA2CF91AB3F94111D97C180561D77936CAF5C`
+    LoanDelete                 → tesSUCCESS  `D9DCA7F35A73C72E5606DC1E6125098E4F2C40255EA38D04C1A348CDF49333AE`
+
+  Détail mesuré qui explique pourquoi : **`NextPaymentDueDate` avance d'un
+  `PaymentInterval` par paiement, pas jusqu'à maintenant.** Après avoir payé
+  une échéance en retard, le prêt reste en retard (échéance encore dépassée de
+  510 s) — donc l'échéance suivante exige encore `tfLoanLatePayment` et encore
+  une `LatePaymentFee`. Un emprunteur en retard de N échéances paiera N fois la
+  pénalité de retard, sans possibilité de tout régler d'un coup.
+
+Pourquoi c'est un manque et pas un choix :
+  `tfLoanFullPayment` existe exactement pour le cas « je veux sortir de ce
+  prêt maintenant ». Il est indisponible précisément dans la situation où un
+  emprunteur en a le plus besoin — sortir d'un retard. Rien dans la doc ne dit
+  que le remboursement anticipé total est réservé aux prêts à jour.
+
+Proposition :
+  1. Autoriser `tfLoanFullPayment` sur un prêt en retard, en y incluant les
+     pénalités de retard dues (le ledger sait les calculer, il le fait déjà
+     échéance par échéance).
+  2. À défaut : documenter le chemin de rattrapage sur la page `LoanPay`, et
+     dire explicitement que `tfLoanFullPayment` exige un prêt à jour.
+  3. Cohérence interne du SDK à corriger au passage : `validateLoanPay`
+     contrôle correctement l'exclusion mutuelle de ses **trois** flags, alors
+     que `validateLoanManage` n'en contrôle que deux sur trois (entrée
+     [16:25]). Le bon modèle existe donc déjà dans le même fichier voisin.
+
+---
+
+### [16:54] 🔴 Le motif transversal : **quatre** champs disparaissent du nœud quand ils valent zéro
+Phase : observabilite
+Catégorie : **UX** + client libraries
+Sévérité : **haute — c'est la même cause pour quatre pièges différents**
+
+Recensement de ce que nous avons rencontré aujourd'hui, chacun découvert
+séparément, chacun ayant coûté du temps :
+
+  | Champ | Nœud | Rencontré | Symptôme si lu naïvement |
+  |---|---|---|---|
+  | `AssetsAvailable` | `Vault` | [14:05] | `BigInt(undefined)` → exception, au pire moment (vault illiquide) |
+  | `AssetsMaximum` | `Vault` | [16:18] | plafond illisible ; « pas de plafond » indistinguable de « champ absent » |
+  | `LossUnrealized` | `Vault` | [16:44] | **valeur de part surévaluée de 150 %**, silencieusement |
+  | `PaymentRemaining` + `TotalValueOutstanding` | `Loan` | [16:54] | `Number(undefined)` → `NaN` ; un prêt soldé paraît malformé |
+
+  Le dernier a été relevé sur un prêt intégralement payé mais non encore
+  supprimé : `PaymentRemaining` et `TotalValueOutstanding` sont tous deux
+  **absents** du nœud. Notre propre test `Number(fin.PaymentRemaining) === 0`
+  était donc faux — il comparait `NaN`.
+
+Ce qui en fait un item à part entière plutôt que quatre :
+  - Les modèles TS du SDK marquent ces champs **optionnels**
+    (`AssetsTotal?`, `LossUnrealized?`, `LoanServiceFee?`…), ce qui est
+    fidèle au ledger mais ne dit pas *pourquoi* : le développeur conclut
+    « champ parfois non renseigné », pas « champ à zéro ».
+  - Aucun exemple de réponse `vault_info` ou `ledger_entry` de la doc ne
+    montre un nœud dont un champ numérique est à zéro. On ne découvre donc
+    le motif qu'en produisant soi-même l'état limite — et l'état limite est
+    toujours l'état intéressant : vault vidé, prêt soldé, perte nulle.
+  - Trois des quatre cas produisent une erreur bruyante (`NaN`, exception).
+    `LossUnrealized` produit **un nombre faux et crédible**. C'est la
+    différence entre un bug qu'on corrige en dix secondes et un bug qui part
+    en production.
+
+Proposition :
+  1. Renvoyer les champs numériques à zéro **explicitement** (`"0"`) dans
+     `vault_info`, `ledger_entry` et les métadonnées. Le coût en octets est
+     négligeable devant la classe de bugs que l'omission crée.
+  2. À défaut, le dire une fois, clairement, en tête de la référence des
+     types de nœuds : « les champs numériques valant zéro sont omis ». Une
+     phrase aurait suffi à nous épargner quatre découvertes séparées.
+  3. Côté SDK : fournir des accesseurs qui normalisent (`vaultAssets(v)`,
+     `loanOutstanding(l)`) plutôt que d'exposer des champs optionnels bruts.
+     Chaque intégrateur écrit aujourd'hui ce `?? 0`, et il suffit d'en
+     oublier un.
+
+---
+
+### [17:01] ✅🔴 H8 TRANCHÉE — le plancher de couverture est appliqué au drop près, et les paramètres de risque sont immuables. Mais le refus s'appelle `temINVALID`
+Phase : build
+Catégorie : **documentation/tutorials** + error messages (le fond est bon, la forme trompe)
+Sévérité : moyenne — **hypothèse à retirer du rapport comme grief de sécurité**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · scripts `_probe-cover-floor.mjs`, `_probe-broker-mutable.mjs`
+
+H8 demandait : un broker peut-il récupérer son first-loss capital, et
+notamment « à `DebtTotal = 0`, est-ce libre ? ». Réponse complète, mesurée sur
+un broker à dette 4 XRP / couverture 1 XRP / `CoverRateMinimum` 10 %
+(plancher = 0,400000 XRP) :
+
+  | Tentative | Code | Hash |
+  |---|---|---|
+  | retirer 0,9 XRP (laisserait 2,5 %) | `tecINSUFFICIENT_FUNDS` | `071BEB20D2D5C5264571FFA7383BACAEA2684758C2661802B6C2E9458679BDA9` |
+  | retirer 0,6 XRP (laisserait 10,00 %) | **`tesSUCCESS`** | — |
+  | retirer **1 drop** de plus | `tecINSUFFICIENT_FUNDS` | `4FB4A2B0D01DD2411A5E8592680D50B1F4CCA51ED97C243C2A506516262F1370` |
+  | retirer toute la couverture | `tecINSUFFICIENT_FUNDS` | — |
+
+**Le plancher est exact au drop.** Et les deux paramètres qui le définissent
+sont **immuables** après création du broker :
+
+  | `LoanBrokerSet` sur un broker vivant | Résultat |
+  |---|---|
+  | `CoverRateMinimum` 10 %→1 % (+ `CoverRateLiquidation`) | **`temINVALID`** — refusé, aucune trace on-chain |
+  | `ManagementFeeRate` 2 %→9 % | **`temINVALID`** — refusé |
+  | `DebtMaximum` → 1 drop (< `DebtTotal`) | `tecLIMIT_EXCEEDED` `82C14ED4071391EC1EF25637D2FEC28CF784BB19FEB4E89082A64CD9748E4121` |
+  | `DebtMaximum` → 80 XRP | `tesSUCCESS` `471EFC5E7FF5DC12276C64CFBE278A5D1FFA3610C752F99BA878F34F8844ABD0` |
+  | `Data` | `tesSUCCESS` `5BB0B002F0E11617A891562788AE2EAF8A9073385E0E2A5BA2E8F8470125B097` |
+  | par un tiers | `tecNO_PERMISSION` `6CDC55F8F62286CDB20E0F2D8002E29D4CD6DEEC5E23976803B880211801BBE0` |
+
+  **Conclusion de sécurité : il n'y a pas de chemin d'évasion.** Un broker ne
+  peut ni abaisser la protection qu'il a promise, ni descendre sous le
+  plancher, ni augmenter ses frais en cours de route. C'est exactement ce
+  qu'un déposant a besoin de savoir, et c'est bien conçu. H8 est infirmée
+  comme grief : à retirer de la liste des soupçons.
+
+Le grief qui reste, et il est réel :
+  **`temINVALID` pour dire « ce champ est immuable ».** Trois problèmes :
+  1. `tem` signifie « transaction mal formée » — le développeur cherche une
+     faute de frappe, un mauvais type, un champ mal encodé. Il ne peut pas
+     deviner que la transaction est parfaitement formée et que c'est
+     l'**opération** qui est interdite.
+  2. La même transaction, avec les mêmes champs obligatoires, **réussit** sur
+     `DebtMaximum` et `Data`. Le développeur voit donc `LoanBrokerSet`
+     fonctionner, puis répondre « ill-formed » sur un autre champ, sans que
+     rien ne distingue les deux cas.
+  3. Un `tem` **ne laisse aucune trace on-chain** : l'observation est
+     irrécupérable si on ne l'a pas notée au moment même. Pour une règle
+     métier, `tecNO_PERMISSION` ou un `tecIMMUTABLE` serait à la fois plus
+     juste et vérifiable après coup dans l'explorer.
+
+  Et le comportement n'est documenté nulle part : la page `LoanBrokerSet` ne
+  dit pas quels champs sont figés après la création. C'est pourtant la
+  propriété qui fait la valeur du broker pour un déposant.
+
+Proposition :
+  1. Lister dans la référence `LoanBrokerSet` les champs immuables
+     (`CoverRateMinimum`, `CoverRateLiquidation`, `ManagementFeeRate`) et les
+     champs modifiables (`DebtMaximum`, `Data`), et le dire comme une
+     **garantie** — c'est un argument de vente du protocole, pas un détail.
+  2. Remplacer `temINVALID` par un code de refus métier vérifiable on-chain.
+  3. `tecLIMIT_EXCEEDED` apparaît ici pour une **troisième** cause distincte
+     (`DebtMaximum` sous `DebtTotal`), après le dépôt au-delà du plafond et
+     le `AssetsMaximum` sous `AssetsTotal` de [16:18]. Le code ne veut plus
+     rien dire à lui seul.
+
+---
+
+### [17:01] `LoanBrokerCoverClawback` — 7e et dernier type jamais soumis : inutilisable sur un broker en XRP
+Phase : build
+Catégorie : documentation/tutorials
+Sévérité : basse à moyenne
+
+Les 15 types XLS-65/66 ont maintenant tous été soumis au moins une fois.
+Le dernier, `LoanBrokerCoverClawback`, refuse pour les trois parties :
+
+    par le broker (propriétaire)   → tecNO_PERMISSION  `DBBBA2F3B1313BD205EE33AAA9091787954AA5410E2595ED32AE43562C0A0E8D`
+    par un déposant du vault       → tecNO_PERMISSION  `377D768967A9C9C9885716C2AE0133D62E49398D801C341A7CEEE63F8A142C76`
+    par l'emprunteur               → tecNO_PERMISSION
+    avec `Amount` en drops (raw)   → refusé côté SDK (`isTokenAmount` = false)
+
+Même conclusion que pour `VaultClawback` ([16:18]) : le clawback est la
+prérogative de l'**émetteur de l'actif**, et XRP n'en a pas — donc le type est
+structurellement inapplicable à tout broker en XRP, et `tecNO_PERMISSION`
+laisse chercher un signataire qui n'existe pas. Le modèle TS confirme
+l'intention (`Amount?: IssuedCurrencyAmount | MPTAmount`, pas de XRP), mais
+seul un test le révèle.
+
+Proposition :
+  Dire sur les deux pages de clawback qu'elles ne s'appliquent qu'aux actifs
+  émis, et distinguer le refus structurel du refus d'autorisation.
+
+---
+
+### [17:01] `submitAndWait` **lève** sur `tem` mais **renvoie** sur `tec` — asymétrie qui casse toute sonde de validation
+Phase : build
+Catégorie : **client libraries** + UX
+Sévérité : moyenne
+Lib : xrpl@4.6.0
+
+Observé :
+  Un échec `tec` revient dans `result.meta.TransactionResult` et se lit
+  normalement. Un échec `tem` **lève une `XrplError`** qui interrompt le
+  programme. Nos deux sondes se sont arrêtées net en pleine série de tests :
+
+    XrplError: Transaction failed, temINVALID: The transaction is ill-formed.
+        at Client.<anonymous> (…/client/index.js:243:23)
+
+  Coût réel : deux scripts de sonde tués au milieu, chaque fois **après** avoir
+  laissé un vault, un broker et un prêt vivants sur le ledger — donc du capital
+  immobilisé et un décor à reconstruire à la main. Notre propre helper
+  `raw-submit.mjs` porte pourtant en commentaire « *Ne lève pas sur un échec
+  `tec` / `tem`* » : c'est faux pour `tem`, et nous l'avions écrit de bonne foi
+  en lisant la doc de `submitAndWait`.
+
+Pourquoi c'est structurant, et pas un détail de style :
+  Quand on explore les bornes de validation d'un protocole neuf — ce que fait
+  **tout** intégrateur les premiers jours — la moitié des réponses
+  intéressantes sont des `tem`. Le code naturel (« je soumets, je lis le
+  code ») fonctionne pour la moitié des cas et fait exploser l'autre. Il faut
+  encapsuler chaque appel dans un `try/catch` **et** re-parser le code
+  d'erreur depuis un message texte (`String(e.message).match(/tem[A-Z_]+/)`),
+  puisque `e.data` est `undefined`.
+
+Contournement en place :
+  ```js
+  const safe = async (seed, tx, label) => {
+    try { return await submitRaw(c, seed, tx, { label }); }
+    catch (e) {
+      const m = String(e.message).match(/(tem[A-Z_]+|tef[A-Z_]+|tel[A-Z_]+)/);
+      return { code: m ? m[1] : "throw", err: e.message };
+    }
+  };
+  ```
+
+Proposition :
+  1. Renvoyer les `tem`/`tef`/`tel` dans l'objet résultat comme les `tec`,
+     ou au minimum exposer le code sur l'exception (`e.engineResult`) au lieu
+     de le noyer dans un message à parser.
+  2. Le dire dans la doc de `submitAndWait` : aujourd'hui la distinction
+     « classes d'erreurs qui lèvent » vs « classes qui reviennent » ne s'y
+     trouve pas, et c'est la première chose qu'un intégrateur doit savoir.
+
+---
+
+### [17:07] 🔴 H10 CONFIRMÉE — les deux falaises du `LoanSet` renvoient le même code, et les deux remèdes sont opposés
+Phase : build
+Catégorie : **UX** + observabilite
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-cliffs.mjs`
+
+Les deux causes isolées l'une de l'autre, sur le même broker :
+
+  | Situation | Couverture | Liquidité | Code |
+  |---|---|---|---|
+  | falaise de **couverture** | capacité 2 XRP, dette demandée 2,5 | **ample** (8,5 XRP) | `tecINSUFFICIENT_FUNDS` |
+  | falaise de **liquidité** | **ample** (capacité 52 XRP) | 7,5 XRP, demande 9 | `tecINSUFFICIENT_FUNDS` |
+
+    falaise de couverture  `5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B`
+    falaise de liquidité   `BB0CFCF87C045FA971CD601590B2D635398900791F9E902B50154A8C8F8D1803`
+    contrôle positif       `AE3DC594ED640F93D31DBDABE5D24732543B616B27C95DF2490120B8B3835A0C` (1,5 XRP, tesSUCCESS)
+
+Pourquoi c'est grave et pas seulement inélégant :
+  Les deux situations appellent des actions **opposées** de la part du broker.
+  - falaise de couverture → « dépose du first-loss capital », action immédiate,
+    à sa main, quelques secondes.
+  - falaise de liquidité → « attends que des déposants arrivent », action qu'il
+    ne contrôle pas du tout, délai indéterminé.
+
+  Un broker qui automatise l'origination reçoit un code unique et ne peut pas
+  choisir entre les deux. La doc le confirme et l'assume : la page `LoanSet`
+  liste les deux causes sous la même entrée `tecINSUFFICIENT_FUNDS` (« *The
+  Vault … doesn't have enough assets* » / « *The LoanBroker … doesn't have
+  enough first-loss capital* »). C'est donc une ambiguïté **documentée**, pas
+  un oubli — ce qui la rend plus facile à corriger.
+
+Aggravant, côté observabilité : **la capacité de dette n'est exposée nulle
+part.** Pour savoir si un `LoanSet` va passer, il faut lire `CoverAvailable`,
+lire `CoverRateMinimum`, calculer `CoverAvailable × 100000 / CoverRateMinimum`,
+lire `AssetsAvailable` du vault (absent à zéro, cf. [16:54]), lire
+`DebtMaximum`, lire `DebtTotal` (absent à zéro), et prendre le minimum des
+trois contraintes. Six lectures et une formule pour répondre à « puis-je
+prêter 5 XRP ? ». C'est exactement la ligne de H10 et de H9.
+
+Proposition :
+  1. Scinder le code : `tecINSUFFICIENT_FUNDS` pour la liquidité du vault,
+     un `tecINSUFFICIENT_COVER` (ou équivalent) pour le first-loss capital.
+  2. Exposer sur le nœud `LoanBroker` un `DebtCapacity` (ou `CoverDeficit`)
+     calculé par le nœud. C'est la grandeur que tout broker va afficher.
+  3. À défaut des deux : un champ dans les métadonnées de la transaction
+     rejetée disant laquelle des deux contraintes a mordu.
+
+---
+
+### [17:07] ✅ H7 CONFIRMÉE — vault owner et loan broker doivent être le même compte
+Phase : build
+Catégorie : **missing primitive**
+Sévérité : moyenne
+
+Deux comptes tiers ont tenté de créer un `LoanBroker` sur un vault appartenant
+à un troisième :
+
+    LoanBrokerSet par `spare`  → `tecNO_PERMISSION`  `6CDC55F8F62286CDB20E0F2D8002E29D4CD6DEEC5E23976803B880211801BBE0`
+    LoanBrokerSet par `lender` → `tecNO_PERMISSION`
+
+La contrainte de la spec est donc bien appliquée par le ledger, et le code est
+correct cette fois (c'est réellement un refus d'autorisation).
+
+Le grief reste **métier**, pas technique, et il est réel : dans un fonds de
+crédit, l'administrateur du véhicule et le gérant de crédit sont deux entités
+distinctes, souvent par obligation réglementaire (dépositaire vs société de
+gestion). Le protocole impose aujourd'hui de les fusionner en une seule clé,
+ce qui rend la structure inutilisable telle quelle pour un acteur régulé.
+Nous avons nous-mêmes dû faire du compte `broker` le propriétaire du vault
+dans notre démonstration, alors que la narration distingue les deux rôles.
+
+Proposition :
+  Autoriser des comptes distincts, en réutilisant l'amendment
+  `PermissionDelegation` existant plutôt qu'en inventant un mécanisme : le
+  vault owner délègue `LoanBrokerSet` / `LoanSet` à un gérant. C'est le
+  chemin le moins coûteux pour le protocole et celui qui débloque un cas
+  d'usage institutionnel entier.
+
+---
+
+### [17:07] `WithdrawalPolicy` n'accepte que la valeur 1, mais le SDK laisse passer n'importe quel entier
+Phase : build
+Catégorie : **client libraries** + documentation/tutorials
+Sévérité : basse à moyenne
+Lib : xrpl@4.6.0
+
+Testé à la création d'un vault, cinq valeurs :
+
+    WithdrawalPolicy = 0   → temMALFORMED
+    WithdrawalPolicy = 2   → temMALFORMED
+    WithdrawalPolicy = 3   → temMALFORMED
+    WithdrawalPolicy = 99  → temMALFORMED
+    WithdrawalPolicy = 255 → temMALFORMED
+    champ omis             → tesSUCCESS, nœud lu : WithdrawalPolicy = **1**
+
+Réponse à une question que nous avions laissée ouverte : **seule la valeur 1
+existe**, et l'omission donne 1 par défaut. `vaultStrategyFirstComeFirstServe`
+est donc aujourd'hui la seule politique du protocole.
+
+Les deux griefs :
+  1. **Le SDK a l'enum et ne s'en sert pas.** `vaultCreate.js` définit
+     `VaultWithdrawalPolicy { vaultStrategyFirstComeFirstServe = 1 }` puis
+     valide le champ avec un simple `validateOptionalField(tx,
+     'WithdrawalPolicy', isNumber)`. N'importe quel entier part donc sur le
+     réseau pour se faire refuser, alors que la bibliothèque a de quoi le
+     refuser en local, gratuitement. Correctif d'une ligne, dans le fichier
+     qui contient déjà l'enum.
+  2. `temMALFORMED` ne nomme pas le champ — et comme c'est un `tem`, il ne
+     laisse **aucune trace on-chain** pour l'analyse d'après-coup. Sur un
+     `VaultCreate` à dix champs, on cherche à l'aveugle. Même remarque qu'à
+     [15:21] pour `GracePeriod`.
+
+Proposition :
+  1. Valider `WithdrawalPolicy` contre l'enum dans `validateVaultCreate`.
+  2. Dire dans la doc du champ que la seule valeur admise est `1` — la page
+     décrit une « politique de retrait » au singulier sans donner la liste,
+     ce qui laisse croire à un choix.
+
+---
+
+### [17:07] ✅ Deux prêts concurrents sur un vault : la liquidité restante est correctement vue
+Phase : build
+Catégorie : other (comportement correct)
+Sévérité : basse
+
+Jamais testé jusqu'ici. Deux prêts vivants simultanément sur le même vault,
+via le même broker :
+
+    vault 10 XRP → LoanSet 1,5 XRP  → tesSUCCESS, liquidité restante 8,5 XRP
+                 → LoanSet 1,0 XRP  → tesSUCCESS, liquidité restante 7,5 XRP
+    prêt 1 principal 1,500000 XRP · prêt 2 principal 1,000000 XRP
+    hashes `AE3DC594ED640F93D31DBDABE5D24732543B616B27C95DF2490120B8B3835A0C`
+           `6F180E83EE554FF6DAE78778632AB641AC2A7946321B16799ED17C627D74B211`
+
+`AssetsAvailable` est décrémenté exactement du principal à chaque origination,
+`DebtTotal` du broker agrégé correctement (2,500000 XRP), et les deux prêts se
+soldent puis se suppriment indépendamment. Rien à signaler — ce qui est en soi
+l'information utile, puisque c'était une inconnue.
+
+---
+
+### [17:12] 🔴 Un vault dont les parts sont non transférables est **indistinguable** d'un vault normal sur le nœud `Vault`
+Phase : observabilite
+Catégorie : **UX** + documentation/tutorials
+Sévérité : **haute — c'est la propriété qui décide si un déposant pourra sortir**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-transferable-control.mjs`
+
+Tenté :
+  `VaultCreate` avec le flag `tfVaultShareNonTransferable` (131072), jamais
+  exercé jusqu'ici, puis comparaison terme à terme avec un vault normal.
+  Même propriétaire, même actif, même plafond, même déposant.
+
+Obtenu :
+
+  | | vault normal | vault non transférable |
+  |---|---|---|
+  | `Vault.Flags` | **0** | **0** |
+  | `MPTokenIssuance.Flags` | **56** | **0** |
+  | `lsfMPTCanTransfer` (bit 32) | présent | **absent** |
+  | `Payment` de parts (destinataire ayant fait son opt-in) | `tesSUCCESS` `4C62E1C257B6EB3F763D2317064EAE976934B22BFCDEFBDA0A62451AACFF2D39` | **`tecNO_AUTH`** `E9DE504D40B8AB27F7C7EA433B0C1E68DC91854AA04A5D600163A64DB8BE5FD9` |
+  | `EscrowCreate` de parts | accepté (cf. [13:46]) | **`tecNO_PERMISSION`** `29966716239A3041B878A2FF437884B073BCBCA4FE2FF1E693C8121F627C4B5C` |
+  | `MPTokenAuthorize` du destinataire | `tesSUCCESS` | **`tesSUCCESS`** `6F6DBE220E8F06BAF70CAA6C6D835CE77368D1AA3DE21963E282158C9210A160` |
+
+Trois problèmes distincts, du plus grave au moins grave :
+
+1. **`Vault.Flags` vaut 0 dans les deux cas.** Le flag de création n'est pas
+   reporté sur le nœud `Vault` ; la seule trace est l'**absence** du bit 32
+   (`lsfMPTCanTransfer`) sur l'émission de parts.
+
+   ⚠️ **Rectifié à [17:15]** : nous avions écrit qu'il fallait un **second
+   appel** `ledger_entry {mpt_issuance: …}`, et que `vault_info` ne renvoyait
+   pas les flags de l'émission. **C'est faux** : `vault_info` embarque le nœud
+   d'émission dans son sous-objet `shares`, flags compris. Vérifié —
+   `vault_info.shares.Flags` = 56 et `ledger_entry.node.Flags` = 56, valeurs
+   identiques, `Flags` étant renvoyé explicitement même à 0.
+
+   Le grief se réduit donc à la **découvrabilité**, et il tient encore : pour
+   répondre à « pourrai-je revendre ma part ? », il faut savoir qu'il faut
+   regarder dans `shares` et pas dans `Flags` du vault (qui vaut 0 dans les
+   deux cas, donc rassure à tort), savoir que le bit 32 s'appelle
+   `lsfMPTCanTransfer`, et interpréter un bit **manquant** comme une
+   interdiction. Trois savoirs implicites pour la propriété la plus
+   structurante d'un placement — la liquidité de la part.
+   (Dans notre propre cas d'usage, tout le projet repose sur la cession de
+   parts : un vault créé avec ce flag rendrait la démonstration impossible,
+   et rien dans `vault_info` ne nous l'aurait dit.)
+
+2. **`tecNO_AUTH` pour deux causes opposées.** Le même code signale
+   « le destinataire n'a pas fait son `MPTokenAuthorize` » ([13:46]) et
+   « ces parts ne sont transférables à personne, jamais ». Le premier se
+   corrige en une transaction par le destinataire ; le second est définitif
+   et figé à la création du vault. Ici le destinataire **avait** fait son
+   opt-in avec succès, et le code est resté le même. Quatrième occurrence du
+   motif « un code pour plusieurs causes » relevé aujourd'hui, après
+   `tecLIMIT_EXCEEDED` (3 causes), `tecNO_PERMISSION` (état vs autorisation)
+   et `tecINSUFFICIENT_FUNDS` (couverture vs liquidité).
+
+3. **`MPTokenAuthorize` réussit sur des parts non transférables.** Le
+   destinataire s'inscrit avec succès pour recevoir quelque chose qu'il ne
+   pourra jamais recevoir, et le ledger crée l'objet `MPToken` (donc immobilise
+   sa réserve de 2 XRP). Même famille que le `LoanManage` sans flag de
+   [16:25] : un `tesSUCCESS` qui n'accomplit rien.
+
+✅ Le point positif, et il n'est pas trivial : **l'interdiction résiste à
+`EscrowCreate`.** Nous nous attendions à un contournement, parce qu'on avait
+déjà constaté ([13:46]) qu'`EscrowCreate` de parts ignore l'exigence d'opt-in
+que `Payment` applique. Ici Escrow refuse proprement (`tecNO_PERMISSION`). Le
+chemin le plus subtil est donc couvert, alors que le chemin le plus simple
+(`Payment`) renvoie un code ambigu.
+
+Proposition :
+  1. Exposer un booléen explicite (`SharesTransferable`) à côté de
+     `AssetsTotal` dans `vault_info`. Les flags y sont déjà, mais enfouis
+     dans un sous-objet et exprimés par l'absence d'un bit : personne ne les
+     lira sans avoir d'abord été surpris.
+  2. Reporter `tfVaultShareNonTransferable` sur `Vault.Flags` à la création,
+     comme `lsfVaultPrivate` l'est déjà. L'information appartient au vault.
+  3. Un code distinct pour « actif non transférable » (`tecNO_PERMISSION` ou
+     un `tecNOT_TRANSFERABLE`), à réserver au cas définitif, en gardant
+     `tecNO_AUTH` pour le cas réparable.
+  4. Refuser `MPTokenAuthorize` sur une émission non transférable plutôt que
+     de créer un objet inutile et sa réserve.
+
+---
+
+### [17:15] 🔴 H9 CONFIRMÉE, mesurée — 8 appels RPC et 6 formules maison pour le tableau de bord d'un déposant
+Phase : observabilite
+Catégorie : **missing primitive** + observabilite
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-h9-observability.mjs` (lecture seule)
+
+Méthode : se placer du point de vue d'un **déposant** qui détient des parts, et
+compter ce qu'il faut pour répondre à cinq questions élémentaires. Sujet : un
+vault réel de 300 XRP portant un prêt vivant de 100 XRP.
+
+  | Question de déposant | Réponse directe du protocole ? | Coût |
+  |---|---|---|
+  | Combien vaut ma position ? | **non** | 2 appels + 3 formules |
+  | Mes parts sont-elles cessibles ? | **non** (bit à interpréter dans `shares`) | 0 appel de plus |
+  | Combien puis-je retirer maintenant ? | **non** | 1 formule |
+  | Dans quels prêts est mon capital ? | **non** | 4 appels + un scan |
+  | Qui sont les autres déposants ? | **impossible** | — |
+
+  **Total : 8 appels RPC**, et six grandeurs à recalculer soi-même : valeur de
+  part brute, valeur de part **nette de `LossUnrealized`**, valeur de ma
+  position, retrait maximum, taux d'utilisation, capacité de dette du broker.
+
+Ce que le protocole expose vs ce qu'un déposant demande :
+  `vault_info` renvoie 17 champs, tous **bruts** : `AssetsTotal`,
+  `AssetsAvailable`, `LossUnrealized`, `ShareMPTID`, `WithdrawalPolicy`… et le
+  sous-objet `shares` (l'émission complète, flags compris — utile, et bonne
+  surprise). Aucune grandeur dérivée. Or **aucun déposant ne raisonne en
+  `AssetsTotal`** : il raisonne en « combien vaut ma part » et « puis-je
+  sortir ». Les deux demandent une division que chaque client réimplémentera,
+  et dont [16:44] montre qu'elle se rate silencieusement (facteur 2,5).
+
+Le chemin vault → prêts, reconstitué (il n'y a pas d'index) :
+  1. `vault_info` → ne cite **ni broker ni prêt**. Aucune commande `vault_loans`.
+  2. `account_objects` sur `Owner` → **39 objets** à scanner, filtrer
+     `LedgerEntryType == "LoanBroker" && VaultID == V` → 1 broker.
+     Suppose de connaître `Owner` et de pouvoir lister ses objets.
+  3. `account_objects` sur le **pseudo-compte** du broker, `type: "loan"`
+     → là, les prêts sont listés (1 trouvé, principal 100 XRP, `Flags` 0).
+
+  Rectification utile pour le rapport : nous pensions d'abord que les prêts
+  étaient **inénumérables** parce que les objets `Loan` apparaissent dans
+  `account_objects` des emprunteurs. C'est faux — le pseudo-compte du broker
+  les liste. Le grief n'est donc pas « impossible » mais « trois requêtes, un
+  scan, et deux savoirs implicites (le pseudo-compte, le filtre par VaultID) ».
+
+Et deux absences franches :
+  - **`loan_info` et `loan_broker_info` n'existent pas** (`unknownCmd`), alors
+    que `vault_info` existe. Le protocole offre une commande dédiée pour un de
+    ses trois objets et rien pour les deux autres. Asymétrie difficile à
+    justifier côté intégrateur.
+  - **`mpt_holders` → `unknownCmd`** sur ce rippled. Impossible d'énumérer les
+    porteurs de parts, donc de savoir qui partage le vault, donc de raisonner
+    sur la concurrence de retrait (`WithdrawalPolicy` = premier arrivé premier
+    servi — dont l'intérêt dépend entièrement de qui est devant vous).
+
+Proposition :
+  1. Ajouter à `vault_info` un bloc dérivé calculé par le nœud :
+     `SharePriceNet`, `SharePriceGross`, `Utilization`, `SharesTransferable`.
+     Six lignes de C++ contre N implémentations divergentes côté clients.
+  2. Ajouter `loan_info` et `loan_broker_info`, avec sur le broker la
+     `DebtCapacity` réclamée par [17:07].
+  3. Indexer vault → brokers, et broker → prêts, pour supprimer le scan.
+  4. Activer Clio (ou équivalent) sur les devnets de hackathon : sans
+     `mpt_holders`, tout produit qui affiche « vos co-déposants » ou une
+     répartition est hors de portée, et personne ne peut le découvrir avant
+     d'avoir écrit le code.
+
+---
+
+### [17:20] 🔴 H2 : pas de course contre le temps, mais le montant exact d'un paiement en retard est **incalculable** depuis le nœud — et `Amount` est en réalité un plafond
+Phase : build
+Catégorie : **documentation/tutorials** + observabilite
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · scripts `_probe-h2-race.mjs`, `_probe-h2-meta.mjs`
+
+H2 prédisait une condition de course : le dû d'un paiement en retard
+contiendrait un intérêt de retard fonction du temps, donc « on lit, on calcule,
+on signe, le montant est périmé ». Testé sur un prêt de 3 XRP avec
+`LateInterestRate` **30 %** (`InterestRate` 8 %), échéances de 90 s.
+
+**Partie infirmée — rien ne bouge dans le nœud :**
+
+    retard  10 s → PeriodicPayment 750000.4280818960614 · TotalValueOutstanding 3000002
+    retard  31 s → identique
+    retard  51 s → identique
+    retard  72 s → identique
+    retard  95 s → identique
+    dérive sur 85 s : **0 drop**
+
+  Aucun champ du nœud `Loan` ne bouge avec le retard. Un montant lu 85 s plus
+  tôt est donc aussi bon (ou aussi mauvais) qu'un montant lu à l'instant : il
+  n'y a **pas** de course contre le ledger. H2 est infirmée sur ce point.
+
+**Partie confirmée, en pire — le montant du nœud est FAUX :**
+
+    dû selon les champs du nœud :
+      ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee = 765001 drops
+    LoanPay tfLoanLatePayment 765001  → **tecINSUFFICIENT_PAYMENT** (deux fois,
+      montant périmé ET montant frais)
+    LoanPay tfLoanLatePayment 2765001 → tesSUCCESS  `9A7589384C5142703AFFACBB91B12E223EC734F7ACBE51272A87525FE4EE9CA8`
+
+  L'intérêt de retard **s'accumule bien** (≈ 3 000 000 × 30 % × 95 s / an
+  ≈ 2,7 drops, cohérent avec l'écart observé) mais **n'est exposé par aucun
+  champ**. Le nœud publie `LateInterestRate` sans publier l'intérêt de retard
+  couru. La formule reconstruite depuis les champs disponibles est donc
+  systématiquement **courte de quelques drops**, et le paiement est rejeté
+  pour insuffisance alors qu'il a été calculé avec les données du ledger.
+
+**Ce qui sauve la situation, et qui n'est écrit nulle part :
+`Amount` est un PLAFOND, pas un montant exact.** Métadonnées du paiement
+accepté :
+
+    Amount envoyé                 2 765 001 drops
+    solde de l'emprunteur         **− 765 015 drops** (dû + 12 de frais de tx)
+    principal du prêt             3,000000 → 2,250001 XRP
+    échéances restantes           4 → 3
+    pseudo-compte du vault        + 0,750003 XRP
+    compte du broker              + 0,015000 XRP  (LoanServiceFee + LatePaymentFee)
+    vault AssetsTotal             5,000000 → 5,000004 XRP
+    NextPaymentDueDate            + 90 s exactement (un intervalle)
+
+  L'excédent de 2 XRP **n'a pas été débité** : le ledger prélève ce qui est dû
+  et ignore le reste. La bonne pratique est donc « envoyer largement plus que
+  l'estimation », ce qui est contre-intuitif sur un ledger où l'on a l'habitude
+  de montants exacts — et contredit la lecture naturelle de la doc, qui parle
+  d'un montant exact et d'excédents « ignorés » (ce qui se comprend comme
+  « perdus » et non « non prélevés »).
+
+Nuance mesurée, utile pour un intégrateur :
+  avec `tfLoanLatePayment`, le surpaiement n'impute **qu'une seule échéance**
+  (4 → 3) même en envoyant 3,7× le dû. Sans flag, sur un prêt à jour, un
+  surpaiement impute **plusieurs** échéances d'un coup (relevé à [15:21], H3 :
+  4 → 1). Deux comportements opposés du même champ `Amount` selon l'état du
+  prêt, aucun des deux documenté.
+
+Repro :
+  1. `LoanSet` avec `LateInterestRate` non nul, `PaymentInterval` court.
+  2. Dépasser l'échéance, calculer
+     `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`.
+  3. `LoanPay` avec `tfLoanLatePayment` de ce montant → `tecINSUFFICIENT_PAYMENT`.
+  4. Recommencer en envoyant le double → `tesSUCCESS`, et vérifier dans les
+     métadonnées que seul le dû a été prélevé.
+
+Proposition :
+  1. **Écrire noir sur blanc que `Amount` est un plafond** et que l'excédent
+     n'est pas prélevé. C'est l'information qui débloque tout le reste, et
+     elle change la façon d'écrire le client.
+  2. Exposer l'intérêt de retard couru sur le nœud `Loan`
+     (`LateInterestAccrued`), ou un champ `AmountDue` recalculé par le nœud.
+     Sans l'un des deux, il est **impossible** d'afficher à un emprunteur ce
+     qu'il doit — c'est le premier écran de toute application de crédit.
+  3. Documenter que `tfLoanLatePayment` n'impute qu'une échéance, contrairement
+     au surpaiement sur un prêt à jour.

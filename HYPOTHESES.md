@@ -179,7 +179,7 @@ un second exemple. Et exposer le montant couvert en simulation avant transaction
 
 ---
 
-### [ ] H2 — Le paiement en retard doit être exact, mais le montant exact bouge
+### [~] H2 — Le paiement en retard doit être exact, mais le montant exact bouge
 **Catégorie :** missing primitive · **Sévérité pressentie :** haute
 
 Doc : un paiement en retard doit correspondre à un montant exact,
@@ -199,8 +199,22 @@ immédiatement pour comparer.
 le dû et débite le compte, ou a minima une méthode RPC retournant le montant
 exact payable pour un ledger donné.
 
-**Résultat observé :**
-**Tx :**
+**Résultat observé :** [17:20] **MI-INFIRMÉE, MI-CONFIRMÉE EN PIRE.**
+Pas de condition de course : sur un prêt à `LateInterestRate` 30 %, aucun champ
+du nœud ne bouge pendant 95 s de retard (dérive **0 drop**). Un montant lu 85 s
+plus tôt vaut celui lu à l'instant.
+Mais le montant reconstruit depuis les champs du nœud
+(`ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee` = 765001) est
+**rejeté** `tecINSUFFICIENT_PAYMENT` : l'intérêt de retard couru (≈ 2,7 drops)
+n'est exposé par **aucun** champ. Le dû est donc incalculable depuis le ledger.
+Ce qui sauve la situation et n'est écrit nulle part : **`Amount` est un
+plafond.** En envoyant 2 765 001 drops, seuls 765 015 ont été débités (frais de
+tx compris) — l'excédent n'est pas prélevé. Bonne pratique : surpayer largement.
+Nuance : avec `tfLoanLatePayment` le surpaiement n'impute **qu'une** échéance,
+alors que sans flag sur un prêt à jour il en impute plusieurs (cf. H3).
+**Tx :** `9A7589384C5142703AFFACBB91B12E223EC734F7ACBE51272A87525FE4EE9CA8`
+(accepté, plafond) · rejets `tecINSUFFICIENT_PAYMENT` sur 765001, deux fois.
+Détail complet : FEEDBACK-RAW [17:20].
 
 ---
 
@@ -321,7 +335,7 @@ endpoint de simulation à sec renvoyant l'échéancier complet avant signature.
 
 ---
 
-### [ ] H7 — Vault Owner et Loan Broker forcés sur le même compte
+### [x] H7 — Vault Owner et Loan Broker forcés sur le même compte
 **Catégorie :** missing primitive · **Sévérité pressentie :** moyenne
 
 La spec l'impose et ajoute que ça pourrait changer. Blocage métier réel : dans
@@ -334,12 +348,19 @@ vault owner. Relever l'erreur.
 **Proposition :** autoriser des comptes distincts, éventuellement en réutilisant
 l'amendment `PermissionDelegation` existant plutôt qu'un nouveau mécanisme.
 
-**Résultat observé :**
-**Tx :**
+**Résultat observé :** [17:07] **CONFIRMÉE.** Deux comptes tiers ont tenté de
+créer un `LoanBroker` sur le vault d'un troisième : `tecNO_PERMISSION` dans les
+deux cas. La contrainte de la spec est appliquée par le ledger, et le code de
+retour est correct (c'est bien un refus d'autorisation).
+Le grief reste **métier** : un fonds régulé sépare l'administrateur du véhicule
+et le gérant de crédit. Nous avons dû faire du compte `broker` le propriétaire
+du vault alors que la narration distingue les deux rôles.
+**Tx :** `6CDC55F8F62286CDB20E0F2D8002E29D4CD6DEEC5E23976803B880211801BBE0`
+(par `spare`) · même code depuis `lender`. Détail : FEEDBACK-RAW [17:07].
 
 ---
 
-### [ ] H8 — Clawback de la couverture quand `DebtTotal = 0`
+### [-] H8 — Clawback de la couverture quand `DebtTotal = 0`
 **Catégorie :** autre · **Sévérité pressentie :** à évaluer
 
 L'émetteur peut reprendre le first-loss capital jusqu'à un minimum égal à
@@ -354,13 +375,31 @@ avant tout prêt.
 ⚠️ **Si ça ressemble à une faille exploitable : mentor en privé AVANT
 présentation, et ne pas publier les détails dans le repo public.**
 
-**Résultat observé :**
+**Résultat observé :** [17:01] **INFIRMÉE — à retirer des soupçons.**
+Le plancher de couverture est appliqué **au drop près** : sur un broker à dette
+4 XRP / `CoverRateMinimum` 10 % (plancher 0,400000), retirer 0,6 XRP passe,
+retirer **1 drop de plus** est refusé `tecINSUFFICIENT_FUNDS`.
+Et les paramètres de risque sont **immuables** : `CoverRateMinimum`,
+`CoverRateLiquidation` et `ManagementFeeRate` sont refusés en modification
+(`temINVALID`) sur un broker vivant ; seuls `DebtMaximum` (jamais sous
+`DebtTotal`) et `Data` bougent. Un broker ne peut donc ni abaisser la
+protection promise, ni s'échapper sous le plancher.
+`LoanBrokerCoverClawback` : `tecNO_PERMISSION` pour le broker, un déposant et
+l'emprunteur — inapplicable sur un actif sans émetteur (XRP), comme
+`VaultClawback`.
+Seule libération observée : un **défaut** met `DebtTotal` à 0, donc le plancher
+à 0, et le broker récupère alors sa couverture (98 % dans notre mesure, cf. H1).
+C'est le point à garder pour le rapport — pas une faille, un choix de design.
+**Tx :** `071BEB20D2D5C5264571FFA7383BACAEA2684758C2661802B6C2E9458679BDA9`
+(0,9 refusé) · `4FB4A2B0D01DD2411A5E8592680D50B1F4CCA51ED97C243C2A506516262F1370`
+(1 drop de trop) · `DBBBA2F3B1313BD205EE33AAA9091787954AA5410E2595ED32AE43562C0A0E8D`
+(clawback). Détail : FEEDBACK-RAW [17:01].
 
 ---
 
 ## Priorité 3 — observabilité, à la fin
 
-### [~] H9 — Lire l'état exige de refaire les maths du protocole
+### [x] H9 — Lire l'état exige de refaire les maths du protocole
 **Catégorie :** missing primitive · **Sévérité pressentie :** moyenne
 
 Question du brief : *« Could you read position value, utilisation, available
@@ -377,7 +416,25 @@ RPC et les lignes de calcul nécessaires.
 taux d'utilisation, NAV par part, rendement accru, liquidité disponible, ratio
 de couverture et distance au minimum.
 
-**Résultat observé :** ⚠️ **partiellement infirmée avant même le test.** Une
+**Résultat observé :** [17:15] **CONFIRMÉE, mesurée.** Tableau de bord d'un
+déposant sur un vault réel de 300 XRP portant un prêt de 100 XRP :
+**8 appels RPC**, et **6 grandeurs à recalculer** (valeur de part brute, valeur
+de part nette de `LossUnrealized`, valeur de ma position, retrait maximum, taux
+d'utilisation, capacité de dette). `vault_info` renvoie 17 champs, tous bruts,
+aucune grandeur dérivée.
+Preuve à charge la plus forte : notre propre `lib/nav.mjs`, écrit exprès pour
+ça, **a raté `LossUnrealized`** et surévaluait la part de 150 % (FEEDBACK-RAW
+[16:44]). Deux implémentations dans ce dépôt, divergence facteur 2,5.
+Chemin vault → prêts : aucun index. Il faut `account_objects` sur `Owner`
+(39 objets à scanner), filtrer sur `VaultID`, puis `account_objects` sur le
+**pseudo-compte** du broker avec `type: "loan"`. Ça marche — nous avions
+d'abord cru que c'était impossible, c'est faux, mais ça coûte 3 requêtes et
+deux savoirs implicites.
+Absences franches : `loan_info` et `loan_broker_info` → `unknownCmd` (alors que
+`vault_info` existe) ; `mpt_holders` → `unknownCmd`, donc **impossible**
+d'énumérer les co-déposants, donc de raisonner sur `WithdrawalPolicy` = premier
+arrivé premier servi.
+**Tx :** n/a (lecture seule, `scripts/_probe-h9-observability.mjs`). ⚠️ **partiellement infirmée avant même le test.** Une
 méthode RPC `vault_info` existe bel et bien dans la doc de référence
 (`/docs/references/http-websocket-apis/public-api-methods/vault-methods/vault_info`) :
 elle renvoie le vault, son owner, les actifs disponibles et le détail des parts
@@ -389,7 +446,7 @@ du ledger ? », et « existe-t-il l'équivalent côté `LoanBroker` / `Loan` ? �
 
 ---
 
-### [ ] H10 — La falaise de couverture est silencieuse
+### [x] H10 — La falaise de couverture est silencieuse
 **Catégorie :** UX · **Sévérité pressentie :** moyenne
 
 Dès que la couverture passe sous le minimum, le broker ne peut plus prêter ET
@@ -404,8 +461,24 @@ C'est aussi un candidat pour l'étape 7 du minimum bar.
 **Proposition :** exposer `CoverDeficit` et un ratio de santé sur l'objet
 `LoanBroker`, et nommer le seuil dans le message d'erreur.
 
-**Résultat observé :**
-**Tx :**
+**Résultat observé :** [17:07] **CONFIRMÉE.** Les deux falaises isolées l'une de
+l'autre renvoient le **même** code `tecINSUFFICIENT_FUNDS` :
+- couverture saturée (capacité 2 XRP, demande 2,5) avec liquidité **ample**
+  (8,5 XRP) → `tecINSUFFICIENT_FUNDS`
+- liquidité insuffisante (7,5 XRP, demande 9) avec couverture **ample**
+  (capacité 52 XRP) → `tecINSUFFICIENT_FUNDS`
+Or les remèdes sont opposés : « dépose du first-loss capital » (à la main du
+broker, immédiat) vs « attends des déposants » (hors de son contrôle).
+La doc `LoanSet` liste les deux causes sous la même entrée : ambiguïté
+**documentée**, donc facile à corriger.
+Aggravant : la capacité de dette n'est exposée nulle part. Il faut 6 lectures
+et une formule (`CoverAvailable × 100000 / CoverRateMinimum`, `AssetsAvailable`,
+`DebtMaximum − DebtTotal`, puis le minimum des trois) pour répondre à « puis-je
+prêter 5 XRP ? ».
+**Tx :** `5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B`
+(falaise de couverture) · `BB0CFCF87C045FA971CD601590B2D635398900791F9E902B50154A8C8F8D1803`
+(falaise de liquidité) · `AE3DC594ED640F93D31DBDABE5D24732543B616B27C95DF2490120B8B3835A0C`
+(contrôle positif). Détail : FEEDBACK-RAW [17:07].
 
 ---
 
