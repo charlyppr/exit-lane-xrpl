@@ -134,7 +134,12 @@ attraperait cette classe de bug automatiquement — c'est un candidat de PR.
 
 Rapides, et elles touchent à de l'argent.
 
-### [ ] H1 — `CoverRateLiquidation` ne fait pas ce que son nom suggère
+### [x] H1 — `CoverRateLiquidation` ne fait pas ce que son nom suggère
+**CONFIRMÉE par la mesure le 12/09** — défaut de 50 XRP : 0,25 XRP ponctionné sur
+le first-loss capital, 49,75 XRP encaissés par les déposants, 49,75 XRP de
+couverture restés intacts. Valeur de la part 1,000000000 → 0,751250000.
+Hash `91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7`.
+Détail complet dans FEEDBACK-RAW.
 **Catégorie :** UX (nommage) + documentation · **Sévérité pressentie :** haute
 
 Le brief du hackathon pose lui-même la question : *« Did first-loss-capital
@@ -199,7 +204,10 @@ exact payable pour un ledger donné.
 
 ---
 
-### [ ] H3 — Succès silencieux partiel sur surpaiement
+### [-] H3 — Succès silencieux partiel sur surpaiement
+**INFIRMÉE le 12/09.** Un `LoanPay` de 3 × l'échéance impute bien trois
+échéances (4 → 1), avec ou sans les flags, à 2 drops près. Aucun succès
+silencieux partiel. À déplacer dans « ce qui marche ».
 **Catégorie :** UX · **Sévérité pressentie :** haute
 
 Doc : quand un excédent est « ignoré », la transaction réussit mais l'emprunteur

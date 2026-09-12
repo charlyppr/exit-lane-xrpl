@@ -1419,3 +1419,202 @@ démontrable plutôt que simplement affirmé.
 
 **Valeur de la part** : 1,000000000 avant remboursement, **1,000214800** après.
 Le rendement est porté par la part, donc transféré avec elle.
+
+---
+
+### [15:21] 🔴 H1 CONFIRMÉE — le « first-loss capital » absorbe 0,5 % de la première perte, avec 99,5 % de couverture intacte
+Phase : build
+Catégorie : **UX (nommage) + protocole (design)**
+Sévérité : **haute**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/h1-default.mjs`
+
+Tenté :
+  Répondre à la question que le brief pose lui-même — *« Did first-loss-capital
+  parameters behave as their names suggested? »* — par la mesure, sur un décor
+  isolé : un vault de 200 XRP, un seul prêt de 50 XRP, un first-loss capital de
+  50 XRP, `CoverRateMinimum` 10 %, `CoverRateLiquidation` 5 %. Puis provoquer
+  un défaut réel et relever qui paie.
+
+Attendu :
+  Un capital nommé « first-loss » absorbe la première perte tant qu'il en a les
+  moyens. Ici il en avait largement les moyens : 50 XRP de couverture pour
+  50 XRP de défaut.
+
+Obtenu :
+  | Grandeur | Valeur |
+  |---|---|
+  | Défaut | 50,000000 XRP |
+  | **First-loss capital ponctionné** | **0,250000 XRP** |
+  | **Perte encaissée par les déposants** | **49,750000 XRP** |
+  | First-loss capital resté disponible | 49,750000 XRP |
+  | Vault `AssetsTotal` | 200,000000 → 150,250000 XRP |
+  | **Valeur d'une part** | **1,000000000 → 0,751250000 (−25 %)** |
+
+  `tfLoanDefault` `tesSUCCESS` — hash
+  `91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7`
+  VaultID `0E1525BB1BB7914167D3D3AA7F3A642C8A66603E4BCCF392CFCB6CA6A9E663E0`
+  LoanBrokerID `4787A5674C5322576FECC15F9C39A592DBA3EFD2271E7E96AF3D028F085B8CF4`
+  LoanID `9ECF8C3D1DC0E708B2F8D219A2DCE80D8A0D063DAA237A0CD26734A7013CB958`
+
+  **Conforme à la formule documentée**, et c'est bien le problème :
+  `min(DebtTotal × CoverRateMinimum × CoverRateLiquidation, défaut)`
+  `= min(50 × 10 % × 5 %, 50) = 0,25 XRP`.
+  Le comportement n'est pas un bug. C'est le nom qui ment : le capital de
+  « première perte » a couvert **0,50 %** de la première perte, alors que
+  **49,75 XRP restaient disponibles pour l'absorber** — de quoi couvrir 99,5 %
+  du défaut.
+
+  Deux griefs distincts, à séparer dans le rapport :
+  - **Nommage.** `CoverRateLiquidation: 5 %` se lit « 5 % du défaut est
+    couvert ». C'est en réalité 5 % du *minimum requis*, soit un produit de deux
+    taux. Erreur de deux ordres de grandeur, et irrattrapable une fois le prêt
+    originé : les paramètres du broker sont fixés à la création.
+  - **Design.** Un déposant perd 25 % de la valeur de sa part pendant que le
+    coussin censé le protéger reste plein à 99,5 %. Si l'intention est de
+    préserver la couverture des prêts restants, elle n'est documentée nulle part.
+
+Repro :
+  1. `node scripts/h1-default.mjs` (décor isolé, ~3 min avec les attentes).
+  2. Relever `CoverAvailable` et `AssetsTotal` avant/après `tfLoanDefault`.
+
+Proposition :
+  1. Renommer `CoverRateLiquidation` en `CoverLiquidationFractionOfMinimum`,
+     ou changer la sémantique pour une fraction du montant en défaut.
+  2. Exposer sur le nœud `LoanBroker` un champ dérivé « couverture effective
+     par unité de dette », pour que le broker voie ce qu'il protège réellement.
+  3. Fournir une simulation à sec : « avec ces paramètres, un défaut de X
+     laisse Y aux déposants ». Nous avons dû le découvrir en provoquant un vrai
+     défaut sur un vrai vault.
+
+---
+
+### [15:21] H3 INFIRMÉE — le surpaiement fonctionne, et le flag `tfLoanOverpayment` ne change rien
+Phase : build
+Catégorie : information + UX (terminologie)
+Sévérité : basse — **hypothèse à retirer du rapport comme grief**
+Lib : xrpl@4.6.0 · script `scripts/h1-h3.mjs`
+
+Tenté :
+  Vérifier la crainte de H3 : un `LoanPay` surpayé renvoie-t-il `tesSUCCESS`
+  en n'imputant qu'une seule échéance ? Deux prêts de 50 XRP, échéance exacte
+  13,006851 XRP, paiement de **3 × l'échéance** dans les deux cas.
+
+Obtenu :
+  | Cas | Code | PrincipalOutstanding | Échéances |
+  |---|---|---|---|
+  | Sans aucun flag | `tesSUCCESS` | 50,000000 → 12,504110 XRP | 4 → 1 |
+  | `lsfLoanOverpayment` + `tfLoanOverpayment` | `tesSUCCESS` | 50,000000 → 12,504108 XRP | 4 → 1 |
+
+  hashes `BA0833A1A42C842A2E86D2E5DF21FABD3BE4EFF651411BA5E0FD99B4C5215DC5`
+  et `CCA2D63EF778D220D79EF34731E4619B9EED565E9DAF631C2C5BFFDB46346B44`.
+
+  **Aucun succès silencieux partiel.** Le protocole impute la totalité de ce qui
+  est payé, trois échéances d'un coup, sans avoir besoin du moindre flag. À
+  2 drops près, les deux chemins donnent le même résultat. C'est une bonne
+  nouvelle et elle a sa place dans la section « ce qui marche ».
+
+  Reste une question de terminologie : si payer trois échéances d'avance ne
+  requiert pas `tfLoanOverpayment`, à quoi sert ce flag ? Vraisemblablement au
+  remboursement anticipé au-delà de l'échéancier complet — mais le nom
+  « overpayment » couvre les deux lectures, et la doc ne tranche pas.
+
+---
+
+### [15:21] `GracePeriod` a un minimum non documenté de 60 s, et `temINVALID` ne dit pas lequel
+Phase : build
+Catégorie : documentation/tutorials + error messages
+Sévérité : moyenne
+Lib : xrpl@4.6.0
+
+Tenté :
+  Originer un prêt avec un `GracePeriod` court, pour pouvoir observer un défaut
+  dans le temps d'un hackathon plutôt qu'en 24 h.
+
+Obtenu :
+  Seuil trouvé par dichotomie, **exactement 60 s** :
+  1, 10, 15, 20, 30, 45, 50, 55, **59 → `temINVALID`** · **60 → accepté**.
+
+  `temINVALID: The transaction is ill-formed.` ne nomme ni le champ fautif ni
+  la borne attendue. Avec dix champs numériques sur `LoanSet`
+  (`InterestRate`, `PaymentInterval`, `PaymentTotal`, `GracePeriod`, quatre
+  frais…), trouver lequel est en cause se fait à l'aveugle. Sept soumissions
+  pour isoler la borne.
+
+  Contrôle : `PaymentInterval` accepte 60 s sans difficulté, donc la contrainte
+  est propre à `GracePeriod`.
+
+  Astuce de méthode, réutilisable : soumettre avec un `LoanBrokerID` inexistant
+  discrimine gratuitement les deux couches de validation — `temINVALID` signale
+  un rejet **local** (le champ est mal formé), `tecNO_ENTRY` signale que la
+  transaction a passé la validation locale et a atteint le ledger. Aucune
+  transaction coûteuse n'est consommée pour sonder une borne.
+
+Proposition :
+  Documenter le minimum sur la page `LoanSet`, et faire dire à l'erreur quel
+  champ est hors bornes. `temMALFORMED` avec le nom du champ vaudrait dix fois
+  `temINVALID` seul.
+
+---
+
+### [15:21] `LoanManage tfLoanImpair` renvoie `tecTOO_SOON` sans dire à partir de quand
+Phase : build
+Catégorie : error messages + documentation/tutorials
+Sévérité : moyenne
+Lib : xrpl@4.6.0
+
+Tenté :
+  Impairer un prêt — la doc présente l'impairment comme l'outil du broker qui
+  *« discovers a borrower can't make an upcoming payment »*, donc par nature
+  **avant** l'échéance.
+
+Obtenu :
+  `tecTOO_SOON`, deux fois :
+  - sur un prêt fraîchement originé, `PaymentInterval` 86 400 s
+    (`DA59E5F107A6C2E05C219DD6C6487C927B088CF36A9278869A22F86DCAD5B235`) ;
+  - sur un prêt à `PaymentInterval` 60 s, **après** que la première échéance
+    soit due (`217B90A239F9A533BE7FDC9505B8DE200BCCAB69347AF54F8616A3006572B367`).
+
+  Le `tfLoanDefault` sur ce même prêt, lui, est passé après la grace period
+  (`91F458E3…`). L'impairment n'a donc jamais pu être exercé, et la fenêtre
+  temporelle qui l'autorise n'est décrite nulle part : ni sur la page
+  `LoanManage`, ni sur celle du ledger entry `Loan`.
+
+  Conséquence pratique : le seul mécanisme de gestion du risque que la doc met
+  en avant pour un broker est resté inutilisable pendant tout le hackathon.
+
+Proposition :
+  Documenter la condition exacte sur `LoanManage`, et faire dire à
+  `tecTOO_SOON` à partir de quel instant l'opération devient possible.
+
+---
+
+### [15:21] Le faucet ignore le champ `destination` et crée un compte neuf à la place
+Phase : onboarding (rencontré en cours de build)
+Catégorie : other (infrastructure) + documentation/tutorials
+Sévérité : basse à moyenne
+Lib : —
+
+Tenté :
+  Refinancer un compte **existant** après plusieurs heures de tests — le compte
+  prêteur était descendu à 50 XRP, chaque scénario immobilisant du capital dans
+  un vault. POST au faucet avec `{"destination":"r9ywWKm1…"}`.
+
+Obtenu :
+  HTTP 200, et la création d'un **nouveau** compte
+  (`rp1YXHCRPxB3aupoHaFHkwyTDgsrLgWUMA`, 1000 XRP). Le champ `destination` est
+  ignoré silencieusement. Aucune erreur, aucun avertissement.
+
+  Le besoin est pourtant le plus courant après quelques heures : les comptes de
+  travail portent l'état (parts de vault, objets MPT, historique), les recréer
+  fait tout perdre. Un `tecINSUFFICIENT_FUNDS` sur `VaultDeposit` a d'abord
+  fait croire à un bug de notre script.
+
+Contournement trouvé :
+  `Payment` depuis un compte encore fourni de l'équipe
+  (`CC0E8CB487486A60D52C6D128D97BFCB2E16E841628DE818B6E428FCB4CFFA29`). Trivial
+  une fois le diagnostic posé.
+
+Proposition :
+  Accepter `destination` et créditer le compte existant — c'est le comportement
+  des faucets Testnet/Devnet publics. À défaut, renvoyer une erreur explicite
+  plutôt qu'un compte neuf que l'appelant n'a pas demandé.
