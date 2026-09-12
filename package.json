@@ -1,0 +1,13 @@
+{
+  "name": "xrpl-lending-hackathon",
+  "private": true,
+  "type": "module",
+  "description": "XRPL Lending Protocol Hackathon - Track 1 (open-ended vault, Lending Protocol V1)",
+  "scripts": {
+    "check": "node scripts/check-connection.mjs",
+    "setup": "node scripts/setup-accounts.mjs"
+  },
+  "dependencies": {
+    "xrpl": "^4.4.1"
+  }
+}

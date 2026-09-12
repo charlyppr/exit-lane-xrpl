@@ -1,0 +1,15 @@
+node_modules/
+.accounts.json
+.env
+*.log
+.xrpl-devex/
+.claude/settings.local.json
+
+# DevEx hook : cloné et installé par CHAQUE dev sur SA machine (cf. README).
+# Dépôt git imbriqué + symlinks de skills locaux — ne pas committer.
+xrpl-devex-hook/
+.claude/skills/
+.codex/
+.cursor/
+.grok/
+.DS_Store

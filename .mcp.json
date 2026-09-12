@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "xrpl-docs": {
+      "type": "http",
+      "url": "https://xrpl.org/mcp"
+    },
+    "ripple-opensource-docs": {
+      "type": "http",
+      "url": "https://opensource.ripple.com/mcp"
+    }
+  }
+}
