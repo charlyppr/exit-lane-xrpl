@@ -29,9 +29,13 @@ les intitulés, Regular pour le corps, Light pour les phrases longues. Menlo pou
 le code. Les quatre graisses de Poppins sont installées sur la machine et
 embarquées dans le PDF.
 
-Règle de contenu : un titre et rien d'autre en bordure (ni surtitre, ni numéro
-de page, ni légende, ni bandeau), « CY-HACK » une seule fois sur la slide 1,
-aucun emoji, un chiffre ou une capture plutôt qu'une phrase.
+Langue : tout le texte visible et les notes orateur sont en anglais.
+
+Règle de contenu : un titre, ni surtitre ni bandeau, « CY-HACK » une seule fois
+sur la slide 1, aucun emoji, un chiffre ou une capture plutôt qu'une phrase.
+Chaque fenêtre (capture ou terminal) porte une légende d'une ligne, Poppins Light
+11,5 pt, qui dit ce qu'elle prouve. Numéro de page `n / 10` en bas à droite,
+sauf sur la slide de titre.
 
 Grille : marge gauche 0,88", bord droit 12,45".
 
@@ -69,8 +73,8 @@ Le texte à dire est dans les notes de chaque slide (mode présentateur).
 | 6 | fixCleanup3_4_0 : actif, absent d'xrpl.org | 2:10 → 2:40 | Friction 1 et sa correction, terminaux `tecTOO_SOON` et signature |
 | 7 | Un LoanPay en retard exige tfLoanLatePayment | 2:40 → 3:05 | Friction 2 et sa correction, captures `96C38704` et `EFAD383F` |
 | 8 | First-loss capital : 0,5 % d'un prêt en défaut | 3:05 → 3:35 | Friction 3 et sa correction, captures `923F7D61` et `68DD97D9` |
-| 9 | Sept autres constats | 3:35 → 3:50 | Findings 4 à 10 |
-| 10 | Dix constats, trois pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
+| 9 | Six autres constats | 3:35 → 3:50 | Findings 4 à 9 |
+| 10 | Neuf constats, trois pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
 
 Les slides 6 à 8 sont les trois frictions les plus importantes demandées par le
 brief, dans l'ordre du rapport, chacune avec sa correction proposée.
@@ -96,8 +100,9 @@ Capture supplémentaire du deck : `node deck/capture-explorer.mjs d-`.
 ## `FEEDBACK.pdf` : le rapport de feedback
 
 Même contenu que `FEEDBACK.md`, dans la DA du deck, avec de vraies captures de
-l'explorer. Trois pages : catégorie, sévérité et librairie par constat, une
-correction proposée par constat, les six questions du brief. Source
+l'explorer. Trois pages : pour chaque constat, catégorie, sévérité, librairie,
+description, étapes de repro, transactions cliquables et correction proposée ;
+plus les six questions du brief et trois problèmes mineurs. Source
 `deck/feedback-report.tex`, PDF publié à la racine du repo.
 
 ```bash

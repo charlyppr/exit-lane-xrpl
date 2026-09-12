@@ -3805,3 +3805,30 @@ référence `MPTokenIssuance` d'xrpl.org décrit `lsfMPTCanTrade` comme permetta
 d'échanger « *using the XRP Ledger DEX or AMM* ». `OfferCreate` sur une part
 renvoie `temDISABLED` ([13:49*]) et la liste `feature` ne contient aucun
 amendment d'échange de MPT.
+
+---
+
+### [01:40] Heures de clôture arrondies à 10 s : les délais de prêt ne se mesurent pas au ledger
+Phase : livrables (vérification du deck)
+Catégorie : documentation/tutorials
+Sévérité : faible
+Lib : xrpl@4.6.0
+
+Constat :
+  `ledger` renvoie `close_time_resolution: 10` sur les ledgers 67080 à 67717.
+  Les heures de clôture tombent sur des multiples de 10 s, plus 1 ou 2 s quand
+  deux ledgers auraient la même heure : 13:55:31, :40, :50, :51, 13:56:00, :01.
+  Défaut `923F7D61…` à 14:27:01, retrait de couverture `68DD97D9…` à 14:27:22 :
+  21 s affichées, écart réel 20 s ± 10 s. Impairment `5486020B…` : ledger à
+  842538201, `NextPaymentDueDate` 842538193, soit 8 s au ledger contre 5 s à
+  l'horloge du script.
+
+Pourquoi c'est une friction :
+  Avec des `PaymentInterval` et `GracePeriod` de 60 s, la seule façon de tester
+  le calendrier d'un prêt dans un hackathon, l'arrondi représente 1/6 de
+  l'intervalle. Le temps affiché par l'explorer paraît précise à la seconde près,
+  et `tecTOO_SOON` / `tecEXPIRED` se jouent sur cet écart.
+
+Proposition :
+  Indiquer dans la doc Lending (et dans l'explorer) que le temps de comparaison
+  est l'heure de clôture du ledger parent, arrondie à `close_time_resolution`.

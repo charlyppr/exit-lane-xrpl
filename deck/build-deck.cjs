@@ -16,9 +16,11 @@
 // Typo : Poppins partout (Bold titres et chiffres, Medium intitulés, Regular
 // corps, Light phrases longues), Menlo pour le code.
 //
-// Règle de contenu : une idée par slide, un titre et rien en bordure, un chiffre
-// ou une capture plutôt qu'une phrase. Les petites informations qui servent la
-// preuve (hash, flags, délai) vivent dans la barre d'adresse des fenêtres.
+// Règle de contenu : une idée par slide, un chiffre ou une capture plutôt qu'une
+// phrase. Les petites informations qui servent la preuve (hash, flags, délai)
+// vivent dans la barre d'adresse des fenêtres ; une légende d'une ligne sous
+// chaque fenêtre dit ce qu'elle prouve. Numéro de page en bas à droite, sauf
+// sur la slide de titre.
 //
 //   npm install pptxgenjs          # dans un dossier temporaire, PAS dans le projet
 //   node deck/build-deck.cjs deck/exit-lane.pptx
@@ -80,10 +82,15 @@ const RAIL = "image/png;base64," +
 const shot = (n) => path.join(__dirname, "shots", n + ".png");
 const dim = (n) => { const b = fs.readFileSync(shot(n)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 
+const TOTAL = 10;
+let pageNo = 0;
 const slide = (dark) => {
   const sl = p.addSlide();
   sl.background = { color: dark ? NAVY : WHITE };
   sl.addImage({ data: RAIL, x: 0, y: 0, w: 0.10, h: 7.5 });
+  if (++pageNo > 1)
+    sl.addText(`${pageNo} / ${TOTAL}`, { x: MR - 1.2, y: 6.98, w: 1.2, h: 0.25, fontSize: 10,
+      color: dark ? SOFT : MUT, fontFace: FB, align: "right", valign: "middle", isTextBox: true, margin: 0 });
   return sl;
 };
 
@@ -167,59 +174,64 @@ const term = (sl, o) => {
 };
 const fail = (segs) => Object.assign(segs, { fail: true });
 
+/* légende d'une ligne sous une fenêtre : ce que la capture prouve */
+const CAP = 0.3;
+const caption = (sl, t, o) =>
+  txt(sl, t, { x: o.x, y: o.y + 0.08, w: o.w, h: CAP - 0.08, fs: 11.5, color: GREY, ff: FL });
+
 /* ── notes orateur : le pitch minuté, 4 min pile. ───────────────────────── */
 
 const NOTES = [
 `0:00 → 0:15 (15 s)
 
-CY-HACK, track 1. Un vault open-ended promet le retrait à tout moment. Il ne peut plus tenir cette promesse dès qu'il fonctionne bien. Voici pourquoi, ce qu'on a construit, et ce que le protocole nous a appris.`,
+CY-HACK, track 1. An open-ended vault promises withdrawal at any time. It can no longer keep that promise once it works well. Here is why, what we built, and what the protocol taught us.`,
 
 `0:15 → 0:40 (25 s)
 
-Une trésorière d'entreprise dépose 25 XRP. Un broker prête à des PME, sur quatre mois. Un seul LoanSet prend 100 % du vault, sans avertissement. Elle veut retirer : tecINSUFFICIENT_FUNDS, ici dans l'explorer. On l'a rencontré en écrivant la démo.`,
+A corporate treasurer deposits 25 XRP. A broker lends to small businesses, over four months. A single LoanSet takes 100% of the vault, with no warning. She wants to withdraw: tecINSUFFICIENT_FUNDS, here in the explorer. We hit it while writing the demo.`,
 
 `0:40 → 1:00 (20 s)
 
-Aucune transaction XLS-66 ne transfère un prêt. Mais la part de vault est un MPT, donc cessible. On la vend de gré à gré, à 97 % de sa valeur, avec deux escrows sous la même condition SHA-256 : pour prendre les parts, l'acheteur publie le secret qui paie la vendeuse.
+No XLS-66 transaction transfers a loan. But the vault share is an MPT, so it can be transferred. She sells it over the counter, at 97% of its value, with two escrows under the same SHA-256 condition: to take the shares, the buyer publishes the secret that pays the seller.
 
-Q&A : l'escrow de la vendeuse expire avant celui de l'acheteur pour qu'elle ait le temps d'encaisser. Limite : l'acheteur détient une option gratuite d'une heure (README, Known limitations). BatchV1_1 est actif, autre chemin atomique, non testé.`,
+Q&A: the seller's escrow expires before the buyer's so she has time to collect. Limit: the buyer holds a free one-hour option (README, Known limitations). BatchV1_1 is enabled, another atomic path, not tested.`,
 
 `1:00 → 2:00 (60 s)
 
-Passer au terminal, commande déjà tapée : node scripts/demo.mjs --auto (56 s mesurées). Une phrase par scène :
-1. Vault, dépôt, broker, couverture, et un prêt qui prend tout.
-2. Elle veut sortir : refusé.
-3. L'acheteur s'inscrit, deux escrows, il révèle le secret, elle le relit dans le ledger et encaisse.
-4. L'emprunteur rembourse. C'est l'acheteur, qui n'a jamais déposé, qui retire, avec le rendement.
+Switch to the terminal, command already typed: node scripts/demo.mjs --auto (56 s measured). One sentence per scene:
+1. Vault, deposit, broker, cover, and a loan that takes everything.
+2. She wants out: refused.
+3. The buyer opts in, two escrows, he reveals the secret, she reads it back from the ledger and collects.
+4. The borrower repays. The buyer, who never deposited, is the one who withdraws, with the yield.
 
-Si rien ne bouge pendant 15 s : Ctrl+C, revenir sur cette slide. Le terminal de droite est le run de référence, hashes dans le README.`,
+If nothing moves for 15 s: Ctrl+C, come back to this slide. The terminal on the right is the reference run, hashes in the README.`,
 
 `2:00 → 2:10 (10 s)
 
-Les huit étapes du minimum bar dans un seul run, chaque hash dans le README. Les quinze types XLS-65 et XLS-66 soumis au ledger, tous typés dans xrpl 4.6.0. Maintenant, les trois frictions les plus importantes, chacune avec sa correction.`,
+The eight minimum bar steps in a single run, every hash in the README. The fifteen XLS-65 and XLS-66 types submitted to the ledger, all typed in xrpl 4.6.0. Now, the three most important frictions, each with its fix.`,
 
 `2:10 → 2:40 (30 s)
 
-Un : fixCleanup3_4_0 est actif sur le devnet et absent d'xrpl.org. Il change deux choses. L'impairment : le tutoriel dit d'impairer avant l'échéance, le ledger répond tecTOO_SOON jusqu'à l'échéance, à gauche. La signature de l'emprunteur sur LoanSet : nouveau préfixe, que le helper de xrpl 4.6.0 n'utilise pas, à droite.
-Correction : lister l'amendement sur xrpl.org, mettre à jour le tutoriel, signer avec encodeForSigningCounterparty dans xrpl.js.`,
+One: fixCleanup3_4_0 is enabled on the devnet and missing from xrpl.org. It changes two things. Impairment: the tutorial says to impair before the due date, the ledger answers tecTOO_SOON until the due date, on the left. The borrower's signature on LoanSet: a new prefix, which the xrpl 4.6.0 helper does not use, on the right.
+Fix: list the amendment on xrpl.org, update the tutorial, sign with encodeForSigningCounterparty in xrpl.js.`,
 
 `2:40 → 3:05 (25 s)
 
-Deux : un prêt 10 secondes en retard, dans son délai de grâce. Sans flag : tecEXPIRED, à gauche. Avec tfLoanLatePayment : succès, à droite, et l'explorer affiche ce flag en hexadécimal. L'échec est défini dans XLS-66, mais pas dans la référence LoanPay d'xrpl.org.
-Correction : ajouter tecEXPIRED à la référence avec le flag comme remède, et nommer le flag dans l'explorer.`,
+Two: a loan 10 seconds late, within its grace period. Without the flag: tecEXPIRED, on the left. With tfLoanLatePayment: success, on the right, and the explorer shows that flag in hex. The failure is defined in XLS-66, but not in the xrpl.org LoanPay reference.
+Fix: add tecEXPIRED to the reference with the flag as the remedy, and name the flag in the explorer.`,
 
 `3:05 → 3:35 (30 s)
 
-Trois : broker à couverture minimale 10 %, liquidation 5 %. Défaut sur un prêt de 4 XRP. L'explorer montre 0,02 XRP pris sur la couverture : 4 × 10 % × 5 %, au drop près. Le déposant perd 3,98 XRP. C'est la formule documentée. En dessous : 21 secondes après le défaut, le broker retire les 0,98 XRP restants, parce que la dette, et donc le plancher, sont à zéro.
-Correction : afficher la part d'un défaut que la couverture absorbe, et un délai de retrait après un défaut.`,
+Three: a broker with 10% minimum cover, 5% liquidation. Default on a 4 XRP loan. The explorer shows 0.02 XRP taken from the cover: 4 × 10% × 5%, to the drop. The depositor loses 3.98 XRP. That is the documented formula. Below: 21 seconds after the default, by ledger close time, the broker withdraws the remaining 0.98 XRP, because the debt, and so the floor, are at zero.
+Fix: show the share of a default the cover absorbs, and a withdrawal delay after a default.`,
 
 `3:35 → 3:50 (15 s)
 
-Sept autres constats, chacun avec sa sévérité et sa correction dans le rapport. Citer seulement le 7 : la branche du hackathon a retiré la restriction V1.1 sur LoanBrokerSet, et le brief ne le dit pas.`,
+Six more findings, each with its category, severity, repro steps and fix in the report. Only mention number 7: the hackathon branch reverted the V1.1 restriction on LoanBrokerSet, and the brief does not say so.`,
 
 `3:50 → 4:00 (10 s)
 
-Tout est dans FEEDBACK.md, et en trois pages dans FEEDBACK.pdf. Les 143 hashes cités ont été relus sur le ledger avant soumission. Merci.`,
+Everything is in FEEDBACK.md, and in three pages in FEEDBACK.pdf. The 143 hashes cited were re-checked on the ledger before submission. Thank you.`,
 ];
 let slideNo = 0;
 const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
@@ -230,9 +242,9 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   let cx = ML;
   ["XLS-65", "XLS-66", "TokenEscrow"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 2.25, c: CHIPDARK }) + 0.14; });
   txt(sl, "Exit Lane.", { x: ML - 0.05, y: 2.75, w: 9, h: 1.2, fs: 64, bold: true, color: WHITE, ff: FH });
-  txt(sl, "Un vault open-ended promet le retrait à tout moment.\nIl ne peut plus le tenir dès qu'il fonctionne bien.",
+  txt(sl, "An open-ended vault promises withdrawal at any time.\nIt can no longer keep that promise once it works well.",
     { x: ML, y: 4.1, w: 9.5, h: 0.9, fs: 19, color: SOFT, ff: FL, ls: 30 });
-  txt(sl, "CY-HACK   ·   Track 1, vault open-ended   ·   Custom Hackathon Devnet   ·   xrpl@4.6.0",
+  txt(sl, "CY-HACK   ·   Track 1, open-ended vault   ·   Custom Hackathon Devnet   ·   xrpl@4.6.0",
     { x: ML, y: 6.45, w: CW, h: 0.3, fs: 11, color: SKY });
   notes(sl);
 }
@@ -240,29 +252,30 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
 /* ══ 2 — le problème ═════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Ouvert en droit, fermé en fait");
+  title(sl, "Open on paper, closed in practice");
 
-  [["100 %", BLUE, "du vault prêté par un seul LoanSet"],
-   ["0 XRP", ORANGE, "retirable par la déposante"],
-   ["4 mois", NAVY, "avant la dernière échéance"]].forEach(([n, col, l], i) =>
+  [["100%", BLUE, "of the vault lent by a single LoanSet"],
+   ["0 XRP", ORANGE, "withdrawable by the depositor"],
+   ["4 months", NAVY, "until the last payment is due"]].forEach(([n, col, l], i) =>
     stat(sl, n, l, { x: ML, y: 2.0 + i * 1.4, w: 4.8, color: col }));
 
-  explorer(sl, { x: MR - 6.4, y: 2.5, w: 6.4, files: ["d-wall-type", "d-wall-status"],
+  const hw = explorer(sl, { x: MR - 6.4, y: 2.5, w: 6.4, files: ["d-wall-type", "d-wall-status"],
     label: "explorer  ›  VaultWithdraw  ›  7AB5622E…CF934" });
+  caption(sl, "The depositor's withdrawal: refused, the loan took the whole vault.", { x: MR - 6.4, y: 2.5 + hw, w: 6.4 });
   notes(sl);
 }
 
 /* ══ 3 — la réponse ══════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Céder la part de vault, pas le prêt");
+  title(sl, "Sell the vault share, not the loan");
 
   const cw = CW / 4;
   rule(sl, 2.62, LINE, ML + 0.25, cw * 3);
-  [["L'acheteur verrouille son paiement", "EscrowCreate · +2 h"],
-   ["La vendeuse verrouille ses parts", "EscrowCreate · +1 h"],
-   ["L'acheteur prend les parts et révèle le secret", "EscrowFinish"],
-   ["La vendeuse relit le secret et encaisse", "EscrowFinish"],
+  [["The buyer locks the payment", "EscrowCreate · +2 h"],
+   ["The seller locks her shares", "EscrowCreate · +1 h"],
+   ["The buyer takes the shares and reveals the secret", "EscrowFinish"],
+   ["The seller reads the secret and collects", "EscrowFinish"],
   ].forEach(([t, tx], i) => {
     const x = ML + i * cw;
     badge(sl, i + 1, { x, y: 2.37, d: 0.5, fs: 15 });
@@ -271,16 +284,16 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   });
 
   rule(sl, 5.35);
-  txt(sl, "Prix : 97 % de la valeur de part.", { x: ML, y: 5.6, w: 5.6, h: 0.35, fs: 16, color: NAVY, ff: FMED });
-  txt(sl, "Une seule condition SHA-256 pour les deux escrows.", { x: ML + 5.8, y: 5.6, w: 5.8, h: 0.35, fs: 16, color: GREY });
+  txt(sl, "Price: 97% of share value.", { x: ML, y: 5.6, w: 5.6, h: 0.35, fs: 16, color: NAVY, ff: FMED });
+  txt(sl, "One SHA-256 condition for both escrows.", { x: ML + 5.8, y: 5.6, w: 5.8, h: 0.35, fs: 16, color: GREY });
   notes(sl);
 }
 
 /* ══ 4 — démo ════════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
-  txt(sl, "Démo live.", { x: ML - 0.05, y: 2.75, w: 5.2, h: 1.0, fs: 56, bold: true, color: WHITE, ff: FH });
-  txt(sl, "13 transactions en 56 secondes,\nsur le devnet, en direct.", { x: ML, y: 3.9, w: 5, h: 0.8, fs: 18, color: SOFT, ff: FL, ls: 28 });
+  txt(sl, "Live demo.", { x: ML - 0.05, y: 2.75, w: 5.2, h: 1.0, fs: 56, bold: true, color: WHITE, ff: FH });
+  txt(sl, "13 transactions in 56 seconds,\non the devnet, live.", { x: ML, y: 3.9, w: 5, h: 0.8, fs: 18, color: SOFT, ff: FL, ls: 28 });
 
   const L = (label, code) => [["" + label.padEnd(24), X.ink], [code, code === "tesSUCCESS" ? X.ok : X.bad]];
   term(sl, { x: 6.35, y: 1.55, w: 6.1, fs: 11.5, step: 0.31, label: "~/xrpl-lending  $ node scripts/demo.mjs --auto", lines: [
@@ -288,7 +301,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
     L("VaultDeposit", "tesSUCCESS"),
     L("LoanBrokerSet", "tesSUCCESS"),
     L("LoanBrokerCoverDeposit", "tesSUCCESS"),
-    L("LoanSet 100 %", "tesSUCCESS"),
+    L("LoanSet 100%", "tesSUCCESS"),
     fail(L("VaultWithdraw", "tecINSUFFICIENT_FUNDS")),
     L("MPTokenAuthorize", "tesSUCCESS"),
     L("EscrowCreate ×2", "tesSUCCESS"),
@@ -296,7 +309,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
     L("LoanPay", "tesSUCCESS"),
     L("VaultWithdraw", "tesSUCCESS"),
     null,
-    [["Durée totale  00:56", X.dim]],
+    [["Total time  00:56", X.dim]],
   ] });
   notes(sl);
 }
@@ -304,24 +317,24 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
 /* ══ 5 — exécution ═══════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Minimum bar : 8 sur 8");
+  title(sl, "Minimum bar: 8 of 8");
 
   const S = (n, label, tx, c) => [[`${n}  ${label.padEnd(24)}`, X.ink], [tx, c ?? X.cmd]];
-  term(sl, { x: ML, y: 1.95, w: 7.3, fs: 12, step: 0.34, label: "README.md  ›  un hash par étape", lines: [
-    S(1, "Vault open-ended", "VaultCreate"),
-    S(2, "Dépôt", "VaultDeposit"),
-    S(3, "Broker + couverture", "LoanBrokerSet"),
+  term(sl, { x: ML, y: 1.95, w: 7.3, fs: 12, step: 0.34, label: "README.md  ›  one hash per step", lines: [
+    S(1, "Open-ended vault", "VaultCreate"),
+    S(2, "Deposit", "VaultDeposit"),
+    S(3, "Broker + cover", "LoanBrokerSet"),
     S(4, "Origination + drawdown", "LoanSet"),
-    S(5, "Remboursement", "LoanPay"),
-    S(6, "Capital + rendement", "VaultWithdraw"),
-    S(7, "Garde-fous provoqués", "5 × tec + 1 contrôle", X.bad),
+    S(5, "Repayment", "LoanPay"),
+    S(6, "Principal + yield", "VaultWithdraw"),
+    S(7, "Guardrails triggered", "6 × tec + 2 controls", X.bad),
     S(8, "Use case", "Exit Lane"),
     null,
-    [["   valeur de part  1.000000000  →  ", X.dim], ["1.006443880", X.ok]],
+    [["   share value  1.000000000  →  ", X.dim], ["1.006443880", X.ok]],
   ] });
 
-  stat(sl, "15 / 15", "types XLS-65/66 soumis au ledger", { x: 8.85, y: 2.25, w: 3.6, fs: 44, color: BLUE });
-  stat(sl, "0", "type manquant dans xrpl@4.6.0", { x: 8.85, y: 4.05, w: 3.6, fs: 44, color: BLUE });
+  stat(sl, "15 / 15", "XLS-65/66 types submitted to the ledger", { x: 8.85, y: 2.25, w: 3.6, fs: 44, color: BLUE });
+  stat(sl, "0", "missing types in xrpl@4.6.0", { x: 8.85, y: 4.05, w: 3.6, fs: 44, color: BLUE });
   notes(sl);
 }
 
@@ -338,11 +351,11 @@ const facts = (sl, y0, rows) => {
 /* ══ 6 — friction 1 : fixCleanup3_4_0 ════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "fixCleanup3_4_0 : actif, absent d'xrpl.org");
-  txt(sl, "Deux comportements de prêt changent sur le devnet.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
+  title(sl, "fixCleanup3_4_0: enabled, missing from xrpl.org");
+  txt(sl, "Two lending behaviours change on the devnet.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
 
   const W = (CW - 0.4) / 2;
-  term(sl, { x: ML, y: 2.45, w: W, fs: 12, step: 0.36, label: "LoanManage tfLoanImpair  ›  échéance T", lines: [
+  const ht = term(sl, { x: ML, y: 2.45, w: W, fs: 12, step: 0.36, label: "LoanManage tfLoanImpair  ›  due date T", lines: [
     fail([["T − 31 s    ", X.dim], ["tecTOO_SOON", X.bad]]),
     fail([["T − 13 s    ", X.dim], ["tecTOO_SOON", X.bad]]),
     [["T +  5 s    ", X.dim], ["tesSUCCESS", X.ok]],
@@ -354,11 +367,13 @@ const facts = (sl, y0, rows) => {
     [["encodeForSigningCounterparty", X.ink]],
     [["  tesSUCCESS   ", X.ok], ["23631C36…", X.dim]],
   ] });
+  caption(sl, "Impairment refused before the due date, accepted 5 s after.", { x: ML, y: 2.45 + ht, w: W });
+  caption(sl, "The xrpl@4.6.0 helper is rejected, the new encoding passes.", { x: ML + W + 0.4, y: 2.45 + ht, w: W });
 
   facts(sl, 5.45, [
-    ["Tutoriel Manage a Loan", "« impair a loan before a payment due date passes »"],
-    ["xrpl@4.6.0", "signLoanSetByCounterparty signe avec l'ancien préfixe."],
-    ["Correction proposée", "lister l'amendement, signer avec encodeForSigningCounterparty."],
+    ["Manage a Loan tutorial", "“impair a loan before a payment due date passes”"],
+    ["xrpl@4.6.0", "signLoanSetByCounterparty signs with the previous prefix."],
+    ["Proposed fix", "list the amendment, sign with encodeForSigningCounterparty."],
   ]);
   notes(sl);
 }
@@ -366,17 +381,19 @@ const facts = (sl, y0, rows) => {
 /* ══ 7 — friction 2 : paiement en retard ═════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Un LoanPay en retard exige tfLoanLatePayment");
-  txt(sl, "Prêt en retard, encore dans son délai de grâce.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
+  title(sl, "A late LoanPay requires tfLoanLatePayment");
+  txt(sl, "Loan past due, still within its grace period.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
 
   const W = (CW - 0.4) / 2;
   const h = explorer(sl, { x: ML, y: 2.45, w: W, files: ["f1a-type", "f1a-status"], label: "Flags 0  ›  96C38704…" });
   explorer(sl, { x: ML + W + 0.4, y: 2.45, w: W, h, files: ["f1b-type", "f1b-flags"], label: "Flags 262144  ›  EFAD383F…" });
+  caption(sl, "Same loan, same amount, no flag: tecEXPIRED.", { x: ML, y: 2.45 + h, w: W });
+  caption(sl, "Same loan, same amount, with tfLoanLatePayment: success.", { x: ML + W + 0.4, y: 2.45 + h, w: W });
 
   facts(sl, 5.45, [
-    ["XLS-66, §3.11.4.2", "l'échec est défini (condition 11)."],
-    ["Référence LoanPay", "huit codes d'erreur listés sur xrpl.org, tecEXPIRED n'y figure pas."],
-    ["Correction proposée", "tecEXPIRED dans la référence LoanPay, flag nommé dans l'explorer."],
+    ["XLS-66, §3.11.4.2", "the failure is defined (condition 11)."],
+    ["LoanPay reference", "eight error codes listed on xrpl.org, tecEXPIRED is not one of them."],
+    ["Proposed fix", "tecEXPIRED in the LoanPay reference, flag named in the explorer."],
   ]);
   notes(sl);
 }
@@ -384,40 +401,42 @@ const facts = (sl, y0, rows) => {
 /* ══ 8 — friction 3 : first-loss capital ═════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "First-loss capital : 0,5 % d'un prêt en défaut");
+  title(sl, "First-loss capital: 0.5% of a defaulted loan");
 
-  stat(sl, "1 XRP", "de couverture posée par le broker", { x: ML, y: 1.85, w: 5.6 });
-  stat(sl, "0,02 XRP", "prélevés sur la couverture au défaut", { x: ML, y: 2.95, w: 5.6, color: ORANGE });
-  stat(sl, "3,98 XRP", "perdus par le déposant, 79,6 %", { x: ML, y: 4.05, w: 5.6 });
+  stat(sl, "1 XRP", "of cover posted by the broker", { x: ML, y: 1.85, w: 5.6 });
+  stat(sl, "0.02 XRP", "taken from the cover at default", { x: ML, y: 2.95, w: 5.6, color: ORANGE });
+  stat(sl, "3.98 XRP", "lost by the depositor, 79.6%", { x: ML, y: 4.05, w: 5.6 });
 
   rule(sl, 5.2, LINE, ML, 5.9);
-  txt(sl, "4 XRP de dette × CoverRateMinimum 10 % × CoverRateLiquidation 5 %",
+  txt(sl, "4 XRP debt × CoverRateMinimum 10% × CoverRateLiquidation 5%",
     { x: ML, y: 5.36, w: 6.2, h: 0.25, fs: 10.5, color: GREY, ff: FM });
-  txt(sl, "Même ratio sur un prêt de 50 XRP : 0,25 XRP.", { x: ML, y: 5.68, w: 6, h: 0.3, fs: 12.5, color: MUT });
-  txt(sl, "Correction proposée", { x: ML, y: 6.12, w: 5.9, h: 0.3, fs: 13, color: BLUE, ff: FMED });
-  txt(sl, "Afficher la part d'un défaut que la couverture absorbe.\nUn délai sur LoanBrokerCoverWithdraw après un défaut.",
+  txt(sl, "Same ratio on a 50 XRP loan: 0.25 XRP.", { x: ML, y: 5.68, w: 6, h: 0.3, fs: 12.5, color: MUT });
+  txt(sl, "Proposed fix", { x: ML, y: 6.12, w: 5.9, h: 0.3, fs: 13, color: BLUE, ff: FMED });
+  txt(sl, "Show the share of a default the cover absorbs.\nA delay on LoanBrokerCoverWithdraw after a default.",
     { x: ML, y: 6.44, w: 5.9, h: 0.62, fs: 13, color: NAVY, ls: 20 });
 
-  const W = 5.0, x = MR - W;
-  const h1 = explorer(sl, { x, y: 1.8, w: W, files: ["f3a-type", "f3a-meta"], label: "LoanManage tfLoanDefault  ›  923F7D61…" });
-  explorer(sl, { x, y: 1.8 + h1 + 0.22, w: W, files: ["f3b-type", "f3b-amount", "f3b-date"], label: "21 s après le défaut  ›  68DD97D9…" });
+  const W = 4.7, x = MR - W, y1 = 1.7;
+  const h1 = explorer(sl, { x, y: y1, w: W, files: ["f3a-type", "f3a-meta"], label: "LoanManage tfLoanDefault  ›  923F7D61…" });
+  caption(sl, "Default: 0.02 XRP taken from the broker's cover.", { x, y: y1 + h1, w: W });
+  const y2 = y1 + h1 + CAP + 0.1;
+  const h2 = explorer(sl, { x, y: y2, w: W, files: ["f3b-type", "f3b-amount", "f3b-date"], label: "21 s after the default  ›  68DD97D9…" });
+  caption(sl, "21 s later, the broker withdraws the remaining cover.", { x, y: y2 + h2, w: W });
   notes(sl);
 }
 
-/* ══ 9 — feedback : les sept autres ══════════════════════════════════════ */
+/* ══ 9 — feedback : les six autres ═══════════════════════════════════════ */
 {
   const sl = slide();
-  title(sl, "Sept autres constats");
+  title(sl, "Six more findings");
 
   // numéro = section de FEEDBACK.md
   const F = [
-    [4, "Exception du porteur unique absente d'xrpl.org", "LossUnrealized"],
-    [5, "loan_info et loan_broker_info absents", "unknownCmd"],
-    [6, "Quatre codes, deux à trois causes chacun", "tecINSUFFICIENT_FUNDS"],
-    [7, "Restriction V1.1 de LoanBrokerSet retirée", "tesSUCCESS"],
-    [8, "Devnet sur les ports 51233 et 51234 seulement", "réseau"],
-    [9, "Aucun flag ne ferme un vault aux dépôts", "tecLIMIT_EXCEEDED"],
-    [10, "Parts de vault lsfMPTCanTrade, OfferCreate refusé", "temDISABLED"],
+    [4, "Sole-holder exception missing from xrpl.org", "LossUnrealized"],
+    [5, "No loan_info or loan_broker_info", "unknownCmd"],
+    [6, "Four codes, two or three causes each", "tecINSUFFICIENT_FUNDS"],
+    [7, "V1.1 LoanBrokerSet restriction reverted", "tesSUCCESS"],
+    [8, "Shares carry lsfMPTCanTrade, OfferCreate refused", "temDISABLED"],
+    [9, "No flag closes a vault to deposits", "tecLIMIT_EXCEEDED"],
   ];
   const gap = 0.6, w = (CW - gap) / 2;
   F.forEach(([n, t, code], i) => {
@@ -427,18 +446,18 @@ const facts = (sl, y0, rows) => {
     txt(sl, t, { x: x + 0.52, y: y + 0.26, w: w - 0.52, h: 0.34, fs: 14, color: NAVY, ff: FMED, valign: "middle" });
     chip(sl, code, { x: x + 0.52, y: y + 0.72, fs: 9 });
   });
-  txt(sl, "Sévérité et correction proposée pour chacun dans le rapport.",
-    { x: ML + w + gap + 0.52, y: 1.95 + 3 * 1.2 + 0.3, w: w - 0.52, h: 0.6, fs: 13, color: GREY, ff: FL });
+  txt(sl, "Category, severity, repro steps and proposed fix for each in the report.",
+    { x: ML + 0.52, y: 1.95 + 3 * 1.2 + 0.3, w: CW - 0.52, h: 0.6, fs: 13, color: GREY, ff: FL });
   notes(sl);
 }
 
 /* ══ 10 — clôture ════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
-  title(sl, "Dix constats, trois pages", true);
+  title(sl, "Nine findings, three pages", true);
 
   txt(sl, "143 / 143", { x: ML - 0.04, y: 2.15, w: 8, h: 1.25, fs: 76, bold: true, color: SKY, ff: FH });
-  txt(sl, "hashes cités, relus sur le ledger avant soumission", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
+  txt(sl, "hashes cited, re-checked on the ledger before submission", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
 
   rule(sl, 4.6, "1C3D85");
   txt(sl, "github.com/charlyppr/xrpl-lending", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });
