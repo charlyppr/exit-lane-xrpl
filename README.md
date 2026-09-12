@@ -51,7 +51,7 @@ Track 1, and it is what this project addresses.
 
 ## The problem, reproduced on demand
 
-`node scripts/demo.mjs` reproduces it in about 75 seconds:
+`node scripts/demo.mjs --auto` reproduces it in 56 seconds:
 
 1. A single `LoanSet` takes **100% of `AssetsAvailable`**. It is accepted with
    no warning, no liquidity buffer, no cap. ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7E3006E82C7DF3ECC918093C0B2E93741A18B69A102BB8FD4EF825205F63BAB0))
@@ -242,7 +242,7 @@ Consent is individual: `CONSENT=no` records a refusal and disables all capture.
 
 | File | What it does |
 |---|---|
-| `scripts/demo.mjs` | The pitch. Pauses between scenes; `--auto` runs straight through |
+| `scripts/demo.mjs` | The pitch. Pauses between scenes; `--auto` runs straight through in 56 s |
 | `scripts/lib/scenario.mjs` | The scenario itself, shared so demo and proof runs cannot drift apart |
 | `scripts/lib/nav.mjs` | Share value, utilisation, available liquidity — everything `vault_info` does not return |
 | `scripts/step-8-secondary.mjs` | Same scenario, unattended, prints hashes |
