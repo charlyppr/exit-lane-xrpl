@@ -2521,6 +2521,18 @@ Ce qui rend l'observation solide plutôt que théorique :
   et c'est le plus dangereux des trois : les deux premiers produisent un
   `NaN` bruyant, celui-ci produit **un chiffre faux et plausible**.
 
+Tx / code : `LoanManage` `tfLoanImpair` →
+  `C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC`
+  Les métadonnées de cette transaction contiennent la preuve directe des deux
+  points de cette entrée, sur le nœud `Vault` `4275B5371C92…` :
+
+      LossUnrealized : (champ ABSENT)  →  3000001
+      Loan.Flags     : 0               →  131072
+
+  L'impairment **crée** le champ. Sur un vault sain il n'existe donc pas du
+  tout, ce qui explique qu'on puisse écrire un lecteur de vault complet sans
+  jamais le croiser — c'est exactement ce qui nous est arrivé.
+
 Preuve à charge pour H9 : nous avons désormais deux implémentations de la
 valeur de part dans ce dépôt — la naïve et la correcte — et elles divergent de
 150 % sur le même nœud. Aucune n'est fournie par le protocole.
