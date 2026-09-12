@@ -212,8 +212,9 @@ Full report: [`FEEDBACK.md`](./FEEDBACK.md), typeset in three pages with explore
 screenshots in [`FEEDBACK.pdf`](./FEEDBACK.pdf) · Raw capture log:
 [`FEEDBACK-RAW.md`](./FEEDBACK-RAW.md)
 
-Seventy-one entries with hashes, ten findings in the report, each with its
-category, severity, library version and a proposed fix. The three most important
+Seventy-one entries with hashes, nine findings and three minor issues in the
+report, each with its category, severity, library version, repro steps and a
+proposed fix. The three most important
 friction points, and what we propose:
 
 1. **`fixCleanup3_4_0` is active on the devnet and missing from xrpl.org.** It
