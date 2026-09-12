@@ -89,3 +89,26 @@ Chiffres du deck synchronisés avec le dépôt au 12/09 19h30 : démo 13
 transactions en 56 s, part 1,000000000 → 1,006443880, H13 et H14 tranchées.
 Aucun compteur mouvant n'est écrit sur une slide — `FEEDBACK-RAW.md` grossit
 encore, et un chiffre faux au pitch coûte plus que le chiffre ne rapporte.
+
+## `feedback-report.pdf` — le rapport de feedback
+
+Même contenu que `FEEDBACK.md`, dans la DA du deck, avec de vraies captures de
+l'explorer. Trois pages, faits uniquement, sans recommandation.
+
+```bash
+node deck/capture-explorer.mjs                             # captures → deck/shots/
+tectonic -X compile deck/feedback-report.tex --outdir deck
+```
+
+`capture-explorer.mjs` pilote Chrome headless (protocole DevTools, sans
+dépendance), refuse le bandeau cookies, et recadre chaque capture sur un élément
+du DOM de l'explorer. Viewport 460 px, rendu ×5,25 : le PDF place toutes les
+captures au même grossissement.
+
+Pièges rencontrés, notés dans les fichiers :
+
+1. Option `Color=` de fontspec : casse `xdvipdfmx` avec `tcolorbox`
+   (`typecheck: Invalid object type`). Colorer avec `\color`.
+2. `HelveticaNeue.ttc` sans faces déclarées : `\bfseries` sort en *Bold Italic*.
+3. `new URL(...).pathname` garde l'espace du chemin encodé en `%20` ; utiliser
+   `fileURLToPath`.

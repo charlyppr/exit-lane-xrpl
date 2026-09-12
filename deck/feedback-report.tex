@@ -1,0 +1,488 @@
+% XRPL Lending Protocol Hackathon · CY-HACK · Developer Feedback (3 pages)
+% Build : tectonic -X compile deck/feedback-report.tex --outdir deck
+% Captures : node deck/capture-explorer.mjs   (→ deck/shots/*.png)
+% DA du deck : navy 001C5C · bleu 006AFF · ciel 6DC3FF · corps 5F666E
+\documentclass[a4paper,10pt]{extarticle}
+
+\usepackage[margin=11mm,top=9.5mm,bottom=11mm,footskip=5.5mm]{geometry}
+\usepackage{fontspec}
+\usepackage[table]{xcolor}
+\usepackage{tabularx,booktabs,array,colortbl}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage{xfp}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{ragged2e}
+\usepackage{lastpage}
+\tcbuselibrary{skins}
+\graphicspath{{deck/shots/}{shots/}}
+
+% ── DA ──
+\definecolor{navy}{HTML}{001C5C}
+\definecolor{blue}{HTML}{006AFF}
+\definecolor{sky}{HTML}{6DC3FF}
+\definecolor{body}{HTML}{5F666E}
+\definecolor{muted}{HTML}{8A9096}
+\definecolor{card}{HTML}{F6F7F8}
+\definecolor{line}{HTML}{E2E5E8}
+\definecolor{bluecard}{HTML}{EBF4FF}
+\definecolor{chipbg}{HTML}{BAEAFF}
+\definecolor{chiptx}{HTML}{0045C6}
+\definecolor{peachbg}{HTML}{FAEDE7}
+\definecolor{peachfg}{HTML}{C4562F}
+
+% Faces déclarées explicitement : laissée à la résolution automatique,
+% HelveticaNeue.ttc sort \bfseries en Bold Italic. Pas d'option Color= non plus :
+% elle casse xdvipdfmx avec tcolorbox (« Invalid object type »).
+\setmainfont{Helvetica Neue}[
+  UprightFont = {Helvetica Neue}, BoldFont = {Helvetica Neue Bold},
+  ItalicFont = {Helvetica Neue Italic}, BoldItalicFont = {Helvetica Neue Bold Italic}]
+\setmonofont{Menlo}[Scale=0.84,
+  UprightFont = {Menlo Regular}, BoldFont = {Menlo Bold},
+  ItalicFont = {Menlo Italic}, BoldItalicFont = {Menlo Bold Italic}]
+\newfontfamily\hdfont{Poppins}[BoldFont={Poppins SemiBold}]
+\makeatletter\renewcommand\normalsize{\@setfontsize\normalsize{9.6}{11.6}}\makeatother
+\AtBeginDocument{\color{body}\normalsize}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2.6pt}
+\linespread{1.02}
+\raggedcolumns
+% Les listes posent une pénalité négative (−51) avant et après elles : avec des
+% colonnes non étirées, c'est la coupure la moins chère, et multicols coupe là en
+% laissant un vide. On la neutralise, et on interdit les lignes orphelines ou veuves
+% (LaTeX recharge \clubpenalty depuis \@clubpenalty à chaque paragraphe).
+\makeatletter
+\@beginparpenalty=0 \@endparpenalty=0 \@itempenalty=0
+\@clubpenalty=10000 \clubpenalty=10000 \widowpenalty=10000
+\makeatother
+\setlength{\columnsep}{6mm}
+\setlength{\columnseprule}{0.4pt}
+\renewcommand{\columnseprulecolor}{\color{line}}
+\arrayrulecolor{line}
+\renewcommand{\tabularxcolumn}[1]{m{#1}}
+\renewcommand{\arraystretch}{1.2}
+
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancyfoot[L]{\scriptsize\color{muted}CY-HACK · XRPL Lending Protocol Hackathon}
+\fancyfoot[R]{\scriptsize\color{muted}\thepage\,/\,\pageref{LastPage}}
+
+% ── briques ──
+\newcommand{\hh}[1]{\par\addvspace{5pt}{\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000\hdfont\color{navy}\fontsize{10.4}{12.2}\selectfont\bfseries #1\par}\nobreak\addvspace{1.5pt}}
+\newcommand{\hs}[1]{{\color{navy}\bfseries #1}}
+\newcommand{\tm}[1]{{\ttfamily\color{navy}#1}}
+\newcommand{\lab}[1]{{\color{blue}\bfseries #1}\enspace}
+% hash abrégé 8+8 dans les tableaux ; le hash complet est dans FEEDBACK.md
+\newcommand{\hsh}[2]{{\ttfamily\fontsize{6}{7}\selectfont\color{body}#1…#2}}
+\newcommand{\ev}[1]{\par{\raggedright\ttfamily\fontsize{5.3}{6.6}\selectfont\color{muted}#1\par}}
+\newcommand{\chip}[3]{\tcbox[on line,colback=#1,colframe=#1,boxsep=0pt,left=2.4pt,right=2.4pt,
+  top=1pt,bottom=1pt,arc=1.5pt]{\fontsize{5.8}{6}\selectfont\color{#2}\bfseries\MakeUppercase{#3}}}
+
+% ── captures d'écran de l'explorer ──
+% Toutes au même grossissement : 460 px CSS (2415 px à ×5,25) remplissent la largeur
+% utile de la carte. Le titre trop long pour 460 px est ramené à la largeur.
+\newtcolorbox{screen}{enhanced,colback=black,colframe=black,boxrule=0pt,arc=2.4pt,
+  left=3.5pt,right=3.5pt,top=3pt,bottom=3pt,boxsep=0pt,before skip=4pt,after skip=2pt}
+\newcommand{\shot}[1]{\includegraphics[scale=\fpeval{\linewidth/2415bp}]{#1.png}\par}
+\newcommand{\shotw}[1]{\includegraphics[width=\linewidth]{#1.png}\par}
+\newcommand{\capt}[1]{{\raggedright\fontsize{6.3}{7.6}\selectfont\color{muted}#1\par}\addvspace{2pt}}
+\setlist[itemize]{leftmargin=8pt,itemsep=1.2pt,topsep=1.5pt,parsep=0pt,label={\color{blue}\textbullet}}
+
+\begin{document}
+
+% ═══════════ BANDEAU ═══════════
+\begin{tcolorbox}[colback=navy,colframe=navy,boxrule=0pt,arc=2.5pt,left=8pt,right=8pt,top=6pt,bottom=6pt,boxsep=0pt]
+\begin{minipage}[c]{0.66\linewidth}
+{\hdfont\color{white}\fontsize{15}{16.5}\selectfont\bfseries XRPL Lending Protocol · Developer Feedback}\\[2pt]
+{\fontsize{7.2}{8.6}\selectfont\color{sky}Hackathon DeVinci Blockchain × Ripple · 12 and 13 September 2026}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.32\linewidth}\raggedleft
+{\hdfont\color{white}\fontsize{9}{10}\selectfont\bfseries CY-HACK}\\[1.5pt]
+{\fontsize{6.4}{7.6}\selectfont\color{sky}Track 1 · open-ended vault\\
+XLS-65, XLS-66 and TokenEscrow\\
+\texttt{github.com/charlyppr/xrpl-lending}}
+\end{minipage}
+\end{tcolorbox}
+
+\vspace{2pt}
+{\setlength{\tabcolsep}{4pt}\fontsize{6.7}{8.2}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X@{}}
+{\color{blue}\bfseries NETWORK} & {\color{blue}\bfseries LIBRARY} & {\color{blue}\bfseries FIRST TRANSACTION} & {\color{blue}\bfseries VERIFICATION}\\
+Custom Hackathon Devnet · \tm{rippled} 3.4.0-rc1, hackathon branch · \tm{LendingProtocolV1\_1} and \tm{fixCleanup3\_4\_0} enabled &
+\hs{\texttt{xrpl@4.6.0}} · the 15 XLS-65/66 transaction types are typed · no raw JSON &
+\hs{50 minutes}, of which 45 on blocked ports (finding 8) &
+\hs{143 of 143} cited hashes validated on the ledger · docs checked against XLS-65, XLS-66 and xrpl.org · library claims against the \tm{rippled} and \tm{xrpl.js} source\\
+\end{tabularx}}
+
+\vspace{3pt}
+{\renewcommand{\arraystretch}{1.1}\setlength{\tabcolsep}{3.5pt}\fontsize{7}{8.4}\selectfont
+\begin{tabularx}{\linewidth}{@{}c >{\raggedright\arraybackslash}X l l@{}}
+\rowcolor{card}
+{\bfseries\color{navy}\#} & {\bfseries\color{navy}Finding} & {\bfseries\color{navy}Category} & {\bfseries\color{navy}Checked against}\\
+\midrule
+1 & \tm{fixCleanup3\_4\_0} changes impairment timing and the \tm{LoanSet} counterparty signature. xrpl.org does not list it. & docs, amendments & ledger, XLS-66, rippled\\
+\rowcolor{card}
+2 & A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}. The xrpl.org \tm{LoanPay} reference does not list this failure. & docs, error codes & ledger, XLS-66, xrpl.org\\
+3 & The first-loss capital covered 0.5\,\% of a defaulted loan. The broker then withdrew the remaining cover. & design, naming & ledger, xrpl.org\\
+\rowcolor{card}
+4 & xrpl.org omits the sole-holder exception to share value. \tm{LossUnrealized} is absent from the node while zero. & docs, UX & ledger, XLS-65, xrpl.org\\
+5 & \tm{loan\_info} and \tm{loan\_broker\_info} do not exist. \tm{mpt\_holders} needs Clio, which the devnet does not expose. & missing primitive & ledger, xrpl.org\\
+\rowcolor{card}
+6 & Four result codes each cover situations that call for different actions. & error codes & ledger\\
+7 & The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction. The event brief does not mention it. & event docs & ledger, rippled\\
+\rowcolor{card}
+8 & The devnet listens only on ports 51233 and 51234. A filtered port and a stalled node show the same signature. & infrastructure & network tests\\
+9 & Closing a vault to deposits requires setting \tm{AssetsMaximum} to \tm{AssetsTotal}. & missing primitive & ledger, xrpl.org\\
+\rowcolor{card}
+10 & Vault shares carry \tm{lsfMPTCanTrade}. \tm{OfferCreate} with a share amount returns \tm{temDISABLED}. & docs, MPT & ledger, xrpl.org\\
+\end{tabularx}}
+
+\vspace{1pt}
+\begin{multicols}{2}\RaggedRight
+
+% ───────────── 1 ─────────────
+\hh{1 · \tm{fixCleanup3\_4\_0} is enabled and not listed on xrpl.org}
+
+The \tm{feature} command reports \tm{fixCleanup3\_4\_0} as enabled on the devnet. The xrpl.org
+\emph{Known Amendments} page does not list it. The amendment changes two lending behaviours.
+
+\lab{Impairment.}XLS-66, section 3.10.4.2, condition 9: with \tm{fixCleanup3\_4\_0},
+\tm{tfLoanImpair} fails while \tm{currentTime <= NextPaymentDueDate}. The xrpl.org tutorial
+\emph{Manage a Loan} says a broker can ``\emph{manually impair a loan before a payment due date
+passes}''.
+
+{\setlength{\tabcolsep}{3pt}\fontsize{7}{8.4}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Time relative to \texttt{NextPaymentDueDate}} & {\bfseries\color{navy}\texttt{tfLoanImpair}}\\
+\midrule
+31 s before & \tm{tecTOO\_SOON}\\
+\rowcolor{card}
+13 s before & \tm{tecTOO\_SOON}\\
+5 s after & \tm{tesSUCCESS}\\
+\end{tabularx}}
+\ev{5 s after: 5486020BA8FF227C58409042F96BDC07246FDACC3F9B0EF24749555E319E972E}
+
+\lab{Counterparty signature.}rippled PR \#8162: with \tm{fixCleanup3\_4\_0},
+\tm{CounterpartySignature} uses the \tm{CPT} signing prefix. In \tm{xrpl@4.6.0},
+\tm{signLoanSetByCounterparty} signs with \tm{encodeForSigning}, the previous prefix, and has no
+option to change it. Its \tm{LoanSet} fails local checks with \tm{Counterparty: Invalid
+signature}. The same \tm{LoanSet} signed with \tm{encodeForSigningCounterparty} from
+\tm{ripple-binary-codec} returned \tm{tesSUCCESS}.
+\ev{23631C3610DA97926E8BF9FC5BC4E76E504C9DFB2683C928E825DE0138397B2B}
+
+% ───────────── 2 ─────────────
+\hh{2 · A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}}
+
+A loan 10 s past \tm{NextPaymentDueDate}, within its grace period, rejected four \tm{LoanPay}
+transactions with \tm{tecEXPIRED}: the instalment, the instalment plus \tm{LatePaymentFee}, the
+full balance, and a payment with \tm{tfLoanFullPayment}. The same payment with
+\tm{tfLoanLatePayment} (262144) returned \tm{tesSUCCESS}.
+
+\begin{itemize}
+\item XLS-66, section 3.11.4.2, condition 11 defines this failure. The xrpl.org \tm{LoanPay} reference lists eight error codes, and \tm{tecEXPIRED} is not among them.
+\item xrpl.org describes \tm{tfLoanLatePayment} as ``\emph{Indicates that the borrower is making a late loan payment}''.
+\item The explorer shows \tm{tfLoanImpair} and \tm{tfLoanDefault} by name, and \tm{tfLoanLatePayment} as \tm{0x00040000}.
+\item No field of the \tm{Loan} node changed during 85 s of lateness, and no field holds the accrued late interest. A payment of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returned \tm{tecINSUFFICIENT\_PAYMENT}. A payment of 2\,765\,001 drops returned \tm{tesSUCCESS}, and 765\,003 drops were taken.
+\end{itemize}
+
+\begin{screen}
+\shot{f1a-type}\shot{f1a-status}
+\end{screen}
+\capt{Explorer. \texttt{LoanPay} of 1.030001 XRP without flags.}
+\ev{96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4}
+\begin{screen}
+\shot{f1b-type}\shot{f1b-flags}
+\end{screen}
+\capt{Explorer. Same loan, same amount, with \texttt{tfLoanLatePayment}.}
+\ev{EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F\\
+overpayment 9A7589384C5142703AFFACBB91B12E223EC734F7ACBE51272A87525FE4EE9CA8}
+
+% ───────────── 3 ─────────────
+\hh{3 · The first-loss capital covered 0.5\,\% of a defaulted loan}
+
+Both brokers used \tm{CoverRateMinimum} 10\,\% and \tm{CoverRateLiquidation} 5\,\%.
+
+{\setlength{\tabcolsep}{2.8pt}\fontsize{6.8}{8.2}\selectfont
+\begin{tabularx}{\linewidth}{@{}r r r r r >{\raggedleft\arraybackslash}X@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Vault} & {\bfseries\color{navy}Loan} & {\bfseries\color{navy}Cover} & {\bfseries\color{navy}Taken} & {\bfseries\color{navy}Loss} & {\bfseries\color{navy}Share value}\\
+\midrule
+200 XRP & 50 & 50 & 0.25 & 49.75 & 1.000\,$\rightarrow$\,0.751\\
+\rowcolor{card}
+5 XRP & 4 & 1 & 0.02 & 3.98 & 1.000\,$\rightarrow$\,0.204\\
+\end{tabularx}}
+
+On both vaults the cover taken equals \tm{debt $\times$ 10\% $\times$ 5\%} to the drop. The
+xrpl.org Lending Protocol page gives this formula, with an example that covers 1\,\% of the
+debt. \tm{CoverRateLiquidation} applies to the minimum cover (\tm{DebtTotal $\times$
+CoverRateMinimum}), not to the defaulted amount. After a default, \tm{DebtTotal} is zero and so
+is the cover floor.
+
+Second vault, in ledger order:
+
+{\setlength{\tabcolsep}{2.8pt}\fontsize{6.8}{8.2}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X l@{}}
+\rowcolor{card}
+{\bfseries\color{navy}UTC} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Result}\\
+\midrule
+14:23:50 & \tm{VaultWithdraw}, all shares & \tm{tecINSUFFICIENT\_FUNDS}\\
+\rowcolor{card}
+14:27:01 & \tm{LoanManage} \tm{tfLoanDefault} & \tm{tesSUCCESS}\\
+14:27:11 & \tm{VaultWithdraw}, all shares, 1.02 XRP & \tm{tesSUCCESS}\\
+\rowcolor{card}
+14:27:22 & \tm{LoanBrokerCoverWithdraw}, 0.98 XRP & \tm{tesSUCCESS}\\
+\end{tabularx}}
+\ev{D91BA47E816FDA60F9BBAD7F100B383099D87021B08DE065E841B9E8E34AFE2D\\
+3338BA629F8772CDEC07B6F714F2AF3A1ADC8E93642429A54B95CF372FDB2880\\
+first vault default 91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7}
+
+\begin{screen}
+\shot{f3a-type}\shot{f3a-flags}\shot{f3a-meta}
+\end{screen}
+\capt{Explorer. The default moves 0.02 XRP from the broker's pseudo-account (\texttt{rbhF8…}) to the vault's (\texttt{rsR4Q…}).}
+\ev{923F7D616B094C82197506CF2867907A93067041E3990D24BD07A19035F73EAC}
+\begin{screen}
+\shotw{f3b-type}\shot{f3b-amount}\shot{f3b-date}
+\end{screen}
+\capt{Explorer. The broker withdraws the remaining cover 21 s after the default.}
+\ev{68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E}
+
+% ───────────── 4 ─────────────
+\hh{4 · Share value and \tm{LossUnrealized}}
+
+XLS-65 computes the assets returned on redemption as
+\tm{shares $\times$ (AssetsTotal − LossUnrealized) / total shares}, and waives the
+\tm{LossUnrealized} deduction when the withdrawer is the sole outstanding shareholder. The
+xrpl.org Single Asset Vault page gives the formula and does not mention the exception.
+
+\begin{itemize}
+\item The \tm{Vault} node has no \tm{LossUnrealized} field until an impairment writes one. The impairment below moved it from absent to \tm{"3000001"}, with \tm{AssetsTotal} at \tm{"5000002"}.
+\item \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining} and \tm{TotalValueOutstanding} are also absent from their node when zero.
+\item The explorer's \emph{Detailed} tab shows ``\emph{It modified a node with type Vault}'' without field values. \tm{LossUnrealized} appears in the \emph{Raw} tab once the node is expanded.
+\end{itemize}
+
+\begin{screen}
+\shot{f2-type}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
+\end{screen}
+\capt{Explorer. \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
+\ev{C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC}
+
+% ───────────── 5 ─────────────
+\hh{5 · Read commands}
+
+\tm{vault\_info} is a \tm{rippled} command. \tm{loan\_info} and \tm{loan\_broker\_info} return
+\tm{unknownCmd} and have no documentation page. xrpl.org documents \tm{mpt\_holders} as
+Clio-only. The devnet endpoints serve \tm{rippled}, where \tm{mpt\_holders} returns
+\tm{unknownCmd}. A depositor's view takes five calls:
+
+{\setlength{\tabcolsep}{2.8pt}\fontsize{6.8}{8.2}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Call} & {\bfseries\color{navy}Returns}\\
+\midrule
+\tm{vault\_info} & vault totals, share issuance and share flags\\
+\rowcolor{card}
+\tm{account\_objects} \tm{mptoken} & the depositor's shares\\
+\tm{account\_objects} on the owner & the broker, filtered on \tm{VaultID}\\
+\rowcolor{card}
+\tm{account\_objects} \tm{loan} & the loans, on the broker's pseudo-account\\
+\tm{mpt\_holders} & \tm{unknownCmd}\\
+\end{tabularx}}
+
+Six values are computed client-side: gross and net share value, position value, withdrawable
+amount, utilisation and broker debt capacity.
+
+% ───────────── 6 ─────────────
+\hh{6 · Four result codes cover situations that call for different actions}
+
+{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X r@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Code} & {\bfseries\color{navy}Situation} & {\bfseries\color{navy}Hash}\\
+\midrule
+\tm{tecINSUFFICIENT\_FUNDS} & \tm{LoanSet} above the cover limit & \hsh{5DC3A6E0}{4147618B}\\
+ & \tm{LoanSet} above the vault liquidity & \hsh{B92A90F5}{259F9CAA}\\
+ & \tm{LoanBrokerCoverWithdraw} below the floor & \hsh{4FB4A2B0}{262F1370}\\
+\rowcolor{card}
+\tm{tecLIMIT\_EXCEEDED} & \tm{VaultDeposit} above \tm{AssetsMaximum} & \hsh{132BAF7C}{027B5B4F}\\
+\rowcolor{card}
+ & \tm{AssetsMaximum} set below \tm{AssetsTotal} & \hsh{37053F15}{A88C3DC6}\\
+\rowcolor{card}
+ & \tm{DebtMaximum} set below \tm{DebtTotal} & \hsh{82C14ED4}{748E4121}\\
+\tm{tecNO\_PERMISSION} & \tm{tfLoanImpair} sent by the borrower & \hsh{F0304194}{5DE2C112}\\
+ & \tm{tfLoanUnimpair} on a loan that is not impaired & \hsh{13975FD3}{6AA24537}\\
+\rowcolor{card}
+\tm{tecNO\_AUTH} & \tm{Payment} of shares to an account without \tm{MPToken} & \hsh{789AAF7E}{5FD512A4}\\
+\rowcolor{card}
+ & \tm{Payment} of non-transferable shares & \hsh{E9DE504D}{B8BE5FD9}\\
+\end{tabularx}}
+
+\tm{tecHAS\_OBLIGATIONS} names a single cause on \tm{VaultDelete}, \tm{LoanBrokerDelete} and
+\tm{LoanDelete}.
+
+\begin{screen}
+\shot{f6a-type}\shot{f6a-status}
+\end{screen}
+\capt{Explorer. \texttt{LoanSet} above the cover limit.}
+\ev{5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B}
+\begin{screen}
+\shot{f6b-type}\shot{f6b-status}
+\end{screen}
+\capt{Explorer. \texttt{LoanSet} above the vault liquidity. Same result code.}
+\ev{B92A90F59EBF79108B5414F61A12656F321EBC264E1BB186FCC14CAF259F9CAA}
+
+% ───────────── 7 ─────────────
+\hh{7 · The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction}
+
+The V1.1 documentation states ``\emph{\texttt{LoanBrokerSet} is restricted on open-ended
+vaults}''. The \tm{feature} command reports \tm{LendingProtocolV1\_1} as enabled.
+\tm{LoanBrokerSet} returned \tm{tesSUCCESS} on an open-ended vault and on a closed-ended vault.
+rippled PR \#8076 added the restriction. The commit \tm{Revert "fix: Reject open-ended vaults at
+LoanBrokerSet (\#8076)"} removed it from the lending hackathon branch on 10 September 2026. The other V1.1 rules tested (new fields, date validation, phase locks) are
+enforced. The event brief does not mention the revert.
+\ev{open-ended 781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4\\
+closed-ended 1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40}
+
+% ───────────── 8 ─────────────
+\hh{8 · Ports 51233 and 51234}
+
+The documented endpoints use ports 51233 (WebSocket) and 51234 (JSON-RPC). No endpoint is
+documented on port 443. On a Wi-Fi network, \tm{nc -z} succeeded on both ports while \tm{curl}
+on 51234 returned 0 bytes, and \tm{portquiz.net:51234} timed out. The same signature appeared
+five times during the event: three occurrences were traced to the local network, two could not
+be attributed. The first cost 45 minutes. The \tm{xrpl.js} \tm{Client} uses WebSocket only. The
+faucet ignores the \tm{destination} field and creates a new account.
+
+% ───────────── 9 ─────────────
+\hh{9 · Closing a vault to deposits}
+
+The xrpl.org \tm{Vault} entry and XLS-65 define \tm{AssetsMaximum: 0} as no cap. The
+\tm{VaultSet} reference does not repeat it. \tm{VaultSet} exposes \tm{Data}, \tm{AssetsMaximum}
+and \tm{DomainID}, and no flag closes a vault to deposits. Setting \tm{AssetsMaximum} equal to
+\tm{AssetsTotal} blocks deposits: a 1 XRP deposit then returns \tm{tecLIMIT\_EXCEEDED}.
+\ev{132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F}
+
+\begin{screen}
+\shot{f5a-type}\shot{f5a-max}\shot{f5a-date}
+\end{screen}
+\capt{Explorer. \texttt{AssetsMaximum} set to 0 on a vault capped at 5 XRP and holding 3.}
+\ev{A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2}
+\begin{screen}
+\shot{f5b-type}\shot{f5b-amount}\shot{f5b-date}
+\end{screen}
+\capt{Explorer. Two seconds later, a 4 XRP deposit brings the same vault to 7 XRP.}
+\ev{D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956}
+
+% ───────────── 10 ─────────────
+\hh{10 · Vault shares carry \tm{lsfMPTCanTrade}}
+
+\tm{vault\_info} returns the share issuance with \tm{Flags: 56}, which is
+\tm{lsfMPTCanEscrow} (0x08), \tm{lsfMPTCanTrade} (0x10) and \tm{lsfMPTCanTransfer} (0x20).
+\tm{VaultCreate} has no field that sets these flags. The xrpl.org \tm{MPTokenIssuance} reference
+describes \tm{lsfMPTCanTrade} as allowing holders to ``\emph{trade their balances using the XRP
+Ledger DEX or AMM}''. On the devnet, an \tm{OfferCreate} with a share amount returned
+\tm{temDISABLED}. The \tm{feature} list contains \tm{MPTokensV1} and \tm{DynamicMPT}, and no
+amendment for MPT trading.
+
+% ───────────── fin ─────────────
+\hh{What we ran}
+
+{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Step} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Hash}\\
+\midrule
+Open-ended vault & \tm{VaultCreate} & \hsh{A14CB64F}{159502E4}\\
+\rowcolor{card}
+Deposit, 25 XRP & \tm{VaultDeposit} & \hsh{98A6A315}{FB772A0A}\\
+Loan broker & \tm{LoanBrokerSet} & \hsh{A4A619AA}{6480C5A5}\\
+\rowcolor{card}
+First-loss capital, 5 XRP & \tm{LoanBrokerCoverDeposit} & \hsh{9DEA76E2}{30BF79BB}\\
+Origination and drawdown & \tm{LoanSet} & \hsh{7E3006E8}{5F63BAB0}\\
+\rowcolor{card}
+Repayment & \tm{LoanPay} & \hsh{41B2EAAE}{0E8EDC8C}\\
+Withdrawal with yield & \tm{VaultWithdraw} & \hsh{53133F76}{642895BE}\\
+\end{tabularx}}
+
+All seven returned \tm{tesSUCCESS}. All 15 XLS-65/66 transaction types were submitted at least
+once, with a full \tm{tfLoanImpair} then \tm{tfLoanDefault} cycle.
+
+\hh{Guardrails triggered on purpose}
+{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Result} & {\bfseries\color{navy}Hash}\\
+\midrule
+\tm{LoanSet} of 5000 XRP, vault holding 25 & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{B92A90F5}{259F9CAA}\\
+\rowcolor{card}
+\tm{LoanPay} of 1 XRP, instalment 25.5 XRP & \tm{tecINSUFFICIENT\_PAYMENT} & \hsh{77F708D6}{1E0541B4}\\
+\tm{LoanBrokerCoverWithdraw} below \tm{CoverRateMinimum} & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{D91DEFCE}{2595A60F}\\
+\rowcolor{card}
+\tm{LoanBrokerSet} by a non-owner of the vault & \tm{tecNO\_PERMISSION} & \hsh{33742272}{A0FA40A8}\\
+\tm{VaultWithdraw} above unlent liquidity & \tm{tecINSUFFICIENT\_FUNDS} & \hsh{FB47313D}{D76DAAC4}\\
+\rowcolor{card}
+Cover withdrawal above the floor (control) & \tm{tesSUCCESS} & \hsh{90BF019F}{8C4279B2}\\
+\end{tabularx}}
+
+\hh{Closed-ended vault, one transaction per phase}
+{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X l r@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Phase} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Result} & {\bfseries\color{navy}Hash}\\
+\midrule
+Subscription & \tm{VaultDeposit} 20 XRP & \tm{tesSUCCESS} & \hsh{2F8B4C3A}{3E25E149}\\
+\rowcolor{card}
+Investment & \tm{VaultDeposit} 10 XRP & \tm{tecEXPIRED} & \hsh{85D62B25}{B42C92CA}\\
+Investment & \tm{VaultWithdraw} 5 XRP & \tm{tecTOO\_SOON} & \hsh{C5449EC0}{60386C5C}\\
+\rowcolor{card}
+Redemption & \tm{VaultWithdraw} & \tm{tesSUCCESS} & \hsh{F95FA55F}{23F8D8E2}\\
+\end{tabularx}}
+
+\hh{Secondary sale of vault shares with TokenEscrow}
+{\setlength{\tabcolsep}{2.6pt}\fontsize{6.7}{8}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l r@{}}
+\rowcolor{card}
+{\bfseries\color{navy}Step} & {\bfseries\color{navy}Transaction} & {\bfseries\color{navy}Hash}\\
+\midrule
+Buyer opts in to the share MPT & \tm{MPTokenAuthorize} & \hsh{79F48365}{B32C5E31}\\
+\rowcolor{card}
+Buyer locks the payment & \tm{EscrowCreate} & \hsh{1F29F998}{E539FBF8}\\
+Seller locks the shares & \tm{EscrowCreate} & \hsh{795D6AFE}{FB204099}\\
+\rowcolor{card}
+Buyer claims the shares with the preimage & \tm{EscrowFinish} & \hsh{029559F0}{1D26A179}\\
+Seller claims the payment with the same preimage & \tm{EscrowFinish} & \hsh{5F359ADB}{50BEF991}\\
+\end{tabularx}}
+
+\hh{Lending-related amendments enabled}
+\tm{LendingProtocol}, \tm{LendingProtocolV1\_1}, \tm{SingleAssetVault}, \tm{MPTokensV1},
+\tm{DynamicMPT}, \tm{TokenEscrow}, \tm{fixTokenEscrowV1}, \tm{fixCleanup3\_2\_0},
+\tm{fixCleanup3\_4\_0}, \tm{BatchV1\_1}, \tm{PermissionedDomains}, \tm{Credentials}.
+
+\hh{What worked}
+\begin{itemize}
+\item \tm{tecHAS\_OBLIGATIONS} names its cause on the three delete transactions.
+\item \tm{VaultDelete} removes third-party \tm{MPToken} objects and refunds their reserve.
+\item The cover floor is enforced to the drop. \tm{CoverRateMinimum}, \tm{CoverRateLiquidation} and \tm{ManagementFeeRate} return \tm{temINVALID} when changed on an existing broker.
+\item The closed-ended vault phases behave as XLS-65 describes: deposits accepted then \tm{tecEXPIRED}, withdrawals \tm{tecTOO\_SOON} then accepted.
+\end{itemize}
+
+\hh{Limits}
+XRP only, so neither clawback transaction was tested with an issued asset. Payment schedules of
+60 to 90 seconds. One build: the hackathon branch of \tm{rippled} 3.4.0-rc1.
+
+\hh{Material in the repo}
+\begin{itemize}
+\item \tm{scripts/raw-submit.mjs}: a \tm{LoanSet} counterparty signer using \tm{encodeForSigningCounterparty}.
+\item \tm{scripts/\_probe-audit-hashes.mjs}: checks every hash cited in a document against the ledger, and separates transaction hashes from ledger object IDs.
+\item \tm{deck/capture-explorer.mjs}: the explorer screenshots in this PDF.
+\item Observed in passing: the Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. \tm{validateVaultCreate} in \tm{xrpl@4.6.0} accepts any number for \tm{WithdrawalPolicy}; the values 0, 2, 3, 99 and 255 reach the network and return \tm{temMALFORMED}.
+\end{itemize}
+
+\end{multicols}
+\end{document}
