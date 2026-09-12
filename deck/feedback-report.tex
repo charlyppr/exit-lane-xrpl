@@ -44,11 +44,11 @@
   UprightFont = {Menlo Regular}, BoldFont = {Menlo Bold},
   ItalicFont = {Menlo Italic}, BoldItalicFont = {Menlo Bold Italic}]
 \newfontfamily\hdfont{Poppins}[BoldFont={Poppins SemiBold}]
-\makeatletter\renewcommand\normalsize{\@setfontsize\normalsize{9.6}{11.6}}\makeatother
+\makeatletter\renewcommand\normalsize{\@setfontsize\normalsize{9.6}{12.1}}\makeatother
 \AtBeginDocument{\color{body}\normalsize}
 
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{2.6pt}
+\setlength{\parskip}{3.4pt}
 \linespread{1.02}
 \raggedcolumns
 % Les listes posent une pénalité négative (−51) avant et après elles : avec des
@@ -64,7 +64,7 @@
 \renewcommand{\columnseprulecolor}{\color{line}}
 \arrayrulecolor{line}
 \renewcommand{\tabularxcolumn}[1]{m{#1}}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.28}
 
 \pagestyle{fancy}\fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
@@ -73,25 +73,30 @@
 \fancyfoot[R]{\scriptsize\color{muted}\thepage\,/\,\pageref{LastPage}}
 
 % ── briques ──
-\newcommand{\hh}[1]{\par\addvspace{5pt}{\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000\hdfont\color{navy}\fontsize{10.4}{12.2}\selectfont\bfseries #1\par}\nobreak\addvspace{1.5pt}}
+\newcommand{\hh}[1]{\par\addvspace{8pt}{\raggedright\hyphenpenalty=10000\exhyphenpenalty=10000\hdfont\color{navy}\fontsize{10.4}{12.2}\selectfont\bfseries #1\par}\nobreak\addvspace{2.5pt}}
 \newcommand{\hs}[1]{{\color{navy}\bfseries #1}}
 \newcommand{\tm}[1]{{\ttfamily\color{navy}#1}}
 \newcommand{\lab}[1]{{\color{blue}\bfseries #1}\enspace}
 % hash abrégé 8+8 dans les tableaux ; le hash complet est dans FEEDBACK.md
 \newcommand{\hsh}[2]{{\ttfamily\fontsize{6}{7}\selectfont\color{body}#1…#2}}
-\newcommand{\ev}[1]{\par{\raggedright\ttfamily\fontsize{5.3}{6.6}\selectfont\color{muted}#1\par}}
+% hashes sous une preuve : jamais séparés de ce qui précède, jamais coupés entre deux colonnes
+\newcommand{\ev}[1]{\par\nobreak\noindent\begin{minipage}{\linewidth}\raggedright\ttfamily\fontsize{5.3}{6.6}\selectfont\color{muted}#1\end{minipage}\par}
 \newcommand{\chip}[3]{\tcbox[on line,colback=#1,colframe=#1,boxsep=0pt,left=2.4pt,right=2.4pt,
   top=1pt,bottom=1pt,arc=1.5pt]{\fontsize{5.8}{6}\selectfont\color{#2}\bfseries\MakeUppercase{#3}}}
 
 % ── captures d'écran de l'explorer ──
 % Toutes au même grossissement : 460 px CSS (2415 px à ×5,25) remplissent la largeur
-% utile de la carte. Le titre trop long pour 460 px est ramené à la largeur.
+% utile de la carte, soit ≈ 0,56 pt par px CSS : le texte de l'explorer sort entre 7 et
+% 10 pt, comme les tableaux et le corps. Pas de titre de transaction (≈ 22 pt) : la
+% pastille de statut seule (*-badge), le type est dans la légende.
 \newtcolorbox{screen}{enhanced,colback=black,colframe=black,boxrule=0pt,arc=2.4pt,
   left=3.5pt,right=3.5pt,top=3pt,bottom=3pt,boxsep=0pt,before skip=4pt,after skip=2pt}
 \newcommand{\shot}[1]{\includegraphics[scale=\fpeval{\linewidth/2415bp}]{#1.png}\par}
 \newcommand{\shotw}[1]{\includegraphics[width=\linewidth]{#1.png}\par}
 \newcommand{\capt}[1]{{\raggedright\fontsize{6.3}{7.6}\selectfont\color{muted}#1\par}\addvspace{2pt}}
-\setlist[itemize]{leftmargin=8pt,itemsep=1.2pt,topsep=1.5pt,parsep=0pt,label={\color{blue}\textbullet}}
+% capture + légende + hash : un seul bloc insécable, jamais coupé entre deux colonnes
+\newenvironment{shotblock}{\par\addvspace{6pt}\noindent\begin{minipage}{\linewidth}\setlength{\parskip}{0pt}}{\end{minipage}\par\addvspace{5pt}}
+\setlist[itemize]{leftmargin=8pt,itemsep=1.7pt,topsep=2.4pt,parsep=0pt,label={\color{blue}\textbullet}}
 
 \begin{document}
 
@@ -109,7 +114,7 @@ XLS-65, XLS-66 and TokenEscrow\\
 \end{minipage}
 \end{tcolorbox}
 
-\vspace{2pt}
+\vspace{4pt}
 {\setlength{\tabcolsep}{4pt}\fontsize{6.7}{8.2}\selectfont
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X@{}}
 {\color{blue}\bfseries NETWORK} & {\color{blue}\bfseries LIBRARY} & {\color{blue}\bfseries FIRST TRANSACTION} & {\color{blue}\bfseries VERIFICATION}\\
@@ -119,8 +124,8 @@ Custom Hackathon Devnet · \tm{rippled} 3.4.0-rc1, hackathon branch · \tm{Lendi
 \hs{143 of 143} cited hashes validated on the ledger · docs checked against XLS-65, XLS-66 and xrpl.org · library claims against the \tm{rippled} and \tm{xrpl.js} source\\
 \end{tabularx}}
 
-\vspace{3pt}
-{\renewcommand{\arraystretch}{1.1}\setlength{\tabcolsep}{3.5pt}\fontsize{7}{8.4}\selectfont
+\vspace{5pt}
+{\renewcommand{\arraystretch}{1.2}\setlength{\tabcolsep}{3.5pt}\fontsize{7}{8.4}\selectfont
 \begin{tabularx}{\linewidth}{@{}c >{\raggedright\arraybackslash}X l l@{}}
 \rowcolor{card}
 {\bfseries\color{navy}\#} & {\bfseries\color{navy}Finding} & {\bfseries\color{navy}Category} & {\bfseries\color{navy}Checked against}\\
@@ -142,7 +147,7 @@ Custom Hackathon Devnet · \tm{rippled} 3.4.0-rc1, hackathon branch · \tm{Lendi
 10 & Vault shares carry \tm{lsfMPTCanTrade}. \tm{OfferCreate} with a share amount returns \tm{temDISABLED}. & docs, MPT & ledger, xrpl.org\\
 \end{tabularx}}
 
-\vspace{1pt}
+\vspace{4pt}
 \begin{multicols}{2}\RaggedRight
 
 % ───────────── 1 ─────────────
@@ -191,17 +196,21 @@ full balance, and a payment with \tm{tfLoanFullPayment}. The same payment with
 \item No field of the \tm{Loan} node changed during 85 s of lateness, and no field holds the accrued late interest. A payment of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returned \tm{tecINSUFFICIENT\_PAYMENT}. A payment of 2\,765\,001 drops returned \tm{tesSUCCESS}, and 765\,003 drops were taken.
 \end{itemize}
 
+\begin{shotblock}
 \begin{screen}
-\shot{f1a-type}\shot{f1a-status}
+\shot{f1a-badge}\shot{f1a-status}
 \end{screen}
 \capt{Explorer. \texttt{LoanPay} of 1.030001 XRP without flags.}
 \ev{96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4}
+\end{shotblock}
+\begin{shotblock}
 \begin{screen}
-\shot{f1b-type}\shot{f1b-flags}
+\shot{f1b-badge}\shot{f1b-flags}
 \end{screen}
-\capt{Explorer. Same loan, same amount, with \texttt{tfLoanLatePayment}.}
+\capt{Explorer. \texttt{LoanPay}, same loan, same amount, with \texttt{tfLoanLatePayment}.}
 \ev{EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F\\
 overpayment 9A7589384C5142703AFFACBB91B12E223EC734F7ACBE51272A87525FE4EE9CA8}
+\end{shotblock}
 
 % ───────────── 3 ─────────────
 \hh{3 · The first-loss capital covered 0.5\,\% of a defaulted loan}
@@ -224,7 +233,7 @@ debt. \tm{CoverRateLiquidation} applies to the minimum cover (\tm{DebtTotal $\ti
 CoverRateMinimum}), not to the defaulted amount. After a default, \tm{DebtTotal} is zero and so
 is the cover floor.
 
-Second vault, in ledger order:
+Second vault, in ledger order:\par\nobreak
 
 {\setlength{\tabcolsep}{2.8pt}\fontsize{6.8}{8.2}\selectfont
 \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X l@{}}
@@ -242,16 +251,20 @@ Second vault, in ledger order:
 3338BA629F8772CDEC07B6F714F2AF3A1ADC8E93642429A54B95CF372FDB2880\\
 first vault default 91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7}
 
+\begin{shotblock}
 \begin{screen}
-\shot{f3a-type}\shot{f3a-flags}\shot{f3a-meta}
+\shot{f3a-badge}\shot{f3a-flags}\shot{f3a-meta}
 \end{screen}
-\capt{Explorer. The default moves 0.02 XRP from the broker's pseudo-account (\texttt{rbhF8…}) to the vault's (\texttt{rsR4Q…}).}
+\capt{Explorer. \texttt{LoanManage} \texttt{tfLoanDefault} moves 0.02 XRP from the broker's pseudo-account (\texttt{rbhF8…}) to the vault's (\texttt{rsR4Q…}).}
 \ev{923F7D616B094C82197506CF2867907A93067041E3990D24BD07A19035F73EAC}
+\end{shotblock}
+\begin{shotblock}
 \begin{screen}
-\shotw{f3b-type}\shot{f3b-amount}\shot{f3b-date}
+\shot{f3b-badge}\shot{f3b-amount}\shot{f3b-date}
 \end{screen}
-\capt{Explorer. The broker withdraws the remaining cover 21 s after the default.}
+\capt{Explorer. \texttt{LoanBrokerCoverWithdraw} of the remaining cover, 21 s after the default.}
 \ev{68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E}
+\end{shotblock}
 
 % ───────────── 4 ─────────────
 \hh{4 · Share value and \tm{LossUnrealized}}
@@ -267,11 +280,13 @@ xrpl.org Single Asset Vault page gives the formula and does not mention the exce
 \item The explorer's \emph{Detailed} tab shows ``\emph{It modified a node with type Vault}'' without field values. \tm{LossUnrealized} appears in the \emph{Raw} tab once the node is expanded.
 \end{itemize}
 
+\begin{shotblock}
 \begin{screen}
-\shot{f2-type}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
+\shot{f2-badge}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
 \end{screen}
-\capt{Explorer. \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
+\capt{Explorer. \texttt{LoanManage} \texttt{tfLoanImpair}: \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
 \ev{C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC}
+\end{shotblock}
 
 % ───────────── 5 ─────────────
 \hh{5 · Read commands}
@@ -279,7 +294,7 @@ xrpl.org Single Asset Vault page gives the formula and does not mention the exce
 \tm{vault\_info} is a \tm{rippled} command. \tm{loan\_info} and \tm{loan\_broker\_info} return
 \tm{unknownCmd} and have no documentation page. xrpl.org documents \tm{mpt\_holders} as
 Clio-only. The devnet endpoints serve \tm{rippled}, where \tm{mpt\_holders} returns
-\tm{unknownCmd}. A depositor's view takes five calls:
+\tm{unknownCmd}. A depositor's view takes five calls:\par\nobreak
 
 {\setlength{\tabcolsep}{2.8pt}\fontsize{6.8}{8.2}\selectfont
 \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
@@ -326,16 +341,20 @@ amount, utilisation and broker debt capacity.
 \tm{tecHAS\_OBLIGATIONS} names a single cause on \tm{VaultDelete}, \tm{LoanBrokerDelete} and
 \tm{LoanDelete}.
 
+\begin{shotblock}
 \begin{screen}
-\shot{f6a-type}\shot{f6a-status}
+\shot{f6a-badge}\shot{f6a-status}
 \end{screen}
 \capt{Explorer. \texttt{LoanSet} above the cover limit.}
 \ev{5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B}
+\end{shotblock}
+\begin{shotblock}
 \begin{screen}
-\shot{f6b-type}\shot{f6b-status}
+\shot{f6b-badge}\shot{f6b-status}
 \end{screen}
 \capt{Explorer. \texttt{LoanSet} above the vault liquidity. Same result code.}
 \ev{B92A90F59EBF79108B5414F61A12656F321EBC264E1BB186FCC14CAF259F9CAA}
+\end{shotblock}
 
 % ───────────── 7 ─────────────
 \hh{7 · The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction}
@@ -368,16 +387,20 @@ and \tm{DomainID}, and no flag closes a vault to deposits. Setting \tm{AssetsMax
 \tm{AssetsTotal} blocks deposits: a 1 XRP deposit then returns \tm{tecLIMIT\_EXCEEDED}.
 \ev{132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F}
 
+\begin{shotblock}
 \begin{screen}
-\shot{f5a-type}\shot{f5a-max}\shot{f5a-date}
+\shot{f5a-badge}\shot{f5a-max}\shot{f5a-date}
 \end{screen}
-\capt{Explorer. \texttt{AssetsMaximum} set to 0 on a vault capped at 5 XRP and holding 3.}
+\capt{Explorer. \texttt{VaultSet} with \texttt{AssetsMaximum} 0 on a vault capped at 5 XRP and holding 3.}
 \ev{A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2}
+\end{shotblock}
+\begin{shotblock}
 \begin{screen}
-\shot{f5b-type}\shot{f5b-amount}\shot{f5b-date}
+\shot{f5b-badge}\shot{f5b-amount}\shot{f5b-date}
 \end{screen}
-\capt{Explorer. Two seconds later, a 4 XRP deposit brings the same vault to 7 XRP.}
+\capt{Explorer. Two seconds later, a 4 XRP \texttt{VaultDeposit} brings the same vault to 7 XRP.}
 \ev{D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956}
+\end{shotblock}
 
 % ───────────── 10 ─────────────
 \hh{10 · Vault shares carry \tm{lsfMPTCanTrade}}

@@ -1,21 +1,24 @@
-// Deck Exit Lane — 10 slides, design system du deck officiel Ripple / XRPL
-// Lending Protocol (« final lending intro.pdf »), relevé au pixel :
+// Deck Exit Lane — 9 slides.
 //
-//   navy #001C5C · bleu #006AFF · ciel #6DC3FF · corps #5F666E · sourdine #AEB3B7
-//   carte #FAFAFA bord #E2E5E8 · carte bleue #EBF4FF · puce code #BAEAFF/#0045C6
-//   vert #E1F4EE/#5DC9A5 · pêche #FAEDE7/#F0997B
-//   rail dégradé de 0,10" à gauche de chaque slide, 8 bandes
-//   canevas 13,333 × 7,5" — 1 px du PDF de référence = 0,01"
+// Deux sources visuelles à réconcilier : le deck officiel Ripple / XRPL Lending
+// Protocol (« final lending intro.pdf », relevé au pixel) pour les slides, et
+// l'explorer XRPL pour les preuves on-chain (captures deck/shots/).
 //
-// Règle de contenu : c'est un pitch deck, pas un rapport. Une idée par slide,
-// un chiffre plutôt qu'une phrase, et toute sortie de commande passe par le
-// composant `term` — un vrai terminal vaut mieux qu'un paragraphe.
+//   slides   navy #001C5C · bleu #006AFF · ciel #6DC3FF · corps #5F666E
+//            rail dégradé de 0,10" à gauche, canevas 13,333 × 7,5"
+//   fenêtres fond #000000 · bord #343437 · gris #A2A2A4 · orange #FF884B
+//            menthe #84F0B6 · violet #B480FF   (relevés sur les captures)
 //
-// Typo du deck de référence : Plus Jakarta Sans Bold / Inter / JetBrains Mono.
-// Aucune des trois n'est installée sur la machine de génération, donc on prend
-// les plus proches qui le sont : Poppins (géométrique), Helvetica Neue
-// (néo-grotesque), Menlo. Si les trois originales sont installées un jour,
-// il suffit de changer FH / FB / FM ci-dessous.
+// Terminal et captures partagent le même composant `win` : fond noir de
+// l'explorer, barre à pastilles, adresse en monospace. L'orange de l'explorer
+// marque tout échec, sur les slides comme dans les fenêtres.
+//
+// Typo : Poppins partout (Bold titres et chiffres, Medium intitulés, Regular
+// corps, Light phrases longues), Menlo pour le code.
+//
+// Règle de contenu : une idée par slide, un titre et rien en bordure, un chiffre
+// ou une capture plutôt qu'une phrase. Les petites informations qui servent la
+// preuve (hash, flags, délai) vivent dans la barre d'adresse des fenêtres.
 //
 //   npm install pptxgenjs          # dans un dossier temporaire, PAS dans le projet
 //   node deck/build-deck.cjs deck/exit-lane.pptx
@@ -23,38 +26,36 @@
 const mod = require("pptxgenjs");
 const PptxGen = mod.default || mod;
 const p = new PptxGen();
+const fs = require("fs");
+const path = require("path");
 
 p.defineLayout({ name: "RIPPLE", width: 13.333, height: 7.5 });
 p.layout = "RIPPLE";
 p.author = "CY-HACK";
 p.company = "CY-HACK";
 p.title = "Exit Lane";
-p.subject = "XRPL Lending Protocol Hackathon — Track 1";
+p.subject = "XRPL Lending Protocol Hackathon · Track 1";
 
 /* ── design tokens ──────────────────────────────────────────────────────── */
 
 const NAVY = "001C5C", BLUE = "006AFF", SKY = "6DC3FF", GREY = "5F666E",
-      MUT  = "AEB3B7", CARD = "FAFAFA", LINE = "E2E5E8", BLUECARD = "EBF4FF",
-      CHIPBG = "BAEAFF", CHIPTX = "0045C6", WHITE = "FFFFFF",
-      GREENBG = "E1F4EE", GREEN = "1E8F6B", PEACHBG = "FAEDE7", CORAL = "C4553A",
-      NAVYSOFT = "8FA6D8";
+      MUT = "8A9199", LINE = "E2E5E8", WHITE = "FFFFFF", SOFT = "C9D4E8",
+      ORANGE = "F2703A",                                  // orange explorer, assombri pour le blanc
+      CHIP = { bg: "EBF4FF", tx: "0045C6" },
+      CHIPFAIL = { bg: "FFEEE5", tx: "B8481A" },
+      CHIPDARK = { bg: "12357E", tx: SKY };
 
-// terminal
-const T = { bg: "001233", edge: "16306B", dim: "6E86B8", ink: "DCE6F7",
-            ok: "35C48F", bad: "FF9E7E", cmd: "6DC3FF" };
+// fenêtres : palette de l'explorer
+const X = { bg: "000000", edge: "343437", dim: "A2A2A4", ink: "FFFFFF",
+            ok: "84F0B6", bad: "FF884B", cmd: "B480FF" };
 
-const FH = "Poppins";         // titres      (réf. Plus Jakarta Sans Bold)
-const FB = "Helvetica Neue";  // corps       (réf. Inter)
-const FM = "Menlo";           // monospace   (réf. JetBrains Mono)
+const FH = "Poppins";          // titres et chiffres, en gras
+const FB = "Poppins";          // corps
+const FMED = "Poppins Medium"; // intitulés
+const FL = "Poppins Light";    // phrases longues
+const FM = "Menlo";            // code
 
 const ML = 0.88, MR = 12.45, CW = 11.57;   // marges et largeur de contenu
-const BOTTOM = 7.08;                        // bandeau bas
-
-// colonnes : n cartes égales sur la largeur de contenu
-const cols = (n, gap = 0.26) => {
-  const w = (CW - gap * (n - 1)) / n;
-  return { w, x: (i) => ML + i * (w + gap) };
-};
 
 /* ── rail dégradé (PNG 24×1500 généré à partir des relevés du PDF) ───────── */
 
@@ -76,6 +77,9 @@ const RAIL = "image/png;base64," +
 
 /* ── primitives ─────────────────────────────────────────────────────────── */
 
+const shot = (n) => path.join(__dirname, "shots", n + ".png");
+const dim = (n) => { const b = fs.readFileSync(shot(n)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+
 const slide = (dark) => {
   const sl = p.addSlide();
   sl.background = { color: dark ? NAVY : WHITE };
@@ -85,359 +89,315 @@ const slide = (dark) => {
 
 const txt = (sl, t, o) => sl.addText(t, {
   x: o.x, y: o.y, w: o.w, h: o.h ?? 0.3,
-  fontSize: o.fs ?? 12.5, color: o.color ?? GREY, fontFace: o.ff ?? FB,
-  bold: o.bold ?? false, italic: o.italic ?? false,
-  align: o.align ?? "left", valign: o.valign ?? "top",
+  fontSize: o.fs ?? 13, color: o.color ?? GREY, fontFace: o.ff ?? FB,
+  bold: o.bold ?? false, align: o.align ?? "left", valign: o.valign ?? "top",
   lineSpacing: o.ls, charSpacing: o.cs, isTextBox: true, margin: 0,
 });
 
-const caps = (sl, t, o) => txt(sl, t.toUpperCase(), { fs: 8, bold: true, cs: 0.8, h: 0.16, ...o });
-
-const card = (sl, o) => sl.addShape(p.ShapeType.roundRect, {
-  x: o.x, y: o.y, w: o.w, h: o.h,
-  fill: { color: o.fill ?? CARD },
-  line: o.noLine ? { type: "none" } : { color: o.line ?? LINE, width: 0.75 },
-  rectRadius: o.r ?? 0.12,
+const rule = (sl, y, color, x, w) => sl.addShape(p.ShapeType.rect, {
+  x: x ?? ML, y, w: w ?? CW, h: 0.01, fill: { color: color ?? LINE }, line: { type: "none" },
 });
 
+/* capsule de code : Menlo, largeur calculée sur l'avance réelle (0,6 em) + 0,22" de chaque côté */
 const chip = (sl, t, o) => {
-  const adv = (o.ff === FB ? 0.0062 : 0.0075) * (o.fs ?? 8.5);
-  const w = o.w ?? t.length * adv + 0.3;
-  sl.addShape(p.ShapeType.roundRect, {
-    x: o.x, y: o.y, w, h: 0.26, fill: { color: o.fill ?? CHIPBG },
-    line: { type: "none" }, rectRadius: 0.13,
-  });
-  sl.addText(t, {
-    x: o.x, y: o.y, w, h: 0.26, fontSize: o.fs ?? 8.5, color: o.color ?? CHIPTX,
-    fontFace: o.ff ?? FM, align: "center", valign: "middle", isTextBox: true, margin: 0,
-  });
+  const fs = o.fs ?? 9.5, c = o.c ?? CHIP, h = 0.32;
+  const w = t.length * 0.6 * fs / 72 + 0.44;
+  sl.addShape(p.ShapeType.roundRect, { x: o.x, y: o.y, w, h, fill: { color: c.bg }, line: { type: "none" }, rectRadius: h / 2 });
+  sl.addText(t, { x: o.x, y: o.y, w, h, fontSize: fs, color: c.tx, fontFace: FM,
+    align: "center", valign: "middle", isTextBox: true, margin: 0 });
   return w;
 };
 
-const pill = (sl, t, o) => {
-  sl.addShape(p.ShapeType.roundRect, {
-    x: o.x, y: o.y, w: o.w, h: o.h ?? 0.34, fill: { color: o.fill ?? BLUE },
-    line: { type: "none" }, rectRadius: (o.h ?? 0.34) / 2,
-  });
-  sl.addText(t.toUpperCase(), {
-    x: o.x, y: o.y, w: o.w, h: o.h ?? 0.34, fontSize: o.fs ?? 9, bold: true,
-    color: o.color ?? WHITE, fontFace: FB, charSpacing: 0.8,
-    align: "center", valign: "middle", isTextBox: true, margin: 0,
-  });
-};
-
-const bullet = (sl, n, o) => {
-  const d = o.d ?? 0.28;
+const badge = (sl, n, o) => {
+  const d = o.d ?? 0.34;
   sl.addShape(p.ShapeType.ellipse, { x: o.x, y: o.y, w: d, h: d, fill: { color: o.fill ?? BLUE }, line: { type: "none" } });
-  sl.addText(String(n), {
-    x: o.x, y: o.y, w: d, h: d, fontSize: o.fs ?? 10, bold: true, color: o.color ?? WHITE,
-    fontFace: FB, align: "center", valign: "middle", isTextBox: true, margin: 0,
-  });
+  sl.addText(String(n), { x: o.x, y: o.y, w: d, h: d, fontSize: o.fs ?? 11, bold: true, color: WHITE,
+    fontFace: FH, align: "center", valign: "middle", isTextBox: true, margin: 0 });
 };
 
-const rule = (sl, y, color, x, w) => sl.addShape(p.ShapeType.rect, {
-  x: x ?? ML, y, w: w ?? CW, h: 0.008, fill: { color: color ?? LINE }, line: { type: "none" },
-});
+const title = (sl, t, dark) =>
+  txt(sl, t, { x: ML, y: 0.78, w: CW, h: 0.72, fs: 32, bold: true, color: dark ? WHITE : NAVY, ff: FH });
 
-/* en-tête : eyebrow + pagination + kicker + titre. Sous-titre seulement si le
-   titre ne suffit pas — par défaut il n'y en a pas. */
-const head = (sl, o) => {
-  caps(sl, o.eyebrow, { x: ML, y: 0.52, w: 7.5, color: o.dark ? NAVYSOFT : MUT });
-  txt(sl, o.num, { x: MR - 2, y: 0.52, w: 2, h: 0.16, fs: 9, color: o.dark ? NAVYSOFT : MUT, ff: FM, align: "right" });
-  caps(sl, o.kicker, { x: ML, y: 0.96, w: 7.5, fs: 9.5, color: o.dark ? SKY : BLUE });
-  txt(sl, o.title, { x: ML, y: 1.18, w: CW, h: 0.56, fs: o.tfs ?? 29, bold: true, color: o.dark ? WHITE : NAVY, ff: FH });
+/* grand chiffre + libellé */
+const stat = (sl, n, l, o) => {
+  const size = o.fs ?? 36;
+  txt(sl, n, { x: o.x, y: o.y, w: o.w, h: size / 52, fs: size, bold: true, color: o.color ?? NAVY, ff: FH });
+  txt(sl, l, { x: o.x, y: o.y + size / 52 + 0.02, w: o.w, h: 0.3, fs: 13, color: o.lcolor ?? GREY });
 };
 
-const band = (sl, dark) => {
-  caps(sl, "CY-HACK · Exit Lane", { x: ML, y: BOTTOM, w: 4, color: dark ? WHITE : MUT });
-  caps(sl, "XRPL Lending Protocol · Hackathon", { x: MR - 5, y: BOTTOM, w: 5, color: dark ? WHITE : MUT, align: "right" });
-};
-
-/* faux terminal : barre à pastilles, titre, filet, lignes monospace colorées.
-   `lines` = tableau de lignes ; chaque ligne = tableau de segments [texte, couleur, gras]. */
-const term = (sl, o) => {
-  const fs = o.fs ?? 10.5, step = o.step ?? 0.25;
-  card(sl, { x: o.x, y: o.y, w: o.w, h: o.h, fill: T.bg, line: T.edge, r: 0.1 });
+/* fenêtre commune au terminal et à l'explorer : fond noir, pastilles, adresse */
+const BAR = 0.42;
+const win = (sl, o) => {
+  sl.addShape(p.ShapeType.roundRect, { x: o.x, y: o.y, w: o.w, h: o.h,
+    fill: { color: X.bg }, line: { color: X.edge, width: 0.75 }, rectRadius: 0.14 });
   ["FF5F57", "FEBC2E", "28C840"].forEach((c, i) =>
-    sl.addShape(p.ShapeType.ellipse, { x: o.x + 0.26 + i * 0.21, y: o.y + 0.21, w: 0.115, h: 0.115,
+    sl.addShape(p.ShapeType.ellipse, { x: o.x + 0.24 + i * 0.2, y: o.y + BAR / 2 - 0.055, w: 0.11, h: 0.11,
       fill: { color: c }, line: { type: "none" } }));
-  txt(sl, o.title, { x: o.x + 1.0, y: o.y + 0.19, w: o.w - 1.3, h: 0.2, fs: 8.5, color: T.dim, ff: FM });
-  rule(sl, o.y + 0.5, T.edge, o.x, o.w);
+  if (o.label) txt(sl, o.label, { x: o.x + 0.98, y: o.y, w: o.w - 1.2, h: BAR, fs: 9, color: X.dim, ff: FM, valign: "middle" });
+  rule(sl, o.y + BAR, X.edge, o.x, o.w);
+};
+
+/* captures de l'explorer dans une fenêtre. Même grossissement pour toutes
+   (2415 px de capture = largeur utile), sauf une capture plus large, réduite. */
+const explorer = (sl, o) => {
+  const padX = 0.2, padY = 0.14, inner = o.w - 2 * padX, k = inner / 2415;
+  const imgs = o.files.map((n) => { const [pw, ph] = dim(n); const s = Math.min(k, inner / pw); return { n, w: pw * s, h: ph * s }; });
+  const h = Math.max(o.h ?? 0, BAR + 2 * padY + imgs.reduce((a, i) => a + i.h, 0));
+  win(sl, { x: o.x, y: o.y, w: o.w, h, label: o.label });
+  let y = o.y + BAR + padY;
+  imgs.forEach((i) => { sl.addImage({ path: shot(i.n), x: o.x + padX, y, w: i.w, h: i.h }); y += i.h; });
+  return h;
+};
+
+/* terminal : lignes de segments [texte, couleur] ; une ligne marquée fail reçoit une pastille orange */
+const term = (sl, o) => {
+  const fs = o.fs ?? 11, step = o.step ?? 0.28;
+  const h = BAR + 0.36 + o.lines.length * step;
+  win(sl, { x: o.x, y: o.y, w: o.w, h, label: o.label });
   o.lines.forEach((segs, i) => {
     if (!segs) return;
-    sl.addText(segs.map(([t, c, b]) => ({ text: t, options: { color: c || T.ink, bold: !!b } })), {
-      x: o.x + 0.3, y: o.y + 0.66 + i * step, w: o.w - 0.6, h: step,
-      fontSize: fs, fontFace: FM, isTextBox: true, margin: 0, valign: "middle",
+    const y = o.y + BAR + 0.18 + i * step;
+    if (segs.fail) sl.addShape(p.ShapeType.ellipse, { x: o.x + 0.3, y: y + step / 2 - 0.045, w: 0.09, h: 0.09,
+      fill: { color: X.bad }, line: { type: "none" } });
+    sl.addText(segs.map(([t, c]) => ({ text: t, options: { color: c || X.ink } })), {
+      x: o.x + 0.52, y, w: o.w - 0.8, h: step, fontSize: fs, fontFace: FM, isTextBox: true, margin: 0, valign: "middle",
     });
   });
+  return h;
 };
+const fail = (segs) => Object.assign(segs, { fail: true });
+
+/* ── notes orateur : le pitch minuté, 4 min pile. ───────────────────────── */
+
+const NOTES = [
+`0:00 → 0:15 (15 s)
+
+CY-HACK, track 1. Un vault open-ended promet le retrait à tout moment. Il ne peut plus tenir cette promesse dès qu'il fonctionne bien. Voici pourquoi, ce qu'on a construit, et ce que le protocole nous a appris.`,
+
+`0:15 → 0:40 (25 s)
+
+Une trésorière d'entreprise dépose 25 XRP. Un broker prête à des PME, sur quatre mois. Un seul LoanSet prend 100 % du vault, sans avertissement. Elle veut retirer : tecINSUFFICIENT_FUNDS, ici dans l'explorer. On l'a rencontré en écrivant la démo.`,
+
+`0:40 → 1:00 (20 s)
+
+Aucune transaction XLS-66 ne transfère un prêt. Mais la part de vault est un MPT, donc cessible. On la vend de gré à gré, à 97 % de sa valeur, avec deux escrows sous la même condition SHA-256 : pour prendre les parts, l'acheteur publie le secret qui paie la vendeuse.
+
+Q&A : l'escrow de la vendeuse expire avant celui de l'acheteur pour qu'elle ait le temps d'encaisser. Limite : l'acheteur détient une option gratuite d'une heure (README, Known limitations). BatchV1_1 est actif, autre chemin atomique, non testé.`,
+
+`1:00 → 2:00 (60 s)
+
+Passer au terminal, commande déjà tapée : node scripts/demo.mjs --auto (56 s mesurées). Une phrase par scène :
+1. Vault, dépôt, broker, couverture, et un prêt qui prend tout.
+2. Elle veut sortir : refusé.
+3. L'acheteur s'inscrit, deux escrows, il révèle le secret, elle le relit dans le ledger et encaisse.
+4. L'emprunteur rembourse. C'est l'acheteur, qui n'a jamais déposé, qui retire, avec le rendement.
+
+Si rien ne bouge pendant 15 s : Ctrl+C, revenir sur cette slide. Le terminal de droite est le run de référence, hashes dans le README.`,
+
+`2:00 → 2:15 (15 s)
+
+Les huit étapes du minimum bar dans un seul run, chaque hash dans le README. Les quinze types XLS-65 et XLS-66 soumis au ledger, tous typés dans xrpl 4.6.0.`,
+
+`2:15 → 2:50 (35 s)
+
+Broker à couverture minimale 10 %, liquidation 5 %. On provoque un défaut sur un prêt de 4 XRP. L'explorer montre 0,02 XRP pris sur la couverture : 4 × 10 % × 5 %, au drop près. Le déposant perd 3,98 XRP. C'est la formule documentée, et le même ratio sur un prêt de 50 XRP. En dessous : 21 secondes après le défaut, le broker retire les 0,98 XRP restants, parce que la dette, et donc le plancher, sont à zéro.`,
+
+`2:50 → 3:15 (25 s)
+
+Un prêt 10 secondes en retard, dans son délai de grâce. Sans flag : tecEXPIRED, à gauche. Avec tfLoanLatePayment : succès, à droite, et l'explorer affiche ce flag en hexadécimal. L'échec est défini dans XLS-66, mais pas dans la référence LoanPay d'xrpl.org.`,
+
+`3:15 → 3:45 (30 s)
+
+Huit autres, tous dans le rapport. Dire les deux premiers :
+fixCleanup3_4_0 est actif et absent d'xrpl.org. Le tutoriel dit d'impairer avant l'échéance, le ledger répond tecTOO_SOON ; il change aussi le préfixe de signature de LoanSet, que xrpl 4.6.0 n'utilise pas.
+La branche du hackathon a retiré la restriction V1.1 sur LoanBrokerSet, et le brief ne le dit pas.`,
+
+`3:45 → 3:55 (10 s)
+
+Tout est dans FEEDBACK.md, trois pages. Les 143 hashes cités ont été relus sur le ledger avant soumission. Merci.`,
+];
+let slideNo = 0;
+const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
 
 /* ══ 1 — titre ═══════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
-  caps(sl, "CY-HACK", { x: ML, y: 0.82, w: 4, fs: 11, color: WHITE });
-  caps(sl, "Track 1 · Vault open-ended", { x: MR - 5, y: 0.84, w: 5, fs: 9, color: SKY, align: "right" });
-
-  pill(sl, "XLS-65 + XLS-66 + TokenEscrow", { x: ML, y: 2.05, w: 3.5 });
-  caps(sl, "Custom Hackathon Devnet · 12-13 septembre 2026", { x: ML + 3.75, y: 2.13, w: 6.5, fs: 9, color: WHITE });
-
-  txt(sl, "Exit Lane.", { x: ML - 0.06, y: 2.72, w: 9, h: 1.1, fs: 54, bold: true, color: WHITE, ff: FH });
+  let cx = ML;
+  ["XLS-65", "XLS-66", "TokenEscrow"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 2.25, c: CHIPDARK }) + 0.14; });
+  txt(sl, "Exit Lane.", { x: ML - 0.05, y: 2.75, w: 9, h: 1.2, fs: 64, bold: true, color: WHITE, ff: FH });
   txt(sl, "Un vault open-ended promet le retrait à tout moment.\nIl ne peut plus le tenir dès qu'il fonctionne bien.",
-    { x: ML, y: 3.92, w: 8.6, h: 0.8, fs: 16, color: "C9D4E8", ls: 26 });
-
-  txt(sl, "Lending Protocol V1   ·   xrpl@4.6.0   ·   network_id 4001   ·   rippled 3.4.0-rc1",
-    { x: ML, y: 6.3, w: 10, h: 0.3, fs: 10.5, color: SKY, ff: FM });
-  band(sl, true);
+    { x: ML, y: 4.1, w: 9.5, h: 0.9, fs: 19, color: SOFT, ff: FL, ls: 30 });
+  txt(sl, "CY-HACK   ·   Track 1, vault open-ended   ·   Custom Hackathon Devnet   ·   xrpl@4.6.0",
+    { x: ML, y: 6.45, w: CW, h: 0.3, fs: 11, color: SKY });
+  notes(sl);
 }
 
 /* ══ 2 — le problème ═════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  head(sl, { eyebrow: "Exit Lane", num: "02 · 10", kicker: "Le problème", title: "Ouvert en droit, fermé en fait" });
+  title(sl, "Ouvert en droit, fermé en fait");
 
-  const c = cols(3);
-  [["100 %", BLUE, "du vault prêté en une transaction"],
-   ["0", CORAL, "XRP encore retirables"],
-   ["4 mois", NAVY, "de capital immobilisé"]].forEach(([n, col, l], i) => {
-    const x = c.x(i);
-    card(sl, { x, y: 2.0, w: c.w, h: 1.5 });
-    txt(sl, n, { x: x + 0.26, y: 2.24, w: c.w - 0.5, h: 0.6, fs: 34, bold: true, color: col, ff: FH });
-    txt(sl, l, { x: x + 0.26, y: 2.92, w: c.w - 0.5, h: 0.4, fs: 12, color: GREY });
-  });
+  [["100 %", BLUE, "du vault prêté par un seul LoanSet"],
+   ["0 XRP", ORANGE, "retirable par la déposante"],
+   ["4 mois", NAVY, "avant la dernière échéance"]].forEach(([n, col, l], i) =>
+    stat(sl, n, l, { x: ML, y: 2.0 + i * 1.4, w: 4.8, color: col }));
 
-  term(sl, { x: ML, y: 3.86, w: CW, h: 2.44, title: "scripts/demo.mjs — scène 1/4", lines: [
-    [["$ ", T.cmd], ["node scripts/demo.mjs", T.ink]],
-    [],
-    [["  Actif total        ", T.dim], ["25.000000 XRP", T.ink]],
-    [["  Prêté              ", T.dim], ["25.000000 XRP", T.ink], ["   (100.0 % du vault)", T.dim]],
-    [["  Disponible         ", T.dim], ["—", T.bad, true], ["   ← champ ABSENT du nœud, pas zéro explicite", T.bad]],
-    [["  Valeur d'une part  ", T.dim], ["1.000000000", T.ink]],
-  ] });
-
-  txt(sl, "Rencontré en écrivant la démo, pas mis en scène.", { x: ML, y: 6.48, w: 8, h: 0.26, fs: 11.5, color: GREY, italic: true });
-  band(sl);
+  explorer(sl, { x: MR - 6.4, y: 2.5, w: 6.4, files: ["d-wall-type", "d-wall-status"],
+    label: "explorer  ›  VaultWithdraw  ›  7AB5622E…CF934" });
+  notes(sl);
 }
 
-/* ══ 3 — le mur ══════════════════════════════════════════════════════════ */
+/* ══ 3 — la réponse ══════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  head(sl, { eyebrow: "Exit Lane", num: "03 · 10", kicker: "La découverte", title: "Le protocole dit non" });
+  title(sl, "Céder la part de vault, pas le prêt");
 
-  term(sl, { x: ML, y: 1.98, w: CW, h: 2.5, title: "scripts/demo.mjs — scène 2/4", fs: 11.5, step: 0.3, lines: [
-    [["VaultWithdraw", T.ink], ["   7 500 000 parts", T.dim]],
-    [],
-    [["⛔ tecINSUFFICIENT_FUNDS", T.bad, true]],
-    [["   7AB5622EAEFC70A6B005EAED9411EA3D62539A16E5EF5D8C8E33F8BE493CF934", T.dim]],
-  ] });
-
-  const c = cols(2);
-  card(sl, { x: c.x(0), y: 4.76, w: c.w, h: 1.1, fill: GREENBG, noLine: true });
-  txt(sl, "tec", { x: c.x(0) + 0.3, y: 4.96, w: 1.2, h: 0.32, fs: 18, bold: true, color: GREEN, ff: FM });
-  txt(sl, "Écrite dans le ledger, avec un hash. Vérifiable.", { x: c.x(0) + 0.3, y: 5.34, w: c.w - 0.6, h: 0.3, fs: 12.5, color: NAVY });
-  card(sl, { x: c.x(1), y: 4.76, w: c.w, h: 1.1 });
-  txt(sl, "tem", { x: c.x(1) + 0.3, y: 4.96, w: 1.2, h: 0.32, fs: 18, bold: true, color: MUT, ff: FM });
-  txt(sl, "Rejet local. Aucune trace, aucun hash.", { x: c.x(1) + 0.3, y: 5.34, w: c.w - 0.6, h: 0.3, fs: 12.5, color: GREY });
-
-  txt(sl, "Nos cinq garde-fous sont des tec.", { x: ML, y: 6.2, w: 8, h: 0.26, fs: 11.5, color: GREY, italic: true });
-  band(sl);
-}
-
-/* ══ 4 — la réponse ══════════════════════════════════════════════════════ */
-{
-  const sl = slide();
-  head(sl, { eyebrow: "Exit Lane", num: "04 · 10", kicker: "La réponse", title: "Céder la part, jamais la créance" });
-
-  const c = cols(2);
-  [[PEACHBG, CORAL, "Non cessible", "Loan", "Aucune des 15 transactions XLS-65 / XLS-66 ne la transfère. L'emprunteur ne voit rien.",
-    ["aucun transfert de créance"], "F6DCD1", "9C4026"],
-   [GREENBG, GREEN, "Cessible", "Part de vault", "Un MPT. Transférable, escrowable, et il porte le rendement avec lui.",
-    ["MPTokenAuthorize", "EscrowCreate", "EscrowFinish"], "C9EDE1", "0E6B4E"],
-  ].forEach(([bg, acc, tag, t, body, chips, cbg, ctx], i) => {
-    const x = c.x(i);
-    card(sl, { x, y: 2.1, w: c.w, h: 3.45, fill: bg, noLine: true });
-    caps(sl, tag, { x: x + 0.34, y: 2.4, w: 3, fs: 9, color: acc });
-    txt(sl, t, { x: x + 0.34, y: 2.7, w: c.w - 0.68, h: 0.45, fs: 23, bold: true, color: NAVY, ff: FH });
-    txt(sl, body, { x: x + 0.34, y: 3.32, w: c.w - 0.68, h: 0.8, fs: 13, color: GREY, ls: 19 });
-    let cx = x + 0.34;
-    chips.forEach((t2) => { cx += chip(sl, t2, { x: cx, y: 4.96, fill: cbg, color: ctx }) + 0.14; });
+  const cw = CW / 4;
+  rule(sl, 2.62, LINE, ML + 0.25, cw * 3);
+  [["L'acheteur verrouille son paiement", "EscrowCreate · +2 h"],
+   ["La vendeuse verrouille ses parts", "EscrowCreate · +1 h"],
+   ["L'acheteur prend les parts et révèle le secret", "EscrowFinish"],
+   ["La vendeuse relit le secret et encaisse", "EscrowFinish"],
+  ].forEach(([t, tx], i) => {
+    const x = ML + i * cw;
+    badge(sl, i + 1, { x, y: 2.37, d: 0.5, fs: 15 });
+    txt(sl, t, { x, y: 3.2, w: cw - 0.3, h: 1.0, fs: 17, color: NAVY, ff: FMED, ls: 24 });
+    chip(sl, tx, { x, y: 4.4 });
   });
 
-  txt(sl, "Vendre une part de fonds obligataire ne vend pas les obligations du portefeuille.",
-    { x: ML, y: 5.95, w: CW, h: 0.3, fs: 14, color: NAVY });
-  band(sl);
+  rule(sl, 5.35);
+  txt(sl, "Prix : 97 % de la valeur de part.", { x: ML, y: 5.6, w: 5.6, h: 0.35, fs: 16, color: NAVY, ff: FMED });
+  txt(sl, "Une seule condition SHA-256 pour les deux escrows.", { x: ML + 5.8, y: 5.6, w: 5.8, h: 0.35, fs: 16, color: GREY });
+  notes(sl);
 }
 
-/* ══ 5 — le mécanisme ════════════════════════════════════════════════════ */
-{
-  const sl = slide();
-  head(sl, { eyebrow: "Exit Lane", num: "05 · 10", kicker: "Le mécanisme", title: "Deux coffres, une seule clé" });
-
-  const c = cols(4, 0.20);
-  [["L'acheteur bloque", "EscrowCreate · +2 h", "Il s'engage en premier."],
-   ["La vendeuse bloque", "EscrowCreate · +1 h", "Expiration plus courte : elle garde le temps d'encaisser."],
-   ["L'acheteur prend", "EscrowFinish", "Pour prendre les parts, il doit publier la clé."],
-   ["La vendeuse encaisse", "EscrowFinish", "Le secret est relu dans le ledger."],
-  ].forEach(([t, tx, d], i) => {
-    const x = c.x(i);
-    card(sl, { x, y: 2.1, w: c.w, h: 3.05 });
-    bullet(sl, i + 1, { x: x + 0.26, y: 2.34 });
-    txt(sl, t, { x: x + 0.26, y: 2.76, w: c.w - 0.52, h: 0.44, fs: 14, bold: true, color: NAVY, ff: FH, ls: 17 });
-    txt(sl, d, { x: x + 0.26, y: 3.3, w: c.w - 0.52, h: 0.9, fs: 12, color: GREY, ls: 17 });
-    chip(sl, tx, { x: x + 0.26, y: 4.66 });
-  });
-
-  txt(sl, "Une seule condition PREIMAGE-SHA-256 pour les deux escrows. Inverser les durées casse l'échange.",
-    { x: ML, y: 5.55, w: CW, h: 0.3, fs: 14, color: NAVY });
-  txt(sl, "Ni notaire, ni séquestre, ni confiance.", { x: ML, y: 5.97, w: 8, h: 0.26, fs: 11.5, color: GREY, italic: true });
-  band(sl);
-}
-
-/* ══ 6 — démo ════════════════════════════════════════════════════════════ */
+/* ══ 4 — démo ════════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
-  caps(sl, "Maintenant", { x: ML, y: 1.9, w: 4, fs: 10, color: SKY });
-  txt(sl, "Démo live.", { x: ML - 0.06, y: 2.25, w: 6, h: 1.0, fs: 50, bold: true, color: WHITE, ff: FH });
-  txt(sl, "13 transactions\n56 secondes\nen direct sur le devnet",
-    { x: ML, y: 3.5, w: 4.5, h: 1.1, fs: 16, color: "C9D4E8", ls: 26 });
+  txt(sl, "Démo live.", { x: ML - 0.05, y: 2.75, w: 5.2, h: 1.0, fs: 56, bold: true, color: WHITE, ff: FH });
+  txt(sl, "13 transactions en 56 secondes,\nsur le devnet, en direct.", { x: ML, y: 3.9, w: 5, h: 0.8, fs: 18, color: SOFT, ff: FL, ls: 28 });
 
-  term(sl, { x: 5.95, y: 1.8, w: 6.5, h: 4.5, title: "node scripts/demo.mjs", lines: [
-    [["  CE QU'ON VIENT DE PROUVER, EN 13 TRANSACTIONS", T.dim]],
-    [],
-    [["   VaultCreate          ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   VaultDeposit         ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   LoanBrokerSet        ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   LoanSet 100%         ", T.ink], ["tesSUCCESS", T.ok]],
-    [["⛔ ", T.bad], ["VaultWithdraw        ", T.ink], ["tecINSUFFICIENT_FUNDS", T.bad]],
-    [["   EscrowCreate ×2      ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   EscrowFinish ×2      ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   LoanPay              ", T.ink], ["tesSUCCESS", T.ok]],
-    [["   VaultWithdraw        ", T.ink], ["tesSUCCESS", T.ok]],
-    [],
-    [["  Durée totale : 00:56", T.dim]],
+  const L = (label, code) => [["" + label.padEnd(24), X.ink], [code, code === "tesSUCCESS" ? X.ok : X.bad]];
+  term(sl, { x: 6.35, y: 1.55, w: 6.1, fs: 11.5, step: 0.31, label: "~/xrpl-lending  $ node scripts/demo.mjs --auto", lines: [
+    L("VaultCreate", "tesSUCCESS"),
+    L("VaultDeposit", "tesSUCCESS"),
+    L("LoanBrokerSet", "tesSUCCESS"),
+    L("LoanBrokerCoverDeposit", "tesSUCCESS"),
+    L("LoanSet 100 %", "tesSUCCESS"),
+    fail(L("VaultWithdraw", "tecINSUFFICIENT_FUNDS")),
+    L("MPTokenAuthorize", "tesSUCCESS"),
+    L("EscrowCreate ×2", "tesSUCCESS"),
+    L("EscrowFinish ×2", "tesSUCCESS"),
+    L("LoanPay", "tesSUCCESS"),
+    L("VaultWithdraw", "tesSUCCESS"),
+    null,
+    [["Durée totale  00:56", X.dim]],
   ] });
-  band(sl, true);
+  notes(sl);
 }
 
-/* ══ 7 — exécution ═══════════════════════════════════════════════════════ */
+/* ══ 5 — exécution ═══════════════════════════════════════════════════════ */
 {
   const sl = slide();
-  head(sl, { eyebrow: "Exit Lane", num: "07 · 10", kicker: "Exécution", title: "Minimum bar : 8 sur 8" });
+  title(sl, "Minimum bar : 8 sur 8");
 
-  term(sl, { x: ML, y: 2.0, w: 7.5, h: 3.9, title: "8 étapes, un seul run, chaque hash dans le README", lines: [
-    [["1  Vault open-ended        ", T.ink], ["VaultCreate", T.cmd]],
-    [["2  Dépôt de la prêteuse    ", T.ink], ["VaultDeposit", T.cmd]],
-    [["3  Broker + first-loss     ", T.ink], ["LoanBrokerSet", T.cmd]],
-    [["4  Origination + drawdown  ", T.ink], ["LoanSet", T.cmd]],
-    [["5  Remboursement           ", T.ink], ["LoanPay", T.cmd]],
-    [["6  Capital + rendement     ", T.ink], ["VaultWithdraw", T.cmd]],
-    [["7  Garde-fous provoqués    ", T.ink], ["5 × tec", T.bad], [" + contrôle positif", T.dim]],
-    [["8  Use case                ", T.ink], ["Exit Lane", T.cmd]],
-    [],
-    [["   valeur de part  1.000000000 → ", T.dim], ["1.006443880", T.ok]],
+  const S = (n, label, tx, c) => [[`${n}  ${label.padEnd(24)}`, X.ink], [tx, c ?? X.cmd]];
+  term(sl, { x: ML, y: 1.95, w: 7.3, fs: 12, step: 0.34, label: "README.md  ›  un hash par étape", lines: [
+    S(1, "Vault open-ended", "VaultCreate"),
+    S(2, "Dépôt", "VaultDeposit"),
+    S(3, "Broker + couverture", "LoanBrokerSet"),
+    S(4, "Origination + drawdown", "LoanSet"),
+    S(5, "Remboursement", "LoanPay"),
+    S(6, "Capital + rendement", "VaultWithdraw"),
+    S(7, "Garde-fous provoqués", "5 × tec + 1 contrôle", X.bad),
+    S(8, "Use case", "Exit Lane"),
+    null,
+    [["   valeur de part  1.000000000  →  ", X.dim], ["1.006443880", X.ok]],
   ] });
 
-  const R = [["15 / 15", "types XLS-65 et XLS-66 soumis au ledger"],
-             ["0", "JSON à la main : tout est typé en 4.6.0"],
-             ["1", "helper de signature réécrit"]];
-  R.forEach(([n, l], i) => {
-    const y = 2.0 + i * 1.34;
-    card(sl, { x: 8.68, y, w: 3.77, h: 1.2 });
-    txt(sl, n, { x: 8.96, y: y + 0.18, w: 3.2, h: 0.45, fs: 24, bold: true, color: BLUE, ff: FH });
-    txt(sl, l, { x: 8.96, y: y + 0.68, w: 3.3, h: 0.4, fs: 11.5, color: GREY, ls: 15 });
-  });
-  band(sl);
+  stat(sl, "15 / 15", "types XLS-65/66 soumis au ledger", { x: 8.85, y: 2.25, w: 3.6, fs: 44, color: BLUE });
+  stat(sl, "0", "type manquant dans xrpl@4.6.0", { x: 8.85, y: 4.05, w: 3.6, fs: 44, color: BLUE });
+  notes(sl);
 }
 
-/* ══ 8 — feedback, item phare ════════════════════════════════════════════ */
+/* ══ 6 — feedback : first-loss capital ═══════════════════════════════════ */
 {
   const sl = slide();
-  head(sl, { eyebrow: "Feedback · 40 % de la note", num: "08 · 10", kicker: "Item n°1",
-    title: "« First-loss capital » : le nom ment" });
+  title(sl, "First-loss capital : 0,5 % d'un prêt en défaut");
 
-  const cell = (t, o = {}) => ({ text: t, options: {
-    fontFace: o.mono ? FM : FB, fontSize: o.fs ?? 11.5, bold: o.bold ?? false,
-    color: o.color ?? GREY, align: o.align ?? "left", valign: "middle",
-    fill: { color: o.fill ?? WHITE }, margin: [0, 0.14, 0, 0.14],
-    border: [{ type: "none" }, { type: "none" }, { type: "solid", color: LINE, pt: 0.75 }, { type: "none" }],
-  } });
-  const h = (t, align) => ({ text: t.toUpperCase(), options: {
-    fontFace: FB, fontSize: 8.5, bold: true, color: WHITE, charSpacing: 0.6,
-    align: align ?? "left", valign: "middle", fill: { color: NAVY }, margin: [0, 0.14, 0, 0.14],
-  } });
+  stat(sl, "1 XRP", "de couverture posée par le broker", { x: ML, y: 1.95, w: 5.6 });
+  stat(sl, "0,02 XRP", "prélevés sur la couverture au défaut", { x: ML, y: 3.2, w: 5.6, color: ORANGE });
+  stat(sl, "3,98 XRP", "perdus par le déposant, 79,6 %", { x: ML, y: 4.45, w: 5.6 });
 
-  sl.addTable([
-    [h("Décor"), h("Vault"), h("Prêt"), h("Couverture postée"), h("Couverture ponctionnée", "right"), h("Perte du déposant", "right"), h("Valeur de la part", "right")],
-    [cell("A", { bold: true, color: NAVY }), cell("200 XRP"), cell("50 XRP"), cell("50 XRP"),
-     cell("0,25 XRP", { mono: true, bold: true, color: CORAL, align: "right" }),
-     cell("49,75 XRP", { mono: true, bold: true, color: NAVY, align: "right" }),
-     cell("1,000 → 0,751", { mono: true, align: "right" })],
-    [cell("B", { bold: true, color: NAVY, fill: CARD }), cell("5 XRP", { fill: CARD }), cell("4 XRP", { fill: CARD }), cell("1 XRP", { fill: CARD }),
-     cell("0,02 XRP", { mono: true, bold: true, color: CORAL, align: "right", fill: CARD }),
-     cell("3,98 XRP · 79,6 %", { mono: true, bold: true, color: NAVY, align: "right", fill: CARD }),
-     cell("1,000 → 0,204", { mono: true, align: "right", fill: CARD })],
-  ], { x: ML, y: 2.1, w: CW, colW: [0.95, 1.35, 1.15, 1.9, 2.2, 2.32, 1.7], rowH: [0.38, 0.46, 0.46] });
+  rule(sl, 5.72, LINE, ML, 5.9);
+  txt(sl, "4 XRP de dette × CoverRateMinimum 10 % × CoverRateLiquidation 5 %",
+    { x: ML, y: 5.9, w: 6.2, h: 0.25, fs: 10.5, color: GREY, ff: FM });
+  txt(sl, "Même ratio sur un prêt de 50 XRP : 0,25 XRP.", { x: ML, y: 6.25, w: 6, h: 0.3, fs: 12.5, color: MUT });
 
-  term(sl, { x: ML, y: 3.62, w: CW, h: 2.06, title: "le nom, et ce qu'il fait", fs: 11.5, step: 0.3, lines: [
-    [["CoverRateLiquidation: 5 %", T.ink], ["   se lit  « 5 % du défaut »", T.dim]],
-    [["                         ", T.ink], ["   c'est   « 5 % du minimum requis »", T.bad, true]],
-    [],
-    [["deux ordres de grandeur, et les trois taux du broker sont figés à sa création", T.dim]],
-  ] });
-
-  txt(sl, "Dans la minute, le broker a repris les 98 % intacts : le défaut met DebtTotal à zéro, donc le plancher aussi.",
-    { x: ML, y: 5.9, w: CW, h: 0.3, fs: 12, color: NAVY });
-  band(sl);
+  const W = 5.0, x = MR - W;
+  const h1 = explorer(sl, { x, y: 1.8, w: W, files: ["f3a-type", "f3a-meta"], label: "LoanManage tfLoanDefault  ›  923F7D61…" });
+  explorer(sl, { x, y: 1.8 + h1 + 0.22, w: W, files: ["f3b-type", "f3b-amount", "f3b-date"], label: "21 s après le défaut  ›  68DD97D9…" });
+  notes(sl);
 }
 
-/* ══ 9 — feedback, la suite ══════════════════════════════════════════════ */
+/* ══ 7 — feedback : paiement en retard ═══════════════════════════════════ */
 {
   const sl = slide();
-  head(sl, { eyebrow: "Feedback", num: "09 · 10", kicker: "Six autres", title: "Toutes reproductibles, toutes avec leur hash" });
+  title(sl, "Un LoanPay en retard exige tfLoanLatePayment");
+  txt(sl, "Prêt en retard, encore dans son délai de grâce.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
 
+  const W = (CW - 0.4) / 2;
+  const h = explorer(sl, { x: ML, y: 2.45, w: W, files: ["f1a-type", "f1a-status"], label: "Flags 0  ›  96C38704…" });
+  explorer(sl, { x: ML + W + 0.4, y: 2.45, w: W, h, files: ["f1b-type", "f1b-flags"], label: "Flags 262144  ›  EFAD383F…" });
+
+  rule(sl, 5.2);
+  txt(sl, "XLS-66, §3.11.4.2", { x: ML, y: 5.45, w: 3.2, h: 0.35, fs: 15, color: NAVY, ff: FMED });
+  txt(sl, "l'échec est défini (condition 11).", { x: ML + 3.2, y: 5.45, w: 8.3, h: 0.35, fs: 15, color: GREY });
+  txt(sl, "Référence LoanPay", { x: ML, y: 5.92, w: 3.2, h: 0.35, fs: 15, color: NAVY, ff: FMED });
+  txt(sl, "huit codes d'erreur listés sur xrpl.org, tecEXPIRED n'y figure pas.", { x: ML + 3.2, y: 5.92, w: 8.3, h: 0.35, fs: 15, color: GREY });
+  notes(sl);
+}
+
+/* ══ 8 — feedback : les huit autres ══════════════════════════════════════ */
+{
+  const sl = slide();
+  title(sl, "Huit autres constats");
+
+  // numéro = section de FEEDBACK.md
   const F = [
-    ["Un retard d'une seconde bloque tout paiement", "Le flag tfLoanLatePayment est requis, et n'est pas documenté comme tel.", "tecEXPIRED", CORAL, PEACHBG],
-    ["La valeur de part évidente est 150 % trop haute", "LossUnrealized n'est pas déduit d'AssetsTotal, et disparaît du nœud à zéro.", "LossUnrealized", CORAL, PEACHBG],
-    ["AssetsMaximum: 0 désactive le plafond", "au lieu de geler les dépôts. Irréversible tant qu'il reste des déposants.", "tecLIMIT_EXCEEDED", CHIPTX, BLUECARD],
-    ["Le flag d'amendment ne dit pas ce qui est appliqué", "V1.1 est enabled, sa restriction sur LoanBrokerSet ne l'est pas.", "tesSUCCESS × 2", CHIPTX, BLUECARD],
-    ["Un tableau de bord = 8 appels RPC", "et 6 formules à la main. loan_info n'existe pas, vault → prêts n'a pas d'index.", "missing primitive", CHIPTX, BLUECARD],
-    ["Un seul code pour deux remèdes opposés", "Déposer de la couverture, ou attendre des déposants.", "tecINSUFFICIENT_FUNDS", CHIPTX, BLUECARD],
+    [1, "fixCleanup3_4_0 actif, absent d'xrpl.org", "tecTOO_SOON · préfixe CPT"],
+    [4, "Exception du porteur unique absente d'xrpl.org", "LossUnrealized"],
+    [5, "loan_info et loan_broker_info absents", "unknownCmd"],
+    [6, "Quatre codes, deux à trois causes chacun", "tecINSUFFICIENT_FUNDS"],
+    [7, "Restriction V1.1 de LoanBrokerSet retirée", "tesSUCCESS"],
+    [8, "Devnet sur les ports 51233 et 51234 seulement", "réseau"],
+    [9, "Aucun flag ne ferme un vault aux dépôts", "tecLIMIT_EXCEEDED"],
+    [10, "Parts de vault lsfMPTCanTrade, OfferCreate refusé", "temDISABLED"],
   ];
-  const c = cols(3);
-  F.forEach(([t, d, code, col, bg], i) => {
-    const cl = i % 3, row = (i - cl) / 3;
-    const x = c.x(cl), y = 2.1 + row * 1.92;
-    card(sl, { x, y, w: c.w, h: 1.8 });
-    txt(sl, t, { x: x + 0.26, y: y + 0.22, w: c.w - 0.52, h: 0.54, fs: 13, bold: true, color: NAVY, ls: 17 });
-    txt(sl, d, { x: x + 0.26, y: y + 0.82, w: c.w - 0.52, h: 0.6, fs: 11, color: GREY, ls: 15 });
-    chip(sl, code, { x: x + 0.26, y: y + 1.44, color: col, fill: bg, fs: 8 });
+  const gap = 0.6, w = (CW - gap) / 2;
+  F.forEach(([n, t, code], i) => {
+    const x = ML + (i % 2) * (w + gap), y = 1.95 + Math.floor(i / 2) * 1.2;
+    rule(sl, y, LINE, x, w);
+    badge(sl, n, { x, y: y + 0.26, d: 0.34, fs: n > 9 ? 9.5 : 11, fill: NAVY });
+    txt(sl, t, { x: x + 0.52, y: y + 0.26, w: w - 0.52, h: 0.34, fs: 14, color: NAVY, ff: FMED, valign: "middle" });
+    chip(sl, code, { x: x + 0.52, y: y + 0.72, fs: 9 });
   });
-
-  txt(sl, "FEEDBACK.md — chaque item avec sa repro et son hash.", { x: ML, y: 6.2, w: 8, h: 0.3, fs: 12.5, color: NAVY });
-  band(sl);
+  notes(sl);
 }
 
-/* ══ 10 — propositions ═══════════════════════════════════════════════════ */
+/* ══ 9 — clôture ═════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
-  head(sl, { dark: true, eyebrow: "Feedback", num: "10 · 10", kicker: "Ce qu'on propose", title: "Trois corrections, quatre contributions" });
+  title(sl, "Dix constats, trois pages", true);
 
-  [["Retourner les champs nuls, et les grandeurs dérivées.", "SharePriceNet, MaxWithdrawable, DebtCapacity. Supprime une classe entière de bugs clients silencieux — dont le nôtre."],
-   ["Faire dire à chaque tec sa cause.", "Quatre codes couvrent deux à quatre situations, parfois de remèdes opposés."],
-   ["Documenter le paiement en retard.", "tecEXPIRED dans la table de LoanPay, et le flag donné comme requis."],
-  ].forEach(([t, d], i) => {
-    const y = 2.25 + i * 1.1;
-    bullet(sl, i + 1, { x: ML, y: y + 0.02, d: 0.32, fill: BLUE });
-    txt(sl, t, { x: ML + 0.56, y, w: CW - 0.56, h: 0.3, fs: 15, bold: true, color: WHITE });
-    txt(sl, d, { x: ML + 0.56, y: y + 0.36, w: CW - 0.8, h: 0.36, fs: 12, color: "A9BBDC" });
-  });
+  txt(sl, "143 / 143", { x: ML - 0.04, y: 2.15, w: 8, h: 1.25, fs: 76, bold: true, color: SKY, ff: FH });
+  txt(sl, "hashes cités, relus sur le ledger avant soumission", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
 
-  card(sl, { x: ML, y: 5.7, w: CW, h: 1.0, fill: "0A2A72", line: "1C3D85" });
-  caps(sl, "Prêt à partir", { x: ML + 0.32, y: 5.9, w: 3, fs: 9, color: SKY });
-  let cx = ML + 0.32;
-  ["PR xrpl.js : signer LoanSet côté contrepartie", "PR doc : 2 typos", "fix 1 ligne validateVaultCreate", "_probe-inventory.mjs"]
-    .forEach((t) => { cx += chip(sl, t, { x: cx, y: 6.2, fill: "12357E", color: SKY, ff: FB, fs: 9 }) + 0.16; });
-  txt(sl, "github.com/charlyppr/xrpl-lending", { x: MR - 4.4, y: 5.9, w: 4.1, h: 0.3, fs: 11.5, color: WHITE, ff: FM, align: "right" });
-  band(sl, true);
+  rule(sl, 4.6, "1C3D85");
+  txt(sl, "github.com/charlyppr/xrpl-lending", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });
+  let cx = ML;
+  ["FEEDBACK.md", "deck/feedback-report.pdf"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 5.6, c: CHIPDARK }) + 0.14; });
+  notes(sl);
 }
 
 p.writeFile({ fileName: process.argv[2] || "deck/exit-lane.pptx" }).then((f) => console.log("écrit :", f));

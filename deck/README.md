@@ -1,44 +1,39 @@
 # Deck — Exit Lane
 
-`exit-lane.pptx` — 10 slides, 16:9 en 13,333 × 7,5 pouces.
+`exit-lane.pptx` : 9 slides, 16:9 en 13,333 × 7,5 pouces, notes orateur minutées dans chaque slide.
 `exit-lane.pdf` — le même deck exporté par PowerPoint, filet de sécurité pour
 projeter sans dépendre d'une machine qui ait les bonnes polices.
 
 ## Design system
 
-Repris du deck officiel Ripple / XRPL Lending Protocol (« final lending
-intro.pdf »), relevé au pixel sur le PDF plutôt qu'approché à l'œil :
+Deux sources à réconcilier : le deck officiel Ripple / XRPL Lending Protocol
+(« final lending intro.pdf ») pour les slides, l'explorer XRPL pour les preuves.
 
 | Rôle | Valeur |
 |---|---|
 | Fond sombre / titres | `#001C5C` |
-| Accent (kickers, pastilles, puces) | `#006AFF` |
-| Accent sur fond sombre | `#6DC3FF` |
+| Accent | `#006AFF`, sur fond sombre `#6DC3FF` |
 | Texte courant | `#5F666E` |
-| Sourdine (eyebrow, pagination) | `#AEB3B7` |
-| Carte | `#FAFAFA`, bord `#E2E5E8`, rayon 0,12" |
-| Carte bleue | `#EBF4FF` · vert `#E1F4EE` · pêche `#FAEDE7` |
-| Puce de code | fond `#BAEAFF`, texte `#0045C6` |
+| Échec (chiffres, capsules) | `#F2703A`, l'orange de l'explorer assombri pour le blanc |
+| Capsule de code | fond `#EBF4FF`, texte `#0045C6`, hauteur 0,32", 0,22" de marge de chaque côté |
+| Fenêtre (terminal et explorer) | fond `#000000`, bord `#343437`, gris `#A2A2A4`, menthe `#84F0B6`, orange `#FF884B`, violet `#B480FF` |
 | Rail de gauche | dégradé 8 bandes, 0,10" de large, pleine hauteur |
 
-Composant maison en plus du système de référence : **`term`**, un faux
-terminal (pastilles, titre, filet, lignes monospace colorées — vert
-`tesSUCCESS`, corail `tec*`). Toute sortie de commande passe par lui : sur les
-slides 2, 3, 6, 7 et 8 il remplace ce qui aurait été un paragraphe.
+Les couleurs des fenêtres sont relevées sur les captures elles-mêmes : le
+terminal et l'explorer partagent le composant `win` (fond noir, pastilles,
+barre d'adresse en monospace). La barre d'adresse porte les petites
+informations de preuve : hash abrégé, flags, délai.
 
-Règle de contenu : une idée par slide, un chiffre plutôt qu'une phrase, pas de
-sous-titre qui répète le titre.
+**Polices.** Poppins partout : Bold pour les titres et les chiffres, Medium pour
+les intitulés, Regular pour le corps, Light pour les phrases longues. Menlo pour
+le code. Les quatre graisses de Poppins sont installées sur la machine et
+embarquées dans le PDF.
 
-Grille : marge gauche 0,88", bord droit 12,45", bandeau bas à 7,08".
-1 pixel du PDF de référence = 0,01" dans le pptx, donc toute mesure prise sur
-le PDF se transpose telle quelle.
+Règle de contenu : un titre et rien d'autre en bordure (ni surtitre, ni numéro
+de page, ni légende, ni bandeau), « CY-HACK » une seule fois sur la slide 1,
+aucun emoji, un chiffre ou une capture plutôt qu'une phrase.
 
-**Polices.** Le deck de référence utilise Plus Jakarta Sans Bold, Inter et
-JetBrains Mono. Aucune des trois n'est installée sur la machine, donc le
-générateur prend les plus proches qui le sont : **Poppins** (titres),
-**Helvetica Neue** (corps), **Menlo** (mono). Pour revenir aux polices
-d'origine : les installer, puis changer `FH` / `FB` / `FM` en tête de
-`build-deck.cjs` et régénérer.
+Grille : marge gauche 0,88", bord droit 12,45".
 
 ## Régénérer
 
@@ -60,35 +55,39 @@ osascript -e 'tell application "Microsoft PowerPoint"
 end tell'
 ```
 
-## Plan
+## Pitch en 4 minutes
 
-| # | Slide | Rôle dans le pitch |
-|---|---|---|
-| 1 | Exit Lane | Titre, track, environnement, version de lib |
-| 2 | Ouvert en droit, fermé en fait | Trois chiffres + l'état du vault en terminal |
-| 3 | Le protocole dit non | Le refus en terminal, puis `tec` vs `tem` |
-| 4 | Céder la part, jamais la créance | Ce qu'on vend, ce qu'on ne vend pas |
-| 5 | Deux coffres, une seule clé | Le HTLC en quatre étapes |
-| 6 | Démo live | Marqueur — lancer `node scripts/demo.mjs` |
-| 7 | Minimum bar : 8 sur 8 | Les 8 étapes en terminal, 3 chiffres à droite |
-| 8 | « First-loss capital » : le nom ment | Deux décors mesurés, et le nom vs ce qu'il fait |
-| 9 | Six autres | Le reste du rapport, un code d'erreur par carte |
-| 10 | Trois corrections, quatre contributions | Ce qu'on propose à Ripple |
+Le texte à dire est dans les notes de chaque slide (mode présentateur).
 
-Slides 8 à 10 = 40 % de la note. Ne pas les sacrifier si le temps manque :
-couper dans 4 et 5, qui se racontent à l'oral pendant la démo.
+| # | Slide | Temps | Contenu |
+|---|---|---|---|
+| 1 | Exit Lane | 0:00 → 0:15 | Track, promesse du vault open-ended |
+| 2 | Ouvert en droit, fermé en fait | 0:15 → 0:40 | 100 % prêté, retrait refusé (capture `7AB5622E`) |
+| 3 | Céder la part de vault, pas le prêt | 0:40 → 1:00 | Les 4 transactions de l'échange |
+| 4 | Démo live | 1:00 → 2:00 | `node scripts/demo.mjs --auto`, 56 s mesurées |
+| 5 | Minimum bar : 8 sur 8 | 2:00 → 2:15 | 8 étapes, 15/15 types |
+| 6 | First-loss capital : 0,5 % d'un prêt en défaut | 2:15 → 2:50 | Finding 3, captures `923F7D61` et `68DD97D9` |
+| 7 | Un LoanPay en retard exige tfLoanLatePayment | 2:50 → 3:15 | Finding 2, captures `96C38704` et `EFAD383F` |
+| 8 | Huit autres constats | 3:15 → 3:45 | Findings 1, 4 à 10 |
+| 9 | Dix constats, trois pages | 3:45 → 3:55 | 143/143 hashes, repo |
+
+Avant de monter sur scène : terminal ouvert à la racine du repo, commande
+`node scripts/demo.mjs --auto` déjà tapée, `node scripts/check-connection.mjs`
+passé dans les 10 minutes précédentes. Si la démo ne bouge pas pendant 15 s :
+Ctrl+C, revenir à la slide 4, dont le terminal est le run de référence.
 
 ## État de vérification
 
 Rendu par Microsoft PowerPoint et relu slide par slide sur le PDF exporté :
 pas de débordement, pas de chevauchement. À refaire après toute modification
-de `build-deck.cjs` — c'est ce qui a rattrapé trois collisions lors de la
-première passe.
+de `build-deck.cjs`.
 
-Chiffres du deck synchronisés avec le dépôt au 12/09 19h30 : démo 13
-transactions en 56 s, part 1,000000000 → 1,006443880, H13 et H14 tranchées.
-Aucun compteur mouvant n'est écrit sur une slide — `FEEDBACK-RAW.md` grossit
-encore, et un chiffre faux au pitch coûte plus que le chiffre ne rapporte.
+Contenu aligné sur `FEEDBACK.md` au 12/09 23h. Retirés du deck parce que
+l'audit de 22h45 les a invalidés : prix de part « surévalué de 150 % »,
+« `AssetsMaximum: 0` non documenté », « flag V1.1 qui ment », « `tfLoanLatePayment`
+non documenté », « PR xrpl.js pour signer `LoanSet` », « 8 appels RPC ».
+
+Capture supplémentaire du deck : `node deck/capture-explorer.mjs d-`.
 
 ## `feedback-report.pdf` — le rapport de feedback
 
@@ -104,6 +103,18 @@ tectonic -X compile deck/feedback-report.tex --outdir deck
 dépendance), refuse le bandeau cookies, et recadre chaque capture sur un élément
 du DOM de l'explorer. Viewport 460 px, rendu ×5,25 : le PDF place toutes les
 captures au même grossissement.
+
+Taille des captures dans le rapport : 460 px CSS pour la largeur d'une colonne,
+soit ≈ 0,56 pt par px CSS. Le texte de l'explorer sort alors entre 7 et 10 pt,
+comme les tableaux et le corps. Le titre de transaction de l'explorer
+(≈ 40 px CSS, donc ≈ 22 pt) n'est pas repris : le rapport utilise la pastille
+de statut seule (`*-badge`) et nomme la transaction dans la légende. Le deck,
+lui, garde les titres (`*-type`). Chaque capture forme un bloc insécable avec
+sa légende et son hash.
+
+```bash
+node deck/capture-explorer.mjs 'badge$'    # ne refaire qu'une famille de captures
+```
 
 Pièges rencontrés, notés dans les fichiers :
 

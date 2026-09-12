@@ -1,5 +1,6 @@
 // Captures de l'explorer XRPL pour feedback-report.pdf.
 //   node deck/capture-explorer.mjs          → deck/shots/*.png
+//   node deck/capture-explorer.mjs '^d-'    → seulement les captures dont le nom correspond
 // Chrome headless piloté par le protocole DevTools : aucune dépendance (fetch et
 // WebSocket sont natifs dans Node ≥ 22). Chaque capture est un recadrage
 // rectangulaire d'une vraie page de l'explorer ; rien n'est retouché. Le bandeau
@@ -25,37 +26,48 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Gabarits de recadrage : titre (type + statut), ligne du hash, section de
 // l'onglet Detailed, ligne clé/valeur de l'onglet Simple.
 const T = { e: `titleRow()`, px: 12, py: [6, 6] };
+// Pastille de statut seule, sans le titre : le titre de l'explorer (≈ 40 px CSS)
+// sort à ≈ 22 pt dans le rapport, deux fois le corps du texte. Le rapport utilise
+// B, le deck garde T.
+const B = { e: `[document.querySelector('.transaction .summary .tx-status')]`, px: 12, py: [6, 4] };
 const H = { e: `[hashRow()]`, px: 12, py: [3, 3] };
 const S = (name) => ({ e: `[section('${name}')]`, px: 12, py: [2, 4] });
 const K = (label) => ({ e: `[kv('${label}')]`, px: 8, py: [-12, -22] });
 
 const PAGES = [
   { hash: "96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4", tab: "Detailed", crops: {
-    "f1a-type": T, "f1a-status": S("Status") } },
+    "f1a-type": T, "f1a-badge": B, "f1a-status": S("Status") } },
   { hash: "EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F", tab: "Detailed", crops: {
-    "f1b-type": T, "f1b-flags": S("Flags") } },
+    "f1b-type": T, "f1b-badge": B, "f1b-flags": S("Flags") } },
   { hash: "C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC", tab: "Detailed", crops: {
-    "f2-type": T,
+    "f2-type": T, "f2-badge": B,
     "f2-meta": { e: `metaItems(/^It modified a node with type (Loan|Vault)$/)`, px: 22, py: [-1, 1] } } },
   { hash: "C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC", tab: "Raw", expand: true, crops: {
     "f2-raw": { e: `vaultPairs(['AssetsAvailable','AssetsTotal','LossUnrealized'])`, px: 14, py: [1, 1] } } },
   { hash: "923F7D616B094C82197506CF2867907A93067041E3990D24BD07A19035F73EAC", tab: "Detailed", crops: {
-    "f3a-type": T, "f3a-status": S("Status"), "f3a-flags": S("Flags"),
+    "f3a-type": T, "f3a-badge": B, "f3a-status": S("Status"), "f3a-flags": S("Flags"),
     "f3a-meta": { e: `metaItems(/^It modified the AccountRoot node of r(sR4Q|bhF8)/)`, px: 22, py: [3, 0] } } },
   { hash: "68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E", tab: "Simple", crops: {
-    "f3b-amount": K("Amount"), "f3b-date": K("DATE/TIME (UTC)") } },
+    "f3b-badge": B, "f3b-amount": K("Amount"), "f3b-date": K("DATE/TIME (UTC)") } },
   { hash: "5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B", tab: "Detailed", crops: {
-    "f6a-type": T, "f6a-status": S("Status") } },
+    "f6a-type": T, "f6a-badge": B, "f6a-status": S("Status") } },
   { hash: "B92A90F59EBF79108B5414F61A12656F321EBC264E1BB186FCC14CAF259F9CAA", tab: "Detailed", crops: {
-    "f6b-type": T, "f6b-status": S("Status") } },
+    "f6b-type": T, "f6b-badge": B, "f6b-status": S("Status") } },
   // « LoanBrokerCoverWithdraw » ne tient pas en 540 px : le titre seul, en 820.
   { hash: "68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E", tab: "Simple", w: 820, crops: {
     "f3b-type": T } },
   { hash: "A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2", tab: "Simple", crops: {
-    "f5a-type": T, "f5a-max": K("Assets Maximum"), "f5a-date": K("DATE/TIME (UTC)") } },
+    "f5a-type": T, "f5a-badge": B, "f5a-max": K("Assets Maximum"), "f5a-date": K("DATE/TIME (UTC)") } },
   { hash: "D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956", tab: "Simple", crops: {
-    "f5b-type": T, "f5b-amount": K("Amount"), "f5b-date": K("DATE/TIME (UTC)") } },
+    "f5b-type": T, "f5b-badge": B, "f5b-amount": K("Amount"), "f5b-date": K("DATE/TIME (UTC)") } },
+  // Deck : le retrait refusé de la démo (scène 2).
+  { hash: "7AB5622EAEFC70A6B005EAED9411EA3D62539A16E5EF5D8C8E33F8BE493CF934", tab: "Detailed", crops: {
+    "d-wall-type": T, "d-wall-status": S("Status") } },
 ];
+// node deck/capture-explorer.mjs '^d-'     → seulement les captures dont le nom correspond
+// node deck/capture-explorer.mjs 'badge$'
+const ONLY = process.argv[2] ? new RegExp(process.argv[2]) : null;
+const wanted = (k) => !ONLY || ONLY.test(k);
 
 const HELPERS = `
   window.__leaf = (re, root=document) => [...root.querySelectorAll('*')].filter(e => e.children.length===0 && re.test((e.innerText||'').trim()));
@@ -87,7 +99,7 @@ const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${port}
   "--hide-scrollbars", "--no-first-run", "--no-default-browser-check", "about:blank"], { stdio: "ignore" });
 try {
   for (let i = 0; i < 60; i++) { try { await fetch(`http://127.0.0.1:${port}/json/version`); break; } catch { await sleep(250); } }
-  for (const page of PAGES) {
+  for (const page of PAGES.filter((p) => Object.keys(p.crops).some(wanted))) {
     const t = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
     const ws = new WebSocket(t.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r));
     let id = 0; const P = new Map();
@@ -109,7 +121,7 @@ try {
     }
     await ev(HELPERS);
     await ev("window.scrollTo(0,0)");
-    for (const [name, spec] of Object.entries(page.crops)) {
+    for (const [name, spec] of Object.entries(page.crops).filter(([k]) => wanted(k))) {
       const { e: expr, px = 12, py = 12 } = typeof spec === "string" ? { e: spec } : spec;
       const clip = await ev(`__box(${expr}, ${px}, ${JSON.stringify(py)})`);
       const s = await cmd("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { ...clip, scale: 1 } });
