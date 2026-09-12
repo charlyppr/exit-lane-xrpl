@@ -817,7 +817,17 @@ Proposition :
 
 ---
 
-### [14:02] `LoanPay` refuse un paiement PLUS GRAND que le `PeriodicPayment` annoncé par le ledger
+### [14:02] Le montant dû par `LoanPay` n'est exposé par aucun champ : il faut additionner `PeriodicPayment` et `LoanServiceFee`, et le déduire par dichotomie
+
+<!-- TITRE CORRIGÉ le 12/09 à 15h54. L'ancien disait : « LoanPay refuse un
+     paiement PLUS GRAND que le PeriodicPayment annoncé par le ledger ».
+     C'était faux et contredisait H3, qui prouve qu'un vrai surpaiement
+     (3× l'échéance) est correctement imputé. `ceil(PeriodicPayment)` n'est pas
+     « plus que le dû » : c'est plus que l'UN DES DEUX COMPOSANTS du dû.
+     Le fond de l'item est intact ; seule l'affirmation de départ était fausse.
+     À ne PAS reformuler à l'ancienne en rédigeant FEEDBACK.md : un relecteur
+     Ripple teste ça en trois minutes, et un item faux décrédibilise les cinq
+     autres. -->
 Phase : build
 Catégorie : **error messages** + documentation/tutorials
 Sévérité : **haute — bloque le remboursement, étape 5 du minimum bar**
@@ -830,7 +840,10 @@ Tenté :
   plus que ce que le ledger annonce comme dû.
 
 Attendu :
-  `tesSUCCESS`. On paie plus que le montant affiché par le ledger lui-même.
+  `tesSUCCESS`. `PeriodicPayment` est le seul champ du nœud `Loan` qui ressemble
+  à « le montant de l'échéance » ; payer son arrondi supérieur paraissait donc
+  couvrir le dû. C'est ce raccourci qui est faux, pas le protocole : le dû réel
+  comporte un second terme, et rien ne le dit.
 
 Obtenu :
   `tecINSUFFICIENT_PAYMENT`
@@ -1618,3 +1631,285 @@ Proposition :
   Accepter `destination` et créditer le compte existant — c'est le comportement
   des faucets Testnet/Devnet publics. À défaut, renvoyer une erreur explicite
   plutôt qu'un compte neuf que l'appelant n'a pas demandé.
+
+---
+
+### [15:38] ✅ H6 CONFIRMÉE — `InterestRate` est bien en 1/10 pdb, mais ni la base annuelle ni la formule d'amortissement ne sont documentées
+Phase : build / observabilité
+Catégorie : **documentation/tutorials** + developer experience
+Sévérité : **moyenne — n'empêche rien, mais rend tout échéancier client invérifiable**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Tenté :
+  Vérifier qu'un `LoanSet` avec `InterestRate: 8000` produit bien 8 % annuel,
+  et comprendre comment `PeriodicPayment` est calculé — sans soumettre une seule
+  transaction, uniquement par confrontation arithmétique sur un `Loan` déjà
+  au ledger.
+
+Entrées (nœud `Loan`, compte emprunteur) :
+    PrincipalOutstanding      100000000        (100 XRP)
+    InterestRate              8000
+    PaymentInterval           86400            (1 jour)
+    PaymentRemaining          4
+    PeriodicPayment           25013700.13119221382
+    TotalValueOutstanding     100054801
+    ManagementFeeOutstanding  1096
+
+Obtenu — trois conventions identifiées, toutes par déduction :
+
+  1. `InterestRate` est bien en **1/10 de point de base** : 8000 = 8 % annuel.
+     H6 confirmée.
+
+  2. La base annuelle est **ACT/365**, pas 360 ni 365,25 :
+        r_période = (InterestRate / 100000) × (PaymentInterval / 86400) / 365
+                  = 2,19178082e-4
+
+  3. `PeriodicPayment` est une **annuité constante** (amortissement français),
+     pas un amortissement linéaire :
+        PMT = P × r / (1 − (1+r)^−n)
+            = 100 × 2,19178082e-4 / (1 − 1,000219178^−4)
+            = 25,01370013118  XRP
+        observé : 25,01370013119  →  écart 8,6e-12 XRP
+
+     Contre-épreuve sur les autres bases : ACT/360 s'écarte de 1,9e-4 XRP,
+     ACT/365,25 de 9,4e-6. Un amortissement linéaire donnerait un total de
+     100,054794521 contre 100,054801 observé (écart 6,5e-6). Seul
+     ACT/365 + annuité constante colle à la précision du flottant.
+
+     Vérification croisée indépendante : le solde après un paiement prédit par
+     cette formule est 75,008218 XRP — exactement la valeur observée en [14:02]
+     (`PrincipalOutstanding` 100,000000 → 75,008218).
+
+Le problème :
+  Ces trois conventions sont **invisibles**. Ni la doc XLS-66, ni la référence
+  du champ `InterestRate`, ni celle de `PeriodicPayment` n'indiquent la base
+  annuelle retenue, ni la formule d'amortissement, ni le fait que
+  `PeriodicPayment` **exclut** `LoanServiceFee` et `ManagementFee` (cf. [14:02] :
+  c'est précisément ce qui rend le montant réellement dû indevinable).
+
+  Conséquence concrète : toute application qui veut afficher un échéancier,
+  un TAEG, ou simplement « combien me reste-t-il à payer » doit reconstituer
+  ces règles par rétro-ingénierie numérique — ce que nous venons de faire.
+  Deux clients qui devinent des bases différentes (360 vs 365, choix par défaut
+  courant en finance) afficheront des montants différents pour le même prêt.
+
+Repro :
+  1. Originer un prêt avec `InterestRate: 8000`, `PaymentInterval: 86400`,
+     `PaymentTotal: 4`, `PrincipalRequested: 100000000`.
+  2. Lire `PeriodicPayment` sur le nœud `Loan`.
+  3. Comparer à `P·r/(1−(1+r)^−n)` pour r = 0,08/365, 0,08/360 et 0,08/365,25.
+     Seul 365 correspond.
+
+Tx / code : aucune — vérification purement arithmétique sur l'état existant.
+
+Proposition :
+  1. Documenter explicitement la convention de décompte des jours (ACT/365)
+     sur la page de référence de `InterestRate`. C'est une décision de produit
+     financier, pas un détail d'implémentation : elle change les montants.
+  2. Documenter la formule de `PeriodicPayment` (annuité constante) et dire
+     noir sur blanc ce qu'elle n'inclut pas — `LoanServiceFee`,
+     `ManagementFee` — pour couper court à la dichotomie décrite en [14:02].
+  3. Fournir un exemple chiffré de bout en bout dans la doc XLS-66 : un prêt
+     de 100 unités, 8 %, 4 échéances, avec l'échéancier complet. Un seul
+     tableau supprime toute cette rétro-ingénierie.
+
+À verser au rapport : oui, section Observabilité. C'est l'item le moins cher
+du lot — zéro transaction — et il est vérifiable par le lecteur en trois lignes
+de calcul.
+
+---
+
+### [15:46] 🔴 Le devnet cesse de répondre en gardant ses ports TCP ouverts — le client pend au lieu d'échouer
+Phase : build
+Catégorie : **infrastructure** + error messages
+Sévérité : **haute — arrêt total du travail, en plein créneau de hack**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Tenté :
+  Un simple `Payment` entre deux de nos comptes, samedi 15h44. Le même code
+  tournait sans problème 12 minutes plus tôt (`check-connection.mjs` à 15h32,
+  ledger 66540, `tesSUCCESS`).
+
+Obtenu :
+  `NotConnectedError: connect() timed out after 5000 ms` — puis 4 tentatives
+  consécutives à `connectionTimeout: 20000` toutes en échec.
+
+Diagnostic différentiel (c'est le point intéressant) :
+    nc -z lending-hackathon.dev.ripplex.io 51233   → succeeded
+    nc -z lending-hackathon.dev.ripplex.io 51234   → succeeded
+    curl POST :51234 server_info                   → HTTP 000 après 15,0 s
+    curl https://lending-hackathon-faucet…/accounts → HTTP 404 en 0,31 s
+    curl https://xrpl.org (témoin)                 → HTTP 200 en 0,36 s
+
+  Donc : **le handshake TCP réussit sur les deux ports**, le DNS résout, la
+  connectivité sortante est intacte, le faucet (443) répond en 313 ms. Seul le
+  `rippled` lui-même n'émet plus rien au niveau applicatif.
+
+  C'est un mode de défaillance nettement plus coûteux qu'une panne franche :
+  le port ouvert fait croire au développeur que le réseau va bien, et le
+  message d'erreur du SDK l'envoie explicitement sur la mauvaise piste —
+  « the rippled server may be blocked or inaccessible. » Nous avions déjà
+  perdu 45 min sur un vrai blocage de ports en [12:26] ; le réflexe est donc
+  de re-soupçonner le wifi, et de repartir sur un partage de connexion 4G qui
+  n'aurait rien changé. Il a fallu un test TCP explicite pour trancher.
+
+Repro :
+  1. `nc -z <host> 51233` → succeeded.
+  2. `curl -m 15 -X POST https://<host>:51234 -d '{"method":"server_info"…}'`
+     → aucune réponse.
+  3. Conclure que la couche transport est saine et que le nœud est en cause.
+
+Tx / code : aucune — rien ne part.
+
+Proposition :
+  1. **Un endpoint de santé sur 443** (`GET /health` renvoyant l'index du
+     dernier ledger validé). Aujourd'hui il n'existe aucun moyen de distinguer
+     « devnet en panne » de « mon réseau filtre » sans sortir `nc` et `curl`.
+     Sur un hackathon où un seul nœud sert toutes les équipes, c'est la
+     première chose à donner aux participants.
+  2. Le message d'erreur de `connect()` de xrpl.js ne devrait pas affirmer une
+     cause. « blocked or inaccessible » est un diagnostic, pas une observation :
+     le SDK sait seulement qu'aucune réponse n'est arrivée. Distinguer
+     « connexion TCP refusée » de « TCP établi, pas de réponse WebSocket »
+     est trivial côté client et oriente immédiatement vers la bonne cause.
+  3. `connectionTimeout` par défaut à 5 s est court pour un devnet mutualisé :
+     une valeur trop basse transforme une lenteur passagère en panne apparente.
+
+Durée et nature exacte de l'incident (mesuré) :
+  Le nœud est redevenu interrogeable **~3 minutes** plus tard. Surtout, le
+  ledger validé était passé de **66540 à 67041** pendant l'indisponibilité,
+  soit ~500 ledgers : le nœud **continuait donc de valider normalement** et
+  n'avait cessé que de répondre aux requêtes entrantes. Ce n'était ni un crash
+  ni un redémarrage, mais une saturation de la couche API — ce qui explique
+  le port TCP resté ouvert, et ce qui rend un `/health` en 443 d'autant plus
+  utile : l'information « le ledger avance » existait, elle était juste
+  inatteignable par le canal saturé.
+
+Effet sur nous : ~10 min de travail on-chain perdues, basculées sur les
+modifications hors-ligne. Sans le test TCP, nous serions repartis sur un
+partage de connexion 4G qui n'aurait rien changé.
+
+
+---
+
+### [15:52] Un vault open-ended intégralement prêté immobilise le capital de façon DÉFINITIVE — les comptes de test ne se recyclent pas
+Phase : build / opérations
+Catégorie : **developer experience** + documentation/tutorials
+Sévérité : **moyenne — invisible jusqu'au moment où elle arrête le travail**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Observé :
+  En préparant les répétitions du pitch, nous avons constaté que notre compte
+  déposant n'avait plus de quoi jouer la démo :
+
+    lender    balance 50,34 XRP · OwnerCount 12 · réservé 34 · **libre 16,34**
+
+  alors que le scénario exige un `VaultDeposit` de 100 XRP. Le scénario était
+  cassé sans qu'aucune ligne de code n'ait changé.
+
+La mécanique, qui n'est écrite nulle part :
+  1. Le scénario prête 100 % de `AssetsAvailable`, donc le vault tombe à zéro
+     de liquidité. C'est le cœur de notre démonstration, et c'est voulu.
+  2. La vendeuse cède 30 % de ses parts. **Les 70 % restants ne sont plus
+     récupérables** : `VaultWithdraw` est plafonné à `AssetsAvailable`, qui vaut
+     zéro, et le prêt court jusqu'à son terme. Le capital n'est pas perdu au
+     sens comptable — il est simplement inatteignable pendant toute la durée
+     du prêt, et sur un devnet on ne revient jamais le chercher.
+  3. Chaque exécution crée un vault neuf, donc une nouvelle émission de parts,
+     donc **un objet `MPToken` de plus au porteur** : +2 XRP de réserve de
+     compte, définitivement, à chaque run.
+
+  Coût réel mesuré : ~70 XRP irrécupérables + 2 XRP de réserve **par
+  répétition**. Six répétitions vidaient le compte. Nous en avions prévu au
+  moins six entre les tests et les répétitions du pitch.
+
+Ce qui rend le problème coûteux :
+  - Aucun signal. Rien dans le ledger ne dit « ce compte ne pourra plus jouer
+    ce scénario » ; on le découvre quand `VaultDeposit` échoue.
+  - **Le faucet ne sait pas recharger un compte existant** : il ignore le champ
+    `destination` et crée un compte neuf à la place (cf. [15:21]). Le réflexe
+    naturel — « je repasse au faucet » — ne fonctionne pas, et il faut
+    comprendre qu'il faut un `Payment` depuis un autre compte à soi.
+  - La combinaison des deux fait qu'un développeur qui itère sur un scénario
+    de vault épuise silencieusement ses comptes, puis ne trouve pas le moyen
+    évident de les réapprovisionner.
+
+Contournement :
+  1. `Payment` depuis un compte de test resté approvisionné.
+  2. Surtout : **calibrer les montants du scénario pour la rejouabilité**, pas
+     pour le réalisme. Nous sommes passés de 100 à 25 XRP de dépôt et de 20 à
+     5 XRP de first-loss capital. La démonstration est rigoureusement identique
+     — les proportions sont conservées, `AssetsAvailable` tombe à zéro pareil —
+     et la consommation est divisée par quatre.
+
+Proposition :
+  1. Documenter, sur la page du Single Asset Vault, que dans un vault
+     open-ended intégralement prêté les parts deviennent illiquides jusqu'au
+     remboursement. C'est le comportement attendu, mais c'est exactement la
+     propriété que tout le monde découvre en production plutôt qu'en lisant.
+     (C'est aussi le problème que notre projet cherche à résoudre — nous
+     l'avons rencontré comme obstacle avant de le reconnaître comme sujet.)
+  2. Faire en sorte que le faucet honore `destination` et recharge un compte
+     existant. Sur un événement où chaque équipe itère des dizaines de fois sur
+     les mêmes comptes, c'est la fonction la plus utile qu'il puisse rendre.
+  3. Dans les tutoriels de vault, prévenir que chaque vault créé coûte une
+     réserve d'objet au déposant via l'émission de parts. Le coût est modeste
+     à l'unité et surprenant au vingtième.
+
+---
+
+### [16:04] ✅ `LoanPay` accepte un paiement ANTICIPÉ, mais rien ne le dit — et rien ne distingue « en avance » de « à l'heure »
+Phase : build
+Catégorie : **documentation/tutorials**
+Sévérité : **basse — comportement favorable, mais non spécifié**
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1
+
+Contexte :
+  Passage du prêt de démonstration de 4 échéances **quotidiennes** à 4 échéances
+  **mensuelles** (`PaymentInterval` 86400 → 2592000), pour que l'immobilisation
+  du capital dure ~4 mois et que la décote de cession soit défendable.
+
+Risque anticipé :
+  Avec un intervalle de 30 jours, `NextPaymentDueDate` tombe un mois plus tard.
+  Notre scénario appelle `LoanPay` immédiatement après l'origination — donc
+  très en avance. Rien dans la doc XLS-66 ne dit si le protocole l'accepte,
+  le refuse, ou l'impute différemment.
+
+Obtenu :
+  `tesSUCCESS` — hash `41B2EAAED6C2E2C4616108A33366CA1D5209CBCD8B65962C52FAE85C0E8EDC8C`
+  Le paiement est imputé normalement : `AssetsTotal` 25,000000 → 25,161097 XRP,
+  valeur de la part 1,000000000 → **1,006443880**.
+
+  Le paiement anticipé fonctionne donc, et c'est la bonne décision de conception.
+  Mais elle est **invisible avant l'essai** : aucune page ne dit qu'un
+  emprunteur peut payer en avance, ce qui est pourtant une des toutes premières
+  questions de n'importe quel produit de crédit.
+
+  Deuxième manque, plus gênant : **aucun champ ne permet de savoir si un
+  paiement a été fait en avance, à l'heure, ou en retard.** Le nœud `Loan`
+  expose `NextPaymentDueDate` et `PaymentRemaining`, tous deux mis à jour après
+  coup. L'historique de ponctualité — la donnée qui fonde tout scoring de
+  crédit — n'est reconstituable qu'en rejouant les métadonnées de chaque
+  `LoanPay` depuis l'origination.
+
+Repro :
+  1. `LoanSet` avec `PaymentInterval: 2592000`.
+  2. `LoanPay` de `ceil(PeriodicPayment) + LoanServiceFee` immédiatement.
+  3. `tesSUCCESS`. Aucun champ ne conserve la trace de l'anticipation.
+
+Tx / code : `tesSUCCESS`, hash ci-dessus.
+
+Proposition :
+  1. Écrire explicitement dans la référence de `LoanPay` que le paiement
+     anticipé est accepté, et préciser son effet sur `NextPaymentDueDate`
+     (l'échéance suivante glisse-t-elle, ou reste-t-elle au calendrier ?).
+     Nous n'avons pas tranché ce second point faute de temps.
+  2. Exposer un compteur de retards sur le nœud `Loan`
+     (`LatePaymentCount`, ou un horodatage du dernier paiement). Sans lui,
+     aucun prêteur ne peut évaluer un emprunteur sans réindexer toute
+     l'histoire du prêt.
+
+Effet de bord favorable pour la démo : avec des échéances mensuelles, un seul
+remboursement fait passer la part de 1,000000000 à 1,006443880, contre
+1,000214800 en quotidien. Le rendement devient **lisible à l'écran** pendant le
+pitch, là où il fallait auparavant pointer la sixième décimale.

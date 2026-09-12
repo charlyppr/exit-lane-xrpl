@@ -31,7 +31,10 @@ back — and the protocol refuses. Every cent is out on loans that do not mature
 for months. **The vault is open by design and closed in practice.**
 
 Exit Lane is the second door. Vault shares are MPTs, so she sells hers
-over the counter at a discount to their vault value. Two crossed escrows share
+over the counter at a 3% discount to their vault value. That discount does not
+buy yield — four months of accrued interest on this loan is worth a fraction of
+it. It buys **four months of immediacy**, which is the only thing she actually
+needs. Two crossed escrows share
 one PREIMAGE-SHA-256 condition, which makes the swap atomic: to take the shares,
 the buyer must publish the secret that releases her payment. No escrow agent, no
 counterparty risk, and the vault itself never moves. Only the holder changes.
@@ -48,14 +51,14 @@ Track 1, and it is what this project addresses.
 
 ## The problem, reproduced on demand
 
-`node scripts/demo.mjs` reproduces it in 73 seconds:
+`node scripts/demo.mjs` reproduces it in about 75 seconds:
 
 1. A single `LoanSet` takes **100% of `AssetsAvailable`**. It is accepted with
-   no warning, no liquidity buffer, no cap. ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/83184D0DEE4299B58433FC58915A3A57751DAF2DE6F8216D92C10BF2D449941C))
+   no warning, no liquidity buffer, no cap. ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7E3006E82C7DF3ECC918093C0B2E93741A18B69A102BB8FD4EF825205F63BAB0))
 2. `AssetsAvailable` then **disappears from the ledger node** rather than
    reading zero. A naive client renders `NaN` exactly when the depositor most
    needs the number.
-3. The depositor's `VaultWithdraw` is refused with `tecINSUFFICIENT_FUNDS`. ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/72A5FD04EF0B190B4E01F1E7DA508CD6423CCB62811AE34D1CA36DEF9801BFA2))
+3. The depositor's `VaultWithdraw` is refused with `tecINSUFFICIENT_FUNDS`. ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7AB5622EAEFC70A6B005EAED9411EA3D62539A16E5EF5D8C8E33F8BE493CF934))
 
 We did not engineer this to make a point — we hit it while scripting the demo,
 and the fallback path we had written for 95% and 90% was never needed.
@@ -67,13 +70,13 @@ Every step below is an explorer link to a validated transaction from a single
 
 | # | Step | Transaction | Result | Link |
 |---|---|---|---|---|
-| 1 | Open-ended vault | `VaultCreate` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/95C2CF859D802379D8B424130716D5BEAE879F2E454668622959F6B9377BD466) |
-| 2 | Lender deposits 100 XRP | `VaultDeposit` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7856C238150748A6B6DA4D5815AF89F7E372C872682AEBABD9D2F229E2A1181F) |
-| 3 | Loan broker | `LoanBrokerSet` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/76E57ECA7A52D5C4E24FE5C6F1E34DBF5CF08C738CCDA39B8E32FB286D2E154E) |
-| 3b | First-loss capital, 20 XRP | `LoanBrokerCoverDeposit` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/EDF6522963E59113D64A19B774141D6A5CF01BD2CDF7F817FCC8034F9C5AF3F8) |
-| 4 | Origination + drawdown, two signatures | `LoanSet` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/83184D0DEE4299B58433FC58915A3A57751DAF2DE6F8216D92C10BF2D449941C) |
-| 5 | Repayment, 25.513701 XRP | `LoanPay` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/64FDC37C924CD71F97BB18F3EAA87C4A186B6D3366E932D02E619C3DD3484124) |
-| 6 | Principal + accrued yield | `VaultWithdraw` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/C44E164363045FF4A482E3119E639780515DFE02B4A9775FADAFDC5A584D9E57) |
+| 1 | Open-ended vault | `VaultCreate` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/A14CB64FFF00DC4D2E19E459DBB32212013FB510A8881D39E6888F20159502E4) |
+| 2 | Lender deposits 25 XRP | `VaultDeposit` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/98A6A315146820D3487F2C1D847B6ACADCA0FFBEB5CE1985B97BB0CDFB772A0A) |
+| 3 | Loan broker | `LoanBrokerSet` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/A4A619AAE44033E42D4645705F20F7BA757687CB378D5A22506939DA6480C5A5) |
+| 3b | First-loss capital, 5 XRP | `LoanBrokerCoverDeposit` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/9DEA76E2866A4F0ED5E55998077CD6A7BD9BF2FDF5284D86E70612D330BF79BB) |
+| 4 | Origination + drawdown, two signatures | `LoanSet` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7E3006E82C7DF3ECC918093C0B2E93741A18B69A102BB8FD4EF825205F63BAB0) |
+| 5 | Repayment, 6.478077 XRP | `LoanPay` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/41B2EAAED6C2E2C4616108A33366CA1D5209CBCD8B65962C52FAE85C0E8EDC8C) |
+| 6 | Principal + accrued yield | `VaultWithdraw` | `tesSUCCESS` | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/53133F7685815723FBE734E7F98C78CA127E0E3413527C028F03D49C642895BE) |
 | 7 | **Guardrail rejection** | see below | `tec*` | see below |
 | 8 | Credible use case | Exit Lane | — | this README |
 
@@ -81,9 +84,18 @@ Every step below is an explorer link to a validated transaction from a single
 transaction exists in XLS-66: principal is transferred to the borrower by
 `LoanSet` itself. Reported as a documentation item.
 
-**On step 6.** Share value moved from `1.000000000` to `1.000214800` after one
+**On step 6.** Share value moved from `1.000000000` to `1.006443880` after one
 repayment. Yield is carried by the share, so it transfers with it — which is
-what gives the secondary market its price.
+what gives the secondary market its price. Note who is withdrawing here: the
+**buyer**, who never deposited into this vault. He redeems principal *and* the
+yield accrued while the seller still held the shares.
+
+The loan runs on four **monthly** instalments, so the capital is committed for
+roughly four months. That is what makes the 3% discount coherent: holding to
+maturity earns about 2.6%, so the seller gives up her remaining yield plus a
+thin premium for getting out today. On four *daily* instalments — our first
+calibration — waiting cost 0.055 XRP per 100 against a 3 XRP discount, and the
+trade made no economic sense at all.
 
 ### Step 7 — five guardrails, triggered on purpose
 
@@ -109,11 +121,11 @@ The script then restores the cover, so it stays replayable.
 
 | Step | Transaction | Signed by | Link |
 |---|---|---|---|
-| Buyer opts in to the share MPT | `MPTokenAuthorize` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/193346D0FB6EF4BB97A9EADC6EA76CACB4CC4CF864090797011308EBBA767D00) |
-| Buyer locks payment first, expires at +2h | `EscrowCreate` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/279011D34A1D14BC2C988EC432B02A28033CDD78316B48E6AD5604A016B31746) |
-| Seller locks shares, expires at +1h | `EscrowCreate` | seller | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/6166F27B0631F8004D42F156DA5E021D421EE86B4B988E0FB83C1E077BCDEF1A) |
-| Buyer claims shares, **revealing the preimage** | `EscrowFinish` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/43697F8677CDF2FCE35F556C734500F4CFE6293F732BE4220569AAFB37642377) |
-| Seller claims payment with the preimage **read back from the ledger** | `EscrowFinish` | seller | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/C6419FF835DEC973C38076A0865D1B621B5EE494A89D131B14E74D00E9A58DAA) |
+| Buyer opts in to the share MPT | `MPTokenAuthorize` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/79F48365FE3F5100E239F8CA11528AABE5FBAA657DEDB184AE96C433B32C5E31) |
+| Buyer locks payment first, expires at +2h | `EscrowCreate` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/1F29F998F40702EA8B5B6C3B2A4D5B896659717A277748E7B0D17755E539FBF8) |
+| Seller locks shares, expires at +1h | `EscrowCreate` | seller | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/795D6AFE68DF7B71FD66F7984FAB29B35C0892127495705AF059A49AFB204099) |
+| Buyer claims shares, **revealing the preimage** | `EscrowFinish` | buyer | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/029559F027CBCA450F8BF25B3F5DD7BBFB77E952DC569E8616A54CFB1D26A179) |
+| Seller claims payment with the preimage **read back from the ledger** | `EscrowFinish` | seller | [view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/5F359ADB7BC18CD1F07609FFE8A8B0FA020187FA2290BB39BFF99FEF50BEF991) |
 
 Two design points that are not cosmetic. The buyer commits **first**, so the
 seller never exposes her shares before seeing the money locked. And the seller's
@@ -249,6 +261,16 @@ Consent is individual: `CONSENT=no` records a refusal and disables all capture.
   off-chain layer disappears.
 - **No RLUSD on this network** (Testnet only). The vault asset is XRP.
 - **Two-party swap.** No order book, no partial fills, no market making.
+- **The buyer holds a free option.** Nothing compels him to complete the swap.
+  He locks his payment, watches for an hour, and if the price moves he simply
+  lets both escrows expire: he recovers his XRP at +2h, the seller her shares
+  at +1h. He has therefore obtained a one-hour option on the shares at no cost,
+  and the seller financed it by immobilising her position for nothing. This is
+  the *free option problem*, structural to every HTLC-settled swap, and we do
+  not solve it here. The standard remedies — a non-refundable commitment
+  premium, or buyer-side collateral forfeited on expiry — are both expressible
+  with the primitives already used, and are the first thing this design would
+  need before real counterparties.
 - Loan servicing states (`LoanManage`, impairment, default) are out of scope for
   this build.
 

@@ -22,12 +22,20 @@ const createdNode = (result, type) =>
   (result?.meta?.AffectedNodes ?? []).find((n) => n.CreatedNode?.LedgerEntryType === type)?.CreatedNode ?? null;
 const seqOf = (res) => res.result?.tx_json?.Sequence ?? res.result?.Sequence;
 
+// Les montants sont calibrés pour que la démo soit REJOUABLE une vingtaine de
+// fois sans réapprovisionner les comptes. Ce n'est pas de la frugalité mal
+// placée : dans un vault open-ended intégralement prêté, les parts que la
+// vendeuse n'a pas cédées restent immobilisées DÉFINITIVEMENT — AssetsAvailable
+// vaut zéro, VaultWithdraw est refusé, et le prêt court jusqu'à son terme.
+// Chaque répétition brûle donc du capital sans retour, plus 2 XRP de réserve
+// de compte par vault créé. À 100 XRP de dépôt, six répétitions vidaient la
+// vendeuse. Cf. FEEDBACK-RAW [15:52].
 export const CFG = {
-  deposit: 100,          // XRP déposés par la vendeuse
-  cover: 20,             // XRP de first-loss capital
-  sharesToSell: 30_000_000n,
+  deposit: 25,           // XRP déposés par la vendeuse → 25 000 000 parts
+  cover: 5,              // XRP de first-loss capital (min. requis : 10 % de 25)
+  sharesToSell: 7_500_000n,   // 30 % de sa position
   decotePct: 97n,        // prix de cession, en % de la valeur
-  redeem: 10_000_000n,   // parts rendues par l'acheteur à la fin
+  redeem: 2_500_000n,    // parts rendues par l'acheteur à la fin
 };
 
 /**
@@ -91,9 +99,14 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
     const prepared = await client.autofill({
       TransactionType: "LoanSet", Account: brokerW.address, LoanBrokerID: ids.brokerId,
       Counterparty: borrowerW.address, PrincipalRequested: String(principal),
-      InterestRate: pctToRate(8), PaymentInterval: 86_400, PaymentTotal: 4,
-      GracePeriod: 3_600, LoanOriginationFee: XRP(1), LoanServiceFee: XRP(0.5),
-      LatePaymentFee: XRP(0.25), ClosePaymentFee: XRP(0.25),
+      // 4 échéances MENSUELLES : le capital est immobilisé ~4 mois. C'est ce qui
+      // rend la décote défendable. À 4 échéances quotidiennes, attendre le terme
+      // ne coûtait que 0,055 XRP sur 100 quand la cession en coûtait 3 : la
+      // vendeuse perdait 55× plus à vendre qu'à patienter, et le use case ne
+      // tenait pas sous un calcul de coin de table.
+      InterestRate: pctToRate(8), PaymentInterval: 2_592_000, PaymentTotal: 4,
+      GracePeriod: 86_400, LoanOriginationFee: XRP(0.25), LoanServiceFee: XRP(0.125),
+      LatePaymentFee: XRP(0.0625), ClosePaymentFee: XRP(0.0625),
     });
     // ⚠️ helper maison : signLoanSetByCounterparty du SDK signe le mauvais
     // payload, rippled rejette en local. Cf. FEEDBACK-RAW [13:31].
@@ -133,7 +146,8 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
   const valeur = sharesToDrops(snap, cfg.sharesToSell);
   const prix = (valeur * cfg.decotePct) / 100n;
   ui.line(`  ${cfg.sharesToSell} parts valent ${fmt(valeur)} au prix du vault.`);
-  ui.line(`  Cédées à ${cfg.decotePct} % → ${fmt(prix)}. La décote est le prix du temps.`);
+  ui.line(`  Cédées à ${cfg.decotePct} % → ${fmt(prix)}.`);
+  ui.line(`  La décote n'achète pas du rendement : elle achète 4 mois d'avance.`);
 
   ui.step("MPTokenAuthorize — l'acheteur déclare accepter ces parts");
   // Sans cet opt-in, tout Payment de parts échoue en tecNO_AUTH — cause absente

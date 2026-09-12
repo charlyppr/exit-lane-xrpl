@@ -299,7 +299,12 @@ soumission avant d'écrire quoi que ce soit de définitif dans FEEDBACK.md.
 
 ---
 
-### [ ] H6 — Unités en 1/10 de point de base
+### [x] H6 — Unités en 1/10 de point de base
+**CONFIRMÉE le 12/09 par calcul, sans transaction.** `InterestRate: 8000` = 8 %
+annuel. Mais la vérification a révélé deux conventions non documentées qui
+valent plus que H6 elle-même : base **ACT/365** et `PeriodicPayment` =
+**annuité constante**, l'un et l'autre déduits à 8,6e-12 XRP près.
+Cf. FEEDBACK-RAW [15:38].
 **Catégorie :** UX + client libraries · **Sévérité pressentie :** moyenne
 
 Les taux vont de 0 à 100000 pour 0 % à 100 %. Donc 10 % s'écrit `10000`. Avec
