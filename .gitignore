@@ -13,3 +13,6 @@ xrpl-devex-hook/
 .cursor/
 .grok/
 .DS_Store
+
+# Fichiers de verrouillage Office
+~$*

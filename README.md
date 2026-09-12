@@ -168,9 +168,10 @@ previous prefix, so its `LoanSet` fails local checks. Our signer, using
 
 ## Why Loaded
 
-TokenEscrow is not decoration here. Without it, selling a vault share means
-someone sends first and trusts the other party. The escrow is what removes
-counterparty risk, and the use case does not hold without it.
+TokenEscrow is not decoration here. Two plain `Payment`s would make one side
+send first and trust the other. The hashlocked escrows remove that counterparty
+risk. `BatchV1_1` is also enabled on the devnet and is another atomic path; we
+did not test it.
 
 We reached for the DEX first, which would have been Vanilla. It is not
 available: `OfferCreate` on an MPT returns `temDISABLED` — MPT trading is not
@@ -195,9 +196,10 @@ another team the most time:
    ([without](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4) /
    [with](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F)).
 3. **The hackathon build reverts a documented V1.1 rule.** The V1.1 docs restrict
-   `LoanBrokerSet` to closed-ended vaults, but the restriction was reverted for this
-   event (rippled PR #8076) and `LoanBrokerSet` on an open-ended vault returns
-   `tesSUCCESS`
+   `LoanBrokerSet` to closed-ended vaults. rippled PR #8076 added that restriction;
+   commit `440018c0fe`, "*Revert "fix: Reject open-ended vaults at LoanBrokerSet
+   (#8076)"*", removed it from the `ripple/lending-hackathon` branch on 10 September
+   2026. `LoanBrokerSet` on an open-ended vault returns `tesSUCCESS`
    ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4)).
    The brief does not say so.
 
