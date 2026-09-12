@@ -8,6 +8,6 @@
     "setup": "node scripts/setup-accounts.mjs"
   },
   "dependencies": {
-    "xrpl": "^4.4.1"
+    "xrpl": "4.6.0"
   }
 }
