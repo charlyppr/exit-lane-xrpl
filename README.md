@@ -143,8 +143,8 @@ one revealed is in [`FEEDBACK.md`](./FEEDBACK.md).
 |---|---|---|---|---|
 | `VaultCreate` | ✅ | ✅ | no | No duration field exists — open-ended is the default, not an option |
 | `VaultDeposit` | ✅ | ✅ | no | Past `AssetsMaximum`: `tecLIMIT_EXCEEDED`, rejected whole, never partial |
-| `VaultWithdraw` | ✅ | ✅ | no | Capped at `AssetsAvailable` — and denominated in shares while that cap is in assets |
-| `VaultSet` | — | ✅ | no | `AssetsMaximum: 0` **disables** the cap instead of freezing deposits; `WithdrawalPolicy` is immutable |
+| `VaultWithdraw` | ✅ | ✅ | no | Capped at `AssetsAvailable`: beyond it, `tecINSUFFICIENT_FUNDS`. `Amount` may be given in assets or in shares |
+| `VaultSet` | — | ✅ | no | `AssetsMaximum: 0` means no cap, so no value freezes deposits except `AssetsTotal`; `WithdrawalPolicy` is immutable |
 | `VaultDelete` | — | ✅ | no | `tecHAS_OBLIGATIONS` while not empty; once empty it also cleans up third-party `MPToken` objects and refunds their reserve |
 | `VaultClawback` | — | ✅ | no | `tecNO_PERMISSION` even for the vault owner — clawback needs an asset with an issuer, and XRP has none |
 | `LoanBrokerSet` | ✅ | ✅ | no | Must be the vault owner; cover rates and management fee are **immutable** afterwards (`temINVALID`) |
@@ -152,16 +152,16 @@ one revealed is in [`FEEDBACK.md`](./FEEDBACK.md).
 | `LoanBrokerCoverWithdraw` | ✅ | ✅ | no | Floor enforced to the drop — and released entirely by a default |
 | `LoanBrokerCoverClawback` | — | ✅ | no | `tecNO_PERMISSION` for broker, depositor and borrower alike |
 | `LoanBrokerDelete` | — | ✅ | no | `tecHAS_OBLIGATIONS` while a loan is alive |
-| `LoanSet` | ✅ | ✅ | **partly** | SDK counterparty signing is broken, see below |
+| `LoanSet` | ✅ | ✅ | **partly** | The SDK's counterparty signature predates `fixCleanup3_4_0`, see below |
 | `LoanPay` | ✅ | ✅ | no | `Amount` is a **ceiling**, not an exact amount; a late payment needs `tfLoanLatePayment` or returns `tecEXPIRED` |
-| `LoanManage` | — | ✅ | no | Impairment allowed from the due date, default only after grace; with no flag it returns `tesSUCCESS` and does nothing |
+| `LoanManage` | — | ✅ | no | Impairment only once the payment is overdue (`fixCleanup3_4_0`), default only after grace; with no flag it returns `tesSUCCESS` and does nothing |
 | `LoanDelete` | — | ✅ | no | Works once the loan is repaid or defaulted |
 
-All fifteen are typed in stable `xrpl@4.6.0`, which is better than the brief led
-us to expect. One workaround was still required: `signLoanSetByCounterparty`
-signs with `encodeForSigning` where `rippled` expects
-`encodeForSigningCounterparty`, so every `LoanSet` fails local checks. Our
-replacement is in [`scripts/raw-submit.mjs`](./scripts/raw-submit.mjs).
+All fifteen are typed in stable `xrpl@4.6.0`. One workaround was required: the
+devnet runs `fixCleanup3_4_0`, which signs `CounterpartySignature` with a new `CPT`
+prefix (rippled PR #8162). `signLoanSetByCounterparty` in `xrpl@4.6.0` uses the
+previous prefix, so its `LoanSet` fails local checks. Our signer, using
+`encodeForSigningCounterparty`, is in [`scripts/raw-submit.mjs`](./scripts/raw-submit.mjs).
 
 **Other transaction types used:** `MPTokenAuthorize`, `EscrowCreate`,
 `EscrowFinish`, `Payment`, and `OfferCreate` (attempted, rejected).
@@ -183,33 +183,23 @@ ledger cannot honour, and it is what pushed us to escrows.
 Full report: [`FEEDBACK.md`](./FEEDBACK.md) · Raw capture log:
 [`FEEDBACK-RAW.md`](./FEEDBACK-RAW.md)
 
-Sixty-seven entries with hashes, ten findings in the report. The three that would cost
+Seventy-one entries with hashes, ten findings in the report. The three that would cost
 another team the most time:
 
-1. **A borrower one second late cannot pay at all** unless `LoanPay` carries
-   `tfLoanLatePayment`. Without the flag every amount — the exact instalment, the
-   instalment plus `LatePaymentFee`, even the whole outstanding balance — returns
-   **`tecEXPIRED`**, a code that does not appear in the `LoanPay` error table, so
-   it cannot be looked up from the page of the transaction that returned it
+1. **`fixCleanup3_4_0` is active on the devnet and missing from xrpl.org.** It
+   refuses `tfLoanImpair` until a payment is overdue, while the *Manage a Loan*
+   tutorial says to impair before the due date. It also changes the
+   `CounterpartySignature` prefix, so `LoanSet` signed by `xrpl@4.6.0` is rejected.
+2. **A late `LoanPay` without `tfLoanLatePayment` returns `tecEXPIRED`**, a failure
+   listed in XLS-66 but not in the xrpl.org `LoanPay` reference
    ([without](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4) /
    [with](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F)).
-   Two probe scripts and one burned loan went on wrong hypotheses first.
-2. **The obvious share price is 150 % too high on an impaired vault.**
-   Impairment writes the paper loss into `LossUnrealized`, which is *not*
-   deducted from `AssetsTotal` — and the field is **absent from the node while it
-   is zero**, so it never appears during development. `lib/nav.mjs` was written
-   specifically to read vault state, with this protocol's other zero-value traps
-   already commented in it, and it still missed the field. Three more numeric
-   fields vanish at zero the same way; this is the only one that returns a wrong,
-   plausible number instead of a loud `NaN`
-   ([impairment](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC)).
-3. **The documented V1.1 matrix contradicts the ledger.** With
-   `LendingProtocolV1_1` enabled, the docs state a loan broker can only attach to
-   a closed-ended vault. On this build `LoanBrokerSet` on an open-ended vault
-   returns `tesSUCCESS`
+3. **The hackathon build reverts a documented V1.1 rule.** The V1.1 docs restrict
+   `LoanBrokerSet` to closed-ended vaults, but the restriction was reverted for this
+   event (rippled PR #8076) and `LoanBrokerSet` on an open-ended vault returns
+   `tesSUCCESS`
    ([view](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4)).
-   We nearly redesigned the whole project around a restriction that is not
-   enforced.
+   The brief does not say so.
 
 And the finding that cost us the most XRP rather than the most time: a **default
 drained 0.5 % of the first-loss capital and 79.6 % of the depositor's position**,

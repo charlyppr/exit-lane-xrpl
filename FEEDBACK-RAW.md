@@ -53,6 +53,15 @@ Proposition :
 - Amendments actifs : **48**, dont `LendingProtocol`, `SingleAssetVault`
   **et `LendingProtocolV1_1`** — cf. entrée [13:05], c'est un problème.
   (`package.json` épingle `^4.4.1` ; `latest` sur npm est **5.2.0 stable**)
+- **Audit de véracité du journal** (passe finale, entrée [19:35]) :
+  **143/143** transactions citées retrouvées on-chain, validées, type et code
+  conformes ; 12 objets de ledger vivants, 3 supprimés par des cycles
+  documentés ici. Rejouable : `node scripts/_probe-audit-hashes.mjs
+  FEEDBACK.md FEEDBACK-RAW.md README.md HYPOTHESES.md`.
+  **3 claims corrigés** à cette occasion, chacun marqué dans son entrée.
+- Coupures réseau : **5 occurrences** de la signature « TCP accepté, zéro
+  octet applicatif ». 3 prouvées côté **réseau local** (ports non standard
+  filtrés), 2 non attribuables, **0 prouvée côté nœud**. Cf. [16:44] corrigée.
 - Temps d'installation du DevEx hook, par machine : **~4 min** sur la machine 1
   (12:39 → 12:43), dont une friction d'agent, cf. entrée [12:43]. Machines 2+
   restent à faire. Pseudonyme `late-quail-92`, équipe CY-HACK,
@@ -1787,14 +1796,24 @@ Proposition :
      une valeur trop basse transforme une lenteur passagère en panne apparente.
 
 Durée et nature exacte de l'incident (mesuré) :
-  Le nœud est redevenu interrogeable **~3 minutes** plus tard. Surtout, le
-  ledger validé était passé de **66540 à 67041** pendant l'indisponibilité,
-  soit ~500 ledgers : le nœud **continuait donc de valider normalement** et
-  n'avait cessé que de répondre aux requêtes entrantes. Ce n'était ni un crash
-  ni un redémarrage, mais une saturation de la couche API — ce qui explique
-  le port TCP resté ouvert, et ce qui rend un `/health` en 443 d'autant plus
-  utile : l'information « le ledger avance » existait, elle était juste
-  inatteignable par le canal saturé.
+  Le nœud est redevenu interrogeable **~3 minutes** plus tard. Le ledger
+  validé était passé de **66540 à 67041** pendant l'indisponibilité, soit
+  ~500 ledgers.
+
+  ⚠️ **CONCLUSION RETIRÉE à [19:05].** Nous en déduisions ici « le nœud
+  continuait de valider et n'avait cessé que de répondre : saturation de la
+  couche API ». **Le raisonnement est faux.** Le ledger avance de toute façon —
+  que le nœud sature ou que ce soit notre réseau qui nous coupe ; on ne
+  l'observe qu'au retour, et au retour il a avancé dans les deux cas. De même,
+  « redevenu interrogeable seul en 3 minutes » est ce que produit aussi une
+  bascule Wi-Fi / 4G aller-retour, mode de défaillance constaté deux fois sur
+  cette machine ([12:26], [18:45]).
+
+  Cette occurrence est donc **non attribuable**, comme celle de [16:44]. Voir
+  le bilan des cinq occurrences dans l'entrée [16:44] corrigée. Le `/health`
+  en 443 reste la bonne proposition — et l'argument devient plus fort, pas
+  plus faible : nous n'avons jamais pu trancher, une seule fois dans la
+  journée, si la coupure venait d'eux ou de nous.
 
 Effet sur nous : ~10 min de travail on-chain perdues, basculées sur les
 modifications hors-ligne. Sans le test TCP, nous serions repartis sur un
@@ -1963,11 +1982,25 @@ Le bon geste, trouvé par essais :
   Geler un vault s'écrit donc « plafonner à ce qu'il contient déjà », ce qui
   n'est écrit nulle part et ne vient pas à l'esprit.
 
-Effet de cliquet, non documenté :
+Effet de cliquet :
   Après un passage à 0, on ne peut plus reposer un plafond inférieur à
   l'encours (`VaultSet max=5` sur un total de 7 → `tecLIMIT_EXCEEDED`).
   Le seul plafond réadmissible est ≥ `AssetsTotal`. Un `0` posé par erreur
   est donc **irréversible tant que les déposants ne sont pas sortis**.
+
+  ⚠️ **Corrigé à [19:35] — cette contrainte EST documentée.** Nous avions
+  écrit « non documenté ». La référence `VaultSet` dit, sur la ligne de
+  contrainte du champ : « *The value cannot be lower than the current
+  `AssetsTotal`, unless the value is 0.* » Le cliquet est donc la
+  conséquence normale d'une règle écrite, et notre mesure la confirme.
+  C'est la **deuxième fois** que nous qualifions à tort une limite
+  documentée de non documentée (cf. `GracePeriod` à [15:21], corrigé à
+  [16:44]) : le réflexe manquant est de relire la ligne de contrainte du
+  champ, pas seulement sa description.
+
+  Ce qui reste non documenté, et c'est le vrai grief : cette phrase dit ce
+  que `0` **permet**, jamais ce que `0` **fait**. Aucune page ne dit que la
+  valeur 0 désactive le plafond, ni que le champ disparaît alors du nœud.
 
 Repro :
   1. `VaultCreate` `AssetsMaximum` = 5 000 000 drops.
@@ -1975,15 +2008,34 @@ Repro :
   3. `VaultSet` `AssetsMaximum` = `"0"` → `tesSUCCESS`.
   4. `VaultDeposit` 4 XRP → `tesSUCCESS`, `AssetsTotal` = 7 XRP > 5.
 
-Tx / code :
-  VaultSet max=0     `BC83AEB1A369CB773B8566BBBCC6D7FA62E8A3720C0AA9B6AC9872064F512612`
-  Dépôt au-delà      `tesSUCCESS` (série du 16:16, vault de contrôle)
-  Gel par max=total  `tesSUCCESS` puis dépôt `tecLIMIT_EXCEEDED`
+Tx / code — ⚠️ **série rejouée intégralement à [19:35]** pour corriger un
+défaut de preuve : l'entrée d'origine citait le hash d'un `VaultSet max=0`
+joué sur un **autre** vault (plafond 10 / encours 6), et le dépôt au-delà du
+plafond n'avait **aucun hash**. La chaîne ci-dessous est un seul vault, dans
+l'ordre, chaque étape vérifiée on-chain :
+
+  | Étape | Résultat | Hash |
+  |---|---|---|
+  | `VaultCreate` `AssetsMaximum` = 5 XRP | `tesSUCCESS` | `21D1F90932DC22A8FDB4EDBC14CC1CC61336F9A293C047FECFA4D90247D00596` |
+  | `VaultDeposit` 3 XRP | `tesSUCCESS` | `3AB3CD31538EF0BDD9AEAE26BFA62519390F1699994B2A3A4D83E265590E9435` |
+  | `VaultSet` max = 3 (= `AssetsTotal`) — le **gel** | `tesSUCCESS` | `6DC46A2D238E4F16B9480525D63FACE4A3259084E206A6E5FF2BBC31B66CBDD4` |
+  | `VaultDeposit` 1 XRP sur le vault gelé | **`tecLIMIT_EXCEEDED`** | `132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F` |
+  | `VaultSet` max = **0** → plafond **ABSENT** du nœud | `tesSUCCESS` | `A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2` |
+  | **`VaultDeposit` 4 XRP → total 7 > ancien plafond 5** | **`tesSUCCESS`** | `D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956` |
+  | `VaultSet` max = 5 (< total 7) — le cliquet | **`tecLIMIT_EXCEEDED`** | `37053F15A20E6153EDBAD2DE6DD48E039E7A234328382A58DD97607FA88C3DC6` |
+  | `VaultSet` max = 7 (= total) | `tesSUCCESS` | `077A1FB21946B6F7FC81156818580F8F20AA92EFA20533B6D4E8FA09CCBACACA` |
+  | Ménage : retrait total puis `VaultDelete` | `tesSUCCESS` | `2881313557BBCA8F07873B6D25EC317BBB3A6F89A4475113D2752D56F4ADFFE5` · `B955BBE96425840335DFDA403B3F112E37354D7CE3643CA3EBFF0122D2108154` |
+
+  Le hash d'origine reste valable pour ce qu'il prouve réellement, et il le
+  prouve bien : `BC83AEB1A369CB773B8566BBBCC6D7FA62E8A3720C0AA9B6AC9872064F512612`,
+  dont les métadonnées montrent `AssetsMaximum: "10000000" → (champ retiré)`.
+  C'est la disparition du champ, pas le dépôt.
 
 Proposition :
   1. Documenter noir sur blanc, sur la référence `VaultSet`, que
-     `AssetsMaximum = 0` **désactive** le plafond. C'est une convention
-     défendable, mais c'est l'inverse de ce que lit un opérateur pressé.
+     `AssetsMaximum = 0` **désactive** le plafond. La page dit aujourd'hui que
+     0 est permis, pas ce que 0 produit. C'est une convention défendable,
+     mais c'est l'inverse de ce que lit un opérateur pressé.
   2. Documenter le geste de gel (`AssetsMaximum = AssetsTotal`), ou mieux :
      exposer un flag `tfVaultFreezeDeposits`, qui est la primitive réellement
      demandée — fermer aux dépôts sans toucher aux retraits.
@@ -2560,16 +2612,65 @@ Deuxième panne du même type après celle de [15:46], à ~1 h d'intervalle :
     nc -z lending-hackathon.dev.ripplex.io 51233   → succeeded
     curl -m 15 -X POST https://…:51234 server_info → réponse VIDE, exit 0
 
-TCP accepte la connexion, HTTP ne répond rien. La procédure de [15:46] est
-donc validée une seconde fois, et mérite d'être dans un README d'événement :
-**avant de soupçonner son wifi, tester les deux couches séparément.** Sans ce
-réflexe on débogue son propre code pendant dix minutes — ce qui est exactement
-ce qui s'est passé la première fois.
+TCP accepte la connexion, HTTP ne répond rien.
 
-Proposition :
-  Une page de statut du devnet, ou un point de terminaison `/health`. Sur un
-  hackathon de 30 h, deux pannes silencieuses de plusieurs minutes coûtent
-  collectivement des heures, et chaque équipe les rediagnostique seule.
+⚠️ **ATTRIBUTION RETIRÉE à [19:05].** Cette entrée concluait « deuxième panne
+du même type », sur la seule base de la signature. À [19:05] nous avons
+**produit cette signature exacte avec notre propre réseau** — retour sur le
+wifi du campus, qui filtre les ports non standard : `nc -z` réussit sur 51233
+et 51234, `curl` sur 51234 rend 0 octet en 15 s, `curl` sur 51233 rend 0 octet
+en 12 s. Identique, au détail près, à ce qui est relevé ci-dessus.
+
+La signature « SYN accepté / zéro octet applicatif » **ne discrimine donc
+pas** « le nœud sature » de « mon réseau filtre le port ». La procédure de
+[15:46] est incomplète : il y manque un témoin qui sépare les deux causes.
+Nous ne savons pas laquelle s'appliquait à 16:44, et nous ne pouvons plus le
+savoir — ni l'IP publique ni un témoin tiers n'ont été relevés sur le moment.
+
+Et il faut aller plus loin, parce que l'entrée [15:46] contient une **erreur de
+raisonnement** qu'il serait malhonnête de laisser au rapport. Elle conclut au
+nœud sur la base suivante : « le ledger validé était passé de 66540 à 67041
+pendant l'indisponibilité, le nœud continuait donc de valider ». Cet argument
+ne prouve rien : **le ledger avance toujours**, que le nœud sature ou que ce
+soit nous qui soyons coupés. On ne pouvait l'observer qu'au retour, et au
+retour il avait avancé dans les deux hypothèses. Le second argument — « le nœud
+est redevenu interrogeable seul en ~3 minutes » — ne discrimine pas davantage :
+une bascule Wi-Fi / 4G aller-retour produit exactement la même chose, et c'est
+un mode de défaillance déjà constaté deux fois sur cette machine ([12:26],
+[18:45]).
+
+Bilan honnête des quatre occurrences du jour, après réexamen :
+
+  | Heure | Signature | Cause établie |
+  |---|---|---|
+  | [12:26] | SYN OK / 0 octet | **locale**, prouvée (témoin `portquiz`) |
+  | [15:46] | SYN OK / 0 octet | **indéterminée** (aucun témoin relevé) |
+  | [16:44] | SYN OK / 0 octet | **indéterminée** (aucun témoin relevé) |
+  | [18:45] | SYN OK / 0 octet | **locale**, prouvée (bascule confirmée) |
+  | [19:05] | SYN OK / 0 octet | **locale**, prouvée (IP + `portquiz`) |
+
+**Aucune occurrence n'est démontrée côté nœud. Trois sont démontrées côté
+réseau local.** Nous n'affirmons donc plus de panne du devnet : nous affirmons
+que la signature est indiscernable, et que nous nous sommes trompés deux fois
+dessus en une journée en ayant écrit nous-mêmes la procédure de diagnostic.
+
+Témoins à relever AVANT de conclure quoi que ce soit, retenus pour la suite :
+  1. IP publique (`curl https://api.ipify.org`) — vérifie sur quel lien on est.
+  2. `curl http://portquiz.net:51234` contre `:80` — sépare « ce port est
+     filtré chez moi » de « cette destination ne répond pas ». Témoin tiers,
+     indépendant d'XRPL. Déjà identifié à [12:26] ; non appliqué ici, et c'est
+     exactement ce qui manque.
+  3. Au retour du nœud, comparer l'index du ledger validé à celui d'avant :
+     s'il a avancé, le nœud tournait et ne répondait pas.
+
+Proposition — **renforcée** par notre propre erreur d'attribution :
+  Un point de terminaison `/health` en **443** renvoyant l'index du dernier
+  ledger validé. L'argument n'est plus seulement « c'est pratique » : nous
+  avons deux incidents de signature identique, dont un côté nœud et un
+  indéterminé, et une équipe expérimentée s'est trompée sur l'attribution du
+  second en ayant écrit la procédure de diagnostic du premier. Tant que le
+  seul canal d'interrogation est celui qui tombe, la question « est-ce eux ou
+  moi ? » n'a pas de réponse — et chaque équipe la rediagnostique seule.
 
 ---
 
@@ -3494,3 +3595,213 @@ mais parfaitement signalée par les codes :
 au `temINVALID` de [17:01] et au `tecINSUFFICIENT_FUNDS` à deux causes de
 [17:07]. Les vaults de test sont supprimés, `spare` est revenu à son
 `OwnerCount` de départ (7).
+
+---
+
+### [19:35] 🔍 Audit de véracité des livrables — 143/143 transactions revérifiées, 3 claims corrigés
+Phase : observabilite
+Catégorie : information (méthode) — **ce qui valide le reste du journal**
+Sévérité : —
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · script `scripts/_probe-audit-hashes.mjs`,
+`scripts/_probe-audit-claims.mjs` (tous deux en lecture seule)
+
+Motif : avant de figer `FEEDBACK.md`, reprendre chaque affirmation et la
+confronter à sa source — le ledger pour un chiffre, la page de doc pour un
+« non documenté », le code de `node_modules` pour un grief SDK. Un rapport de
+feedback qui se trompe sur un fait perd le droit d'être cru sur les autres.
+
+**1. Tous les identifiants cités, revérifiés on-chain**
+
+    143 / 143 transactions   trouvées, validées, type et code conformes
+     12 objets de ledger     vivants (Vault / LoanBroker / Loan)
+      3 objets de ledger     supprimés — cycles documentés dans ce journal
+
+  Piège d'outillage à signaler, parce qu'il produirait un faux scandale : un
+  `VaultID`, un `LoanID` et un `LoanBrokerID` sont aussi des chaînes de 64
+  hexa. Un audit naïf qui les passe à la commande `tx` rend 15 « hashes
+  introuvables » sur un rapport parfaitement exact. `_probe-audit-hashes.mjs`
+  les classe désormais par indice contextuel avant de choisir `tx` ou
+  `ledger_entry`. À garder à l'esprit pour tout outil de vérification de
+  livrable : **la commande `tx` n'est pas un test d'existence**.
+
+**2. Trois corrections de fond, détaillées dans les entrées concernées**
+
+  | Claim d'origine | Verdict | Où |
+  |---|---|---|
+  | « effet de cliquet **non documenté** » sur `AssetsMaximum` | **faux** — la référence `VaultSet` écrit la contrainte | [16:18] |
+  | preuve du dépôt au-delà du plafond | **manquante** — hash d'un autre vault, dépôt sans hash → série rejouée en entier | [16:18] |
+  | « deuxième panne du devnet, même signature » | **non attribuable** — signature reproduite avec notre propre Wi-Fi | [16:44], [15:46] |
+
+  La deuxième est la plus instructive : l'entrée citait un hash réel, d'une
+  transaction réelle, qui prouvait réellement quelque chose — mais pas la
+  phrase à côté de laquelle il était posé. Un hash à côté d'une affirmation
+  n'est une preuve que si c'est **l'affirmation qu'il prouve**. Les neuf
+  transactions de la série rejouée sont désormais alignées une par une sur les
+  étapes qu'elles démontrent.
+
+**3. Claims confirmés au caractère près** (les garder tels quels)
+
+  - `LoanPay` : les error cases de la page sont exactement `temINVALID`,
+    `temBAD_AMOUNT`, `tecNO_ENTRY`, `tecNO_PERMISSION`, `tecTOO_SOON`,
+    `tecKILLED`, `tecWRONG_ASSET`, `tecFROZEN`. **`tecEXPIRED` n'y figure
+    pas**, et n'apparaît nulle part sur la page. Le flag est bien libellé
+    « *Indicates that the borrower is making a late loan payment* », et
+    `Amount` « *The amount to pay toward the loan* » — rien sur le plafond.
+  - Ponction du first-loss capital, **recalculée sur le ledger** :
+    les deux brokers portent `CoverRateMinimum` 10000 et
+    `CoverRateLiquidation` 5000 (soit 10 % et 5 %) ; la ponction observée est
+    de 250 000 drops sur 50 XRP de dette et de 20 000 drops sur 4 XRP, soit
+    `dette × 10 % × 5 %` **au drop près dans les deux cas**, c'est-à-dire
+    0,5000 % de la dette. La doc donne elle-même la formule et un exemple à
+    1 % — le comportement est conforme, c'est le **nom** qui ment.
+  - `LossUnrealized` : nœud `Vault` relu, `AssetsTotal` 5000002 pour
+    `LossUnrealized` 3000001, donc un rapport net/brut de **0,4000000**. La
+    surévaluation de 150 % ne dépend d'aucune hypothèse sur le nombre de
+    parts : c'est le rapport des deux champs. `LossUnrealized` est bien absent
+    de la page de concept du Lending Protocol, et `AssetsTotal` y est défini
+    sans un mot sur les pertes latentes.
+  - `loan_info`, `loan_broker_info`, `mpt_holders` et `mpt_issuance_info`
+    renvoient tous **`unknownCmd`** sur ce build, là où `vault_info` existe
+    (il répond `entryNotFound` sur un identifiant nul, donc la commande est
+    bien servie). L'asymétrie est confirmée.
+  - `signLoanSetByCounterparty` : la chaîne d'appel est
+    `counterpartySigner.js` → `computeSignature(tx, privateKey)` →
+    `encodeForSigning(tx)`. Or `ripple-binary-codec` **exporte**
+    `encodeForSigningCounterparty`, que le SDK n'appelle pas. Grief confirmé
+    au niveau source.
+  - `validateVaultCreate` : `validateOptionalField(tx, 'WithdrawalPolicy',
+    isNumber)`, alors que l'énumération `VaultWithdrawalPolicy` — à dix lignes
+    au-dessus dans le même fichier — ne définit que la valeur 1.
+  - Matrice V1.1 : la page `closed-ended-vaults` donne bien `LoanBrokerSet` ❌
+    sur open-ended et la phrase « *`LoanBrokerSet` is restricted on open-ended
+    vaults* ». Le vault de `781F54B5…` est relu sur le ledger : il porte
+    `Account, Asset, AssetsAvailable, AssetsMaximum, AssetsTotal, Data, Flags,
+    LEVersion, Owner, ShareMPTID, WithdrawalPolicy` — **aucun champ de vault
+    closed-ended**. C'est donc bien un open-ended, et le `LoanBrokerSet` y a
+    répondu `tesSUCCESS`. Contradiction confirmée.
+  - Les deux coquilles de doc sont toujours en ligne :
+    `PrincipleOutstanding` et `depostitor`.
+  - 15 types Vault/Loan, 15 fichiers de modèle dans
+    `node_modules/xrpl/dist/npm/models/transactions/`. Aucun JSON brut
+    nécessaire pour cause de type manquant.
+
+**4. Un claim renforcé par la vérification**
+
+  Nous écrivions que `tfLoanImpair` est refusé avant l'échéance « alors que le
+  tutoriel présente la dépréciation préventive comme sa raison d'être ». La
+  citation exacte est plus accablante que notre paraphrase : le tutoriel
+  « Manage a Loan » dit **« *manually impair a loan before a payment due date
+  passes (in cases where you suspect a borrower can't make a payment)* »** —
+  soit précisément le geste auquel le ledger répond `tecTOO_SOON` (mesuré à
+  échéance −13 s, accepté à échéance +5 s). Ce n'est pas un silence de la doc,
+  c'est une **instruction que le ledger refuse**. Item promu au rapport.
+
+Proposition (pour l'outillage du hackathon, pas pour le protocole) :
+  Fournir aux équipes un vérificateur de livrable — 40 lignes — qui relit
+  chaque identifiant cité dans le rapport et le confronte au ledger. Sur la
+  grille de notation, un rapport dont chaque hash est vérifiable vaut plus
+  qu'un rapport plus long ; et sur 143 identifiants écrits à la main pendant
+  une journée de hack, personne ne garantit la main-d'œuvre sans outil.
+
+---
+
+### [22:10] Seconde passe de vérification, sur l'explorer : un finding retiré, deux chiffres corrigés
+Phase : observabilite
+Catégorie : documentation/tutorials + other (explorer)
+Sévérité : —
+Lib : xrpl@4.6.0 · Explorer v1.5.0 · script `deck/capture-explorer.mjs`
+
+**Retiré du rapport — « `VaultWithdraw` prend des parts, sa limite est en actifs ».**
+Faux. La référence `VaultWithdraw` : « *The exact amount of vault asset to
+withdraw or vault share to redeem* », et avec un montant en actif « *the
+transaction burns the necessary number of shares to provide the requested
+amount* ». Nos sondes utilisaient les parts ; le protocole accepte les deux.
+Le chiffre associé (« 9 retraits sur 10 partiels ») n'avait **aucune source**
+dans ce journal. Même erreur corrigée dans la table du `README.md`.
+
+**Retiré — « 537 XRP bloqués dans dix vaults ».** Aucune trace dans ce journal
+ni dans les hypothèses. Le script `_probe-inventory.mjs` reste ; le chiffre part.
+
+**Corrigé — « retrait de couverture 24 s après le défaut » → 21 s.** Estimé à
+partir du nombre de ledgers (8 × 3,04 s). Heures de clôture réelles :
+défaut `923F7D61…` à 14:27:01Z, retrait `68DD97D9…` à 14:27:22Z.
+Relevé par `scripts/_probe-close-times.mjs`.
+
+**Deux constats d'explorer, utiles aux findings 1 et 2 :**
+  - l'onglet *Detailed* nomme `tfLoanImpair` et `tfLoanDefault`, mais affiche
+    `tfLoanLatePayment` en hexadécimal brut, `0x00040000` (`EFAD383F…`). Le flag
+    qui débloque un paiement en retard n'est donc lisible ni dans la doc des
+    erreurs, ni dans l'explorer ;
+  - pour un nœud `Vault`, `Loan` ou `LoanBroker`, l'onglet *Detailed* écrit
+    seulement « *It modified a node with type Vault* », sans aucun champ.
+    `LossUnrealized: "3000001"` n'apparaît qu'en dépliant le JSON de l'onglet
+    *Raw* (`C8678C1C…`).
+
+Proposition : que l'explorer décode les champs des nœuds XLS-65/66 et les flags
+de `LoanPay`, comme il le fait déjà pour `AccountRoot` et `LoanManage`.
+
+---
+
+### [22:45] Audit croisé avec les specs XLS et le code rippled — cinq findings recadrés
+Phase : observabilite
+Catégorie : documentation/tutorials
+Sévérité : —
+Lib : xrpl@4.6.0 · rippled 3.4.0-rc1 · `scripts/_probe-amendments.mjs`
+
+Les findings avaient été vérifiés contre xrpl.org et le ledger, pas contre les
+specs XLS ni l'historique de rippled. Faits établis ce soir, chacun à sa source :
+
+| Fait | Source |
+|---|---|
+| `fixCleanup3_4_0`, `fixCleanup3_2_0`, `BatchV1_1` sont **actifs** sur le devnet | RPC `feature` |
+| `fixCleanup3_4_0` est **absent** des *Known Amendments* d'xrpl.org | xrpl.org |
+| Sous `fixCleanup3_4_0`, `tfLoanImpair` est refusé tant que `currentTime <= NextPaymentDueDate` | XLS-66 §3.10.4.2, condition 9 |
+| Sous `fixCleanup3_4_0`, `CounterpartySignature` se signe avec le préfixe `CPT` | rippled PR #8162 |
+| `tecEXPIRED` pour un paiement en retard sans `tfLoanLatePayment` est une condition d'échec | XLS-66 §3.11.4.2, condition 11 |
+| `AssetsMaximum` : « *Set to `0` for no cap* » | référence `Vault` xrpl.org, XLS-65 |
+| Rachat : `(AssetsTotal − LossUnrealized)`, **sauf pour l'unique porteur** | XLS-65 ; la page SAV d'xrpl.org donne la formule, pas l'exception |
+| La restriction V1.1 de `LoanBrokerSet` a été **annulée pour la branche du hackathon** le 10/09 | rippled PR #8076 |
+| `mpt_holders` est une méthode **Clio** uniquement | xrpl.org |
+
+Conséquences pour le rapport :
+  - « `tfLoanImpair` refusé alors que le tutoriel le prescrit » et « le SDK
+    signe mal `LoanSet` » ont une **cause unique**, `fixCleanup3_4_0`. Pas de bug :
+    `xrpl@4.6.0` signe juste pour un réseau sans cet amendment. Le vrai grief :
+    l'amendment n'est documenté nulle part sur xrpl.org, et le tutoriel est périmé.
+  - `tecEXPIRED` est dans la spec : le trou est la **référence xrpl.org**.
+  - `AssetsMaximum: 0` = « pas de plafond » **est documenté**. Reste l'absence
+    d'une primitive de gel des dépôts. Sévérité ramenée à basse.
+  - Le « prix de part surévalué de 150 % » est **retiré** : la formule nette est
+    documentée, et le vault mesuré (`C8678C1C…`) n'avait qu'un porteur, pour qui
+    la déduction ne s'applique pas. Reste l'exception absente d'xrpl.org.
+  - V1.1 : pas un défaut du protocole, un revert volontaire pour l'événement,
+    que rien ne signalait aux participants.
+  - `mpt_holders` n'est pas « inexistant » : il faut Clio, que le devnet n'expose pas.
+
+---
+
+### [23:10] Deux chiffres corrigés en relisant le code des sondes
+Phase : observabilite
+Catégorie : information (méthode)
+Sévérité : —
+Lib : xrpl@4.6.0 · `scripts/_probe-h9-observability.mjs`, `scripts/_probe-close-times.mjs`
+
+**« 8 appels RPC » pour la vue d'un déposant → 5.** Le compteur de la sonde
+incluait deux appels de contrôle sur les comptes emprunteurs, inutiles une fois
+les prêts trouvés sur le pseudo-compte du broker, et un `ledger_entry` sur
+l'émission de parts que `vault_info` renvoie déjà (`shares`, avec `Flags` et
+`OutstandingAmount`). Chemin minimal : `vault_info`, `account_objects` (mptoken),
+`account_objects` (owner), `account_objects` (loan, pseudo-compte du broker),
+`mpt_holders` (`unknownCmd`).
+
+**Ordre des retraits après le défaut.** Heures de clôture du ledger : retrait du
+déposant refusé 14:23:50, défaut 14:27:01, retrait du déposant 14:27:11, retrait
+de la couverture par le broker 14:27:22. Le retrait du déposant précède celui du
+broker.
+
+Constat ajouté au rapport, vérifié ce soir : les parts d'un vault portent
+`Flags: 56` (`lsfMPTCanEscrow`, `lsfMPTCanTrade`, `lsfMPTCanTransfer`). La
+référence `MPTokenIssuance` d'xrpl.org décrit `lsfMPTCanTrade` comme permettant
+d'échanger « *using the XRP Ledger DEX or AMM* ». `OfferCreate` sur une part
+renvoie `temDISABLED` ([13:49*]) et la liste `feature` ne contient aucun
+amendment d'échange de MPT.
