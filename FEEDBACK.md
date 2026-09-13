@@ -10,8 +10,8 @@
 
 Three-page version with explorer screenshots: [`FEEDBACK.pdf`](./FEEDBACK.pdf).
 
-The 143 transactions cited in this report, the raw log and the README are validated on the
-ledger, type and result code included
+The 143 transactions cited across the deliverables (this report, the README and the raw log
+`bonus/notes/FEEDBACK-RAW.md`) are validated on the ledger, type and result code included
 (`node bonus/scripts/_probe-audit-hashes.mjs FEEDBACK.md bonus/notes/FEEDBACK-RAW.md README.md`). Documentation
 claims are checked against XLS-65, XLS-66 and xrpl.org, library claims against the `rippled` and
 `xrpl.js` source.
@@ -290,9 +290,12 @@ cap on the `VaultSet` reference.
 
 | Issue | Category | Severity |
 |---|---|---|
-| The Lending Protocol concept page spells `PrincipleOutstanding` and `depostitor`. | documentation/tutorials | ⚪ Low |
-| `validateVaultCreate` (`xrpl@4.6.0`) accepts any `WithdrawalPolicy`; the ledger takes only 1. | client libraries | ⚪ Low |
+| Typos: `PrincipleOutstanding` and `depostitor` on the Lending Protocol page, "the the" and `oustanding` on `LoanManage`. | documentation/tutorials | ⚪ Low |
 | `LoanManage` with no flag is an undocumented no-op (`tesSUCCESS`). | documentation/tutorials | ⚪ Low |
+| The lending pages never say that due dates are compared with the parent ledger close time, rounded to 10 s. | documentation/tutorials | ⚪ Low |
+| `validateVaultCreate` accepts any `WithdrawalPolicy`; the ledger takes only 1. | client libraries | ⚪ Low |
+| `validateLoanManage` only rejects impair with unimpair; `tfLoanDefault` combinations reach the ledger (`temINVALID_FLAG`). | client libraries | ⚪ Low |
+| `submitAndWait` throws on `tem` with the code only in the message text, but returns `tec` results. | client libraries | ⚪ Low |
 
 ## What worked
 
@@ -300,5 +303,7 @@ cap on the `VaultSet` reference.
 third-party `MPToken` objects and refunds their reserve. The cover floor holds to the drop, cover
 rates are immutable (`temINVALID`), and closed-ended phases match XLS-65.
 
-**Limits.** XRP only. Intervals of 60 to 90 s. One build. Hashes on the hackathon devnet, which
-may close; to replay, edit `scripts/config.mjs`. Full runs in the [README](./README.md).
+**Limits.** XRP only. Intervals of 60 to 90 s. One build. No Clio, so `mpt_holders` untested.
+`xrpl@5.2.0` read in its source, not run. Explorer checked on `custom.xrpl.org` only. Hashes on the
+hackathon devnet, which may close; to replay, edit `scripts/config.mjs`. Full runs in the
+[README](./README.md).

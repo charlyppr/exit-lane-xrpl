@@ -230,7 +230,7 @@ Six more findings, ordered by severity, each with its category, repro steps and 
 
 `3:50 → 4:00 (10 s)
 
-Everything is in FEEDBACK.md, and in three pages in FEEDBACK.pdf. The 143 hashes cited were re-checked on the ledger before submission. Thank you.`,
+Everything is in FEEDBACK.md, and in three pages in FEEDBACK.pdf. The 143 transactions cited across the report, the README and the raw log were re-checked on the ledger before submission. Thank you.`,
 ];
 let slideNo = 0;
 const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
@@ -456,7 +456,7 @@ const facts = (sl, y0, rows) => {
   title(sl, "Nine findings, three pages", true);
 
   txt(sl, "143 / 143", { x: ML - 0.04, y: 2.15, w: 8, h: 1.25, fs: 76, bold: true, color: SKY, ff: FH });
-  txt(sl, "hashes cited, re-checked on the ledger before submission", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
+  txt(sl, "transactions cited in report, README and raw log, re-checked on the ledger", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
 
   rule(sl, 4.6, "1C3D85");
   txt(sl, "github.com/charlyppr/exit-lane-xrpl", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });

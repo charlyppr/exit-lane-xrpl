@@ -172,7 +172,7 @@
 \end{tabularx}}
 
 \vspace{8pt}
-{\fontsize{7.4}{9.6}\selectfont\color{body}The 143 transactions cited are validated on the ledger, type and result code
+{\fontsize{7.4}{9.6}\selectfont\color{body}The 143 transactions cited across the deliverables (this report, the README and the raw log) are validated on the ledger, type and result code
 included (\repo{bonus/scripts/_probe-audit-hashes.mjs}{\_probe-audit-hashes.mjs}). Documentation claims are checked against XLS-65, XLS-66 and
 xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashes link to the explorer.\par}
 
@@ -455,9 +455,12 @@ the \tm{Vault} entry; the \tm{VaultSet} reference does not repeat it.
 \toprule
 \tabhead{Issue} & \tabhead{Category}\\
 \midrule
-The Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. & documentation/tutorials\\
-\tm{validateVaultCreate} (\tm{xrpl@4.6.0}) accepts any \tm{WithdrawalPolicy}; the ledger takes only 1. & client libraries\\
+Typos: \tm{PrincipleOutstanding} and \tm{depostitor} on the Lending Protocol page, ``the the'' and \tm{oustanding} on \tm{LoanManage}. & documentation/tutorials\\
 \tm{LoanManage} with no flag is an undocumented no-op (\tm{tesSUCCESS}). & documentation/tutorials\\
+The lending pages never say that due dates are compared with the parent ledger close time, rounded to 10 s. & documentation/tutorials\\
+\tm{validateVaultCreate} accepts any \tm{WithdrawalPolicy}; the ledger takes only 1. & client libraries\\
+\tm{validateLoanManage} only rejects impair with unimpair; \tm{tfLoanDefault} combinations reach the ledger (\tm{temINVALID\_FLAG}). & client libraries\\
+\tm{submitAndWait} throws on \tm{tem} with the code only in the message text, but returns \tm{tec} results. & client libraries\\
 \bottomrule
 \end{tabularx}}
 
@@ -466,8 +469,9 @@ The Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depos
 removes third-party \tm{MPToken} objects and refunds their reserve. The cover floor holds to the
 drop, cover rates are immutable (\tm{temINVALID}), and closed-ended phases match XLS-65.
 
-\hs{Limits.} XRP only. Intervals of 60 to 90 s. One build. Hashes on the hackathon devnet, which
-may close; to replay, edit \tm{scripts/config.mjs}. Full runs in the
+\hs{Limits.} XRP only. Intervals of 60 to 90 s. One build. No Clio, so \tm{mpt\_holders} untested.
+\tm{xrpl@5.2.0} read in its source, not run. Explorer checked on \tm{custom.xrpl.org} only. Hashes
+on the hackathon devnet, which may close; to replay, edit \tm{scripts/config.mjs}. Full runs in the
 \href{https://github.com/charlyppr/exit-lane-xrpl\#readme}{\color{blue}README}.
 
 \end{multicols}

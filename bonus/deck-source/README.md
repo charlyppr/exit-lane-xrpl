@@ -76,7 +76,7 @@ The script is in the notes of each slide (presenter view).
 | 7 | A late LoanPay requires tfLoanLatePayment | 2:40 → 3:05 | Friction 2 and its fix, screenshots `96C38704` and `EFAD383F` |
 | 8 | First-loss capital: 0.5% of a defaulted loan | 3:05 → 3:35 | Friction 3 and its fix, screenshots `923F7D61` and `68DD97D9` |
 | 9 | Six more findings | 3:35 → 3:50 | Findings 4 to 9 |
-| 10 | Nine findings, three pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
+| 10 | Nine findings, three pages | 3:50 → 4:00 | 143/143 transactions verified on-chain, repo, `FEEDBACK.pdf` |
 
 Slides 6 to 8 are the three most important frictions the brief asks for, in
 the report's order, each with its proposed fix.

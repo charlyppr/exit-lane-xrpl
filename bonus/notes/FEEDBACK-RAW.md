@@ -3874,3 +3874,19 @@ on-chain (le Track 1 interdit 5.2.0). Le finding 1 est réécrit en ce sens.
     L'entrée [16:25] parlait de défaut ; c'est un choix de conception non documenté.
   - La PR xrpl-dev-portal #3923 (ouverte) ajoute « Loans can only be impaired after missing
     a payment » à *Manage a Loan*, mais garde la phrase d'intro contraire.
+
+---
+
+### [12:05] Trois issues mineures reconfirmées sur les sources à jour, une coquille de plus
+Phase : livrables
+Catégorie : documentation/tutorials + client libraries
+Sévérité : basse
+Lib : xrpl.js `main` · xrpl-dev-portal `master`
+
+  - Référence `LoanManage` sur xrpl.org : « the the » (deux fois) et « oustanding ».
+  - `validateLoanManage` sur xrpl.js `main` ne teste toujours que `tfLoanImpair` avec
+    `tfLoanUnimpair` ([16:25]).
+  - `submitAndWait` sur xrpl.js `main` (`client/index.ts:886-890`) lève une `XrplError` sur `tem`,
+    avec le code seulement dans le message ([17:01]).
+  - Aucune des pages `lending-protocol`, `loanpay`, `loanmanage` ou `loan` ne mentionne l'heure de
+    clôture du ledger parent ([01:40]).
