@@ -20,7 +20,7 @@ claims are checked against XLS-65, XLS-66 and xrpl.org, library claims against t
 |---|---|---|---|
 | [1](#f1) | `fixCleanup3_4_0` is enabled and missing from xrpl.org | client libraries | 🔴 High |
 | [2](#f2) | A late `LoanPay` without `tfLoanLatePayment` returns `tecEXPIRED` | documentation/tutorials | 🔴 High |
-| [3](#f3) | First-loss capital covered 0.5 % of a defaulted loan | UX | 🔴 High |
+| [3](#f3) | First-loss capital covered 0.5% of a defaulted loan | UX | 🔴 High |
 | [4](#f4) | xrpl.org omits the sole-holder exception, and zero-valued fields are absent | documentation/tutorials | 🟠 Medium |
 | [5](#f5) | No read command for loans or brokers | missing primitive | 🟠 Medium |
 | [6](#f6) | One result code covers causes that need different actions | UX | 🟠 Medium |
@@ -95,9 +95,9 @@ grace period: the instalment, the instalment with `LatePaymentFee`, the full bal
    ([`bonus/scripts/_probe-pay-states.mjs`](./bonus/scripts/_probe-pay-states.mjs)).
 2. 11 s after the due date by ledger close time, `LoanPay` of `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`
    returns `tecEXPIRED` with `Flags: 0`, and `tesSUCCESS` with `Flags: 262144`.
-3. With `LateInterestRate` 30 % ([`bonus/scripts/_probe-h2-race.mjs`](./bonus/scripts/_probe-h2-race.mjs)), the
-   same amount returns `tecINSUFFICIENT_PAYMENT`. Sending 2 765 001 drops succeeds and takes
-   765 003.
+3. With `LateInterestRate` 30% ([`bonus/scripts/_probe-h2-race.mjs`](./bonus/scripts/_probe-h2-race.mjs)), the
+   same amount returns `tecINSUFFICIENT_PAYMENT`. Sending 2,765,001 drops succeeds and takes
+   765,003.
 
 **Transactions** no flag
 [`96C38704`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4),
@@ -111,20 +111,20 @@ remedy. Name the flag in the explorer. Expose the amount due now, late interest 
 `Loan` field or a read command.
 
 <a id="f3"></a>
-### 3. First-loss capital covered 0.5 % of a defaulted loan
+### 3. First-loss capital covered 0.5% of a defaulted loan
 
 🔴 **High** · UX · `xrpl@4.6.0`
 
-Two brokers, both with `CoverRateMinimum` 10 % and `CoverRateLiquidation` 5 %:
+Two brokers, both with `CoverRateMinimum` 10% and `CoverRateLiquidation` 5%:
 
 | Vault | Loan | Cover | Taken | Loss | Share value |
 |---|---|---|---|---|---|
 | 200 XRP | 50 | 50 | 0.25 | 49.75 | 1.000 → 0.751 |
 | 5 XRP | 4 | 1 | 0.02 | 3.98 | 1.000 → 0.204 |
 
-The cover taken is `debt × 10 % × 5 %`, to the drop. This is the documented formula:
+The cover taken is `debt × 10% × 5%`, to the drop. This is the documented formula:
 `CoverRateLiquidation` applies to the minimum cover, not to the defaulted debt, and the xrpl.org
-example covers 1 % of the debt. After the default `DebtTotal` is zero, so is the cover floor, and
+example covers 1% of the debt. After the default `DebtTotal` is zero, so is the cover floor, and
 the broker withdrew the rest. Second vault, UTC:
 
 | Time | Event | |
@@ -144,7 +144,7 @@ the broker withdrew the rest. Second vault, UTC:
 [`91F458E3`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7)
 
 **Proposed fix** Next to the formula, state the share of a defaulted debt the cover absorbs:
-`CoverRateMinimum × CoverRateLiquidation`, 0.5 % at 10 % and 5 %. Hold `LoanBrokerCoverWithdraw`
+`CoverRateMinimum × CoverRateLiquidation`, 0.5% at 10% and 5%. Hold `LoanBrokerCoverWithdraw`
 for a set delay after a default, or state that no delay exists.
 
 <a id="f4"></a>
