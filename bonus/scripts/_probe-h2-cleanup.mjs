@@ -1,4 +1,4 @@
-// Teardown of the H2 bench: 3 remaining installments, late → LATE + large amount.
+// Teardown of the H2 bench: 3 remaining installments, late -> LATE + large amount.
 import { Client, Wallet } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 import { submitRaw, loadAccounts, readEntry } from "../../scripts/raw-submit.mjs";
@@ -29,7 +29,7 @@ if (bn && BigInt(bn.CoverAvailable ?? 0) > 0n) await safe(broker.seed,
   { TransactionType: "LoanBrokerCoverWithdraw", LoanBrokerID: B, Amount: String(bn.CoverAvailable) }, "CoverWithdraw");
 await safe(broker.seed, { TransactionType: "LoanBrokerDelete", LoanBrokerID: B }, "LoanBrokerDelete");
 const sf = await vaultSnapshot(c, V);
-console.log(`   vault : total ${fmt(sf.assetsTotal)} · available ${fmt(sf.assetsAvailable)} · share ${sf.navPerShare.toFixed(9)}`);
+console.log(`   vault : total ${fmt(sf.assetsTotal)}, available ${fmt(sf.assetsAvailable)}, share ${sf.navPerShare.toFixed(9)}`);
 const sh = await (async () => { const r = await c.request({ command: "account_objects", account: spareW.address, type: "mptoken", ledger_index: "validated" });
   return BigInt(r.result.account_objects.find((o) => o.MPTokenIssuanceID === sf.shareMPTID)?.MPTAmount ?? 0); })();
 if (sh > 0n) await safe(spare.seed, { TransactionType: "VaultWithdraw", VaultID: V,

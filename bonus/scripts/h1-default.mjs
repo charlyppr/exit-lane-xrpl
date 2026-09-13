@@ -3,9 +3,9 @@
 // Question asked word for word by the brief: "Did first-loss-capital
 // parameters behave as their names suggested?"
 //
-// Isolated setup: one vault, one broker, ONE SINGLE loan, so that DebtTotal
+// Isolated setup: one vault, one broker, a single loan, so that DebtTotal
 // is unambiguous. GracePeriod = 60 s, the minimum the protocol accepts
-// (59 s → temINVALID, measured).
+// (59 s -> temINVALID, measured).
 //
 // Usage: node bonus/scripts/h1-default.mjs
 
@@ -16,8 +16,8 @@ import { vaultSnapshot, fmt } from "../../scripts/lib/nav.mjs";
 
 const XRP = (n) => String(Math.round(n * 1_000_000));
 const log = (...a) => console.log(...a);
-const title = (t) => log(`\n${"═".repeat(72)}\n  ${t}\n${"═".repeat(72)}`);
-const step = (t) => log(`\n── ${t} ${"─".repeat(Math.max(0, 62 - t.length))}`);
+const title = (t) => log(`\n${"=".repeat(72)}\n  ${t}\n${"=".repeat(72)}`);
+const step = (t) => log(`\n-- ${t} ${"-".repeat(Math.max(0, 62 - t.length))}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const createdNode = (r, t) =>
   (r?.meta?.AffectedNodes ?? []).find((n) => n.CreatedNode?.LedgerEntryType === t)?.CreatedNode ?? null;
@@ -30,7 +30,7 @@ try {
   const { lender, borrower, broker } = loadAccounts();
   const brokerW = Wallet.fromSeed(broker.seed), borrowerW = Wallet.fromSeed(borrower.seed);
 
-  title(`Isolated setup: vault ${DEPOSIT} XRP · cover ${COVER} XRP · CoverRateMinimum ${COVER_MIN} % · CoverRateLiquidation ${COVER_LIQ} %`);
+  title(`Isolated setup: vault ${DEPOSIT} XRP, cover ${COVER} XRP, CoverRateMinimum ${COVER_MIN} %, CoverRateLiquidation ${COVER_LIQ} %`);
   const v = await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate", Asset: { currency: "XRP" }, AssetsMaximum: XRP(10_000),
     WithdrawalPolicy: 1, Data: Buffer.from("CY-HACK H1 default").toString("hex").toUpperCase(),
@@ -84,9 +84,9 @@ try {
     TransactionType: "LoanManage", LoanID: loanId, Flags: 131072,
   }, { label: "LoanManage impair" });
   const vaultImp = await vaultSnapshot(client, vaultId);
-  log(`  vault AssetsTotal  ${fmt(vault0.assetsTotal)} → ${fmt(vaultImp.assetsTotal)}`);
-  log(`  value of one share ${vault0.navPerShare.toFixed(9)} → ${vaultImp.navPerShare.toFixed(9)}`);
-  log(`  ▸ the impairment ${vaultImp.assetsTotal === vault0.assetsTotal ? "does NOT affect" : "affects"} the value shown to depositors`);
+  log(`  vault AssetsTotal  ${fmt(vault0.assetsTotal)} -> ${fmt(vaultImp.assetsTotal)}`);
+  log(`  value of one share ${vault0.navPerShare.toFixed(9)} -> ${vaultImp.navPerShare.toFixed(9)}`);
+  log(`  the impairment ${vaultImp.assetsTotal === vault0.assetsTotal ? "does NOT affect" : "affects"} the value shown to depositors`);
 
   step("Waiting for the grace period: 70 s");
   await sleep(70_000);
@@ -110,19 +110,19 @@ try {
   log(`  Loss borne by depositors                ${fmt(Math.round(vaultLoss))}`);
   log(`  First-loss capital STILL available      ${fmt(brk1.CoverAvailable ?? 0)}`);
   log(`\n  Documented formula:`);
-  log(`    min(DebtTotal × CoverRateMinimum × CoverRateLiquidation, default)`);
-  log(`    = min(${fmt(debt)} × ${COVER_MIN}% × ${COVER_LIQ}%, ${fmt(principal)}) = ${fmt(Math.round(expected))}`);
-  log(`    observed: ${fmt(Math.round(coverUsed))}  → ${Math.abs(expected - coverUsed) < 2 ? "MATCHES the formula" : "DEVIATES from the formula"}`);
+  log(`    min(DebtTotal * CoverRateMinimum * CoverRateLiquidation, default)`);
+  log(`    = min(${fmt(debt)} * ${COVER_MIN}% * ${COVER_LIQ}%, ${fmt(principal)}) = ${fmt(Math.round(expected))}`);
+  log(`    observed: ${fmt(Math.round(coverUsed))}  -> ${Math.abs(expected - coverUsed) < 2 ? "MATCHES the formula" : "DEVIATES from the formula"}`);
   const share = coverUsed + vaultLoss > 0 ? (100 * coverUsed) / (coverUsed + vaultLoss) : 0;
-  log(`\n  ▸▸ The "first-loss capital" absorbed ${share.toFixed(2)} % of the loss,`);
+  log(`\n  >> The "first-loss capital" absorbed ${share.toFixed(2)} % of the loss,`);
   log(`     while ${fmt(brk1.CoverAvailable ?? 0)} remained available to absorb it.`);
-  log(`\n  vault AssetsTotal ${fmt(vault0.assetsTotal)} → ${fmt(vault1.assetsTotal)}`);
-  log(`  value of one share ${vault0.navPerShare.toFixed(9)} → ${vault1.navPerShare.toFixed(9)}`);
+  log(`\n  vault AssetsTotal ${fmt(vault0.assetsTotal)} -> ${fmt(vault1.assetsTotal)}`);
+  log(`  value of one share ${vault0.navPerShare.toFixed(9)} -> ${vault1.navPerShare.toFixed(9)}`);
   log(`\n  VaultID ${vaultId}\n  BrokerID ${brokerId}\n  LoanID ${loanId}`);
   log(`  impair  ${imp.code} ${imp.hash}`);
   log(`  default ${def.code} ${def.hash}`);
 } catch (e) {
-  log(`\n💥 ABORTED: ${e.message}`);
+  log(`\nABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 600));
 } finally {
   await client.disconnect();

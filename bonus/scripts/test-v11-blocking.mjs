@@ -1,5 +1,5 @@
-// DECISIVE TEST: LendingProtocolV1_1 is active on this devnet (see FEEDBACK-RAW [13:05]).
-// Question to settle: does a LoanSet go through on an OPEN-ENDED vault, or does V1.1
+// Decisive test: LendingProtocolV1_1 is active on this devnet (see FEEDBACK-RAW [13:05]).
+// Question to settle: does a LoanSet go through on an open-ended vault, or does V1.1
 // restrict loans to closed vaults? The whole premise of Track 1 depends on it.
 //
 // Covers steps 1 to 3 of the minimum bar. Every failure is a result, not a bug:
@@ -12,7 +12,7 @@ import { loadAccounts, submitRaw, signLoanSetCounterparty } from "../../scripts/
 const XRP = (n) => String(Math.round(n * 1_000_000)); // in drops
 
 const log = (...a) => console.log(...a);
-const step = (n, t) => log(`\n─── ${n}. ${t} ${"─".repeat(Math.max(0, 46 - t.length))}`);
+const step = (n, t) => log(`\n--- ${n}. ${t} ${"-".repeat(Math.max(0, 46 - t.length))}`);
 
 // Finds a created node in the metadata, by ledger entry type.
 function createdNode(result, entryType) {
@@ -41,11 +41,10 @@ try {
   log(`lender   : ${lender.address}  (depositor)`);
   log(`borrower : ${borrower.address}`);
 
-  // ─────────────────────────────────────────────────────────────────────────
   step(1, "VaultCreate: single asset, open-ended, XRP");
-  // There is NO duration/closing field in VaultCreate (xrpl 4.6.0):
+  // There is no duration/closing field in VaultCreate (xrpl 4.6.0):
   // open-ended is the default behaviour, not an option to request.
-  // The vault is created by the BROKER: `tecNO_PERMISSION` confirms that only
+  // The vault is created by the broker: `tecNO_PERMISSION` confirms that only
   // the vault owner can attach a LoanBroker to it (see FEEDBACK-RAW [13:2x]).
   const vault = mark("VaultCreate", await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate",
@@ -66,16 +65,14 @@ try {
   }
   if (!found.vaultId) throw new Error("VaultID not found, feedback item (metadata).");
 
-  // ─────────────────────────────────────────────────────────────────────────
   step(2, "VaultDeposit: the lender brings 300 XRP");
   const dep = mark("VaultDeposit", await submitRaw(client, lender.seed, {
     TransactionType: "VaultDeposit",
     VaultID: found.vaultId,
     Amount: XRP(300),
   }, { label: "VaultDeposit" }));
-  if (!dep.ok) log(`  ⚠️  deposit refused (${dep.code}), trying the rest anyway.`);
+  if (!dep.ok) log(`  deposit refused (${dep.code}), trying the rest anyway.`);
 
-  // ─────────────────────────────────────────────────────────────────────────
   step(3, "LoanBrokerSet: creating the broker on this vault");
   const brk = mark("LoanBrokerSet", await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerSet",
@@ -94,7 +91,6 @@ try {
   log(`  LoanBrokerID : ${found.brokerId ?? "NOT FOUND"}`);
   if (!found.brokerId) throw new Error("LoanBrokerID not found, feedback item (metadata).");
 
-  // ─────────────────────────────────────────────────────────────────────────
   step(4, "LoanBrokerCoverDeposit: first-loss cover");
   // CoverRateMinimum at 10 %: without any cover deposited, a LoanSet should be refused.
   // We deposit enough to cover 100 XRP of principal.
@@ -103,9 +99,8 @@ try {
     LoanBrokerID: found.brokerId,
     Amount: XRP(50),
   }, { label: "LoanBrokerCoverDeposit" }));
-  if (!cov.ok) log(`  ⚠️  cover refused (${cov.code}), the next LoanSet may fail because of it.`);
+  if (!cov.ok) log(`  cover refused (${cov.code}), the next LoanSet may fail because of it.`);
 
-  // ─────────────────────────────────────────────────────────────────────────
   step(5, "LoanSet, THE TEST: a loan on an OPEN-ENDED vault");
   const brokerWallet = Wallet.fromSeed(broker.seed);
   const borrowerWallet = Wallet.fromSeed(borrower.seed);
@@ -126,46 +121,46 @@ try {
     ClosePaymentFee: XRP(0.25),
   };
 
-  log("  autofill…");
+  log("  autofill...");
   const prepared = await client.autofill(loanSet);
 
-  log("  broker signature (first party)…");
+  log("  broker signature (first party)...");
   const signedByBroker = brokerWallet.sign(prepared);
 
-  // ⚠️ NOT the SDK's `signLoanSetByCounterparty`: it signs the wrong payload
+  // Not the SDK's `signLoanSetByCounterparty`: it signs the wrong payload
   // and rippled rejects it locally. See FEEDBACK-RAW [13:31].
-  log("  borrower signature (in-house workaround, SDK bug [13:31])…");
+  log("  borrower signature (in-house workaround, SDK bug [13:31])...");
   const fullyBlob = signLoanSetCounterparty(signedByBroker.tx_blob, borrower.seed);
 
-  log("  submitting…");
+  log("  submitting...");
   const res = await client.submitAndWait(fullyBlob);
   const code = res.result.meta?.TransactionResult ?? "?";
   const hash = res.result.hash;
   timeline.push({ label: "LoanSet", code, hash });
 
-  log(`\n  LoanSet → ${code}`);
+  log(`\n  LoanSet -> ${code}`);
   log(`  ${txUrl(hash)}`);
 
   const loanNode = createdNode(res.result, "Loan");
   found.loanId = loanNode?.LedgerIndex ?? null;
 
-  log("\n" + "═".repeat(64));
+  log("\n" + "=".repeat(64));
   if (code === "tesSUCCESS") {
-    log("✅ VERDICT: LoanSet GOES THROUGH on an open-ended vault.");
+    log("VERDICT: LoanSet GOES THROUGH on an open-ended vault.");
     log("   LendingProtocolV1_1 being active does NOT forbid Track 1.");
     log(`   LoanID : ${found.loanId}`);
-    log("   → Rule #4 of CLAUDE.md does not trigger. We build.");
+    log("   Rule #4 of CLAUDE.md does not trigger. We build.");
   } else {
-    log(`❌ VERDICT: LoanSet REFUSED, code ${code}`);
+    log(`VERDICT: LoanSet REFUSED, code ${code}`);
     log("   If the code points to a non-closed vault, V1.1 really does block Track 1.");
-    log("   → Capture this hash and go see a mentor BEFORE continuing.");
+    log("   Capture this hash and go see a mentor BEFORE continuing.");
   }
-  log("═".repeat(64));
+  log("=".repeat(64));
 } catch (e) {
-  log(`\n💥 ABORTED: ${e.message}`);
+  log(`\nABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 800));
 } finally {
-  log("\n─── Summary (to paste into FEEDBACK-RAW.md) ───");
+  log("\n--- Summary (to paste into FEEDBACK-RAW.md) ---");
   for (const t of timeline) log(`  ${t.label.padEnd(24)} ${String(t.code).padEnd(18)} ${t.hash ?? ""}`);
   log(`  VaultID       : ${found.vaultId ?? "-"}`);
   log(`  LoanBrokerID  : ${found.brokerId ?? "-"}`);

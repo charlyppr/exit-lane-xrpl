@@ -1,10 +1,9 @@
 // Helper to submit a transaction type the stable SDK may not know about
 // (VaultCreate, LoanBrokerSet, LoanSet, LoanPay...).
 //
-// The brief asks explicitly: "Did the SDK support the needed transaction
-// types, or did you construct raw JSON?" So every time this helper is needed
-// instead of a native type, it is a feedback item in the `client libraries`
-// category. Fill in the hypothesis H5 table as you go.
+// The brief asks: "Did the SDK support the needed transaction types, or did
+// you construct raw JSON?" Each use of this helper instead of a native type is
+// a feedback item in the `client libraries` category (hypothesis H5).
 //
 // Usage:
 //   import { submitRaw, submitMultiSigned, loadAccounts } from "./raw-submit.mjs";
@@ -56,12 +55,9 @@ export async function submitRaw(client, seed, tx, { label = "" } = {}) {
 }
 
 /**
- * LoanSet requires the signature of the broker AND the borrower (see
- * hypothesis H4). Two possible approaches depending on what the protocol
- * accepts:
- *   - classic XRPL multisign (requires a configured SignerList)
- *   - a dedicated signature field in the LoanSet body
- * Test both, time them, and record which one worked.
+ * Classic XRPL multisign (requires a configured SignerList). Not used by
+ * LoanSet: the borrower signs in the `CounterpartySignature` field, see
+ * signLoanSetCounterparty below and hypothesis H4.
  */
 export async function submitMultiSigned(client, tx, seeds, { label = "" } = {}) {
   const wallets = seeds.map((s) => Wallet.fromSeed(s));
@@ -98,14 +94,14 @@ export async function readEntry(client, index) {
 /**
  * `Counterparty` signature of a LoanSet (the borrower countersigns the loan).
  *
- * ⚠️ DO NOT use `signLoanSetByCounterparty` from xrpl@4.6.0: that helper
+ * Do not use `signLoanSetByCounterparty` from xrpl@4.6.0: that helper
  * signs with `encodeForSigning` (generic STX prefix) while rippled expects
  * `encodeForSigningCounterparty`. Result: local rejection
  * "fails local checks: Counterparty: Invalid signature." Verified on 12/09,
  * see FEEDBACK-RAW [13:31]. The correct encoding is exposed by
  * ripple-binary-codec 2.11.0, which the SDK already bundles.
  *
- * @param {string} signedBlob  tx_blob of the LoanSet ALREADY signed by the broker
+ * @param {string} signedBlob  tx_blob of the LoanSet already signed by the broker
  * @param {string} seed        seed of the counterparty (borrower)
  * @returns {string} complete tx_blob, ready to submit
  */

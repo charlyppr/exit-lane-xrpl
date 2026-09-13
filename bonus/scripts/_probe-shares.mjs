@@ -1,4 +1,4 @@
-// PROBE: are vault shares really a "first-class asset"?
+// Probe: are vault shares really a "first-class asset"?
 // Observed issuance Flags = 56 = CanEscrow|CanTrade|CanTransfer.
 // We test what these flags actually allow.
 import xrpl from "xrpl";

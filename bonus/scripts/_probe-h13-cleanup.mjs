@@ -19,5 +19,5 @@ const send = async (tx, label) => {
 await send({ TransactionType: "LoanBrokerDelete", LoanBrokerID: BRK }, "LoanBrokerDelete");
 await send({ TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A");
 const ai = await c.request({ command: "account_info", account: sw.address, ledger_index: "validated" });
-log(`\nspare : ${(Number(ai.result.account_data.Balance) / 1e6).toFixed(6)} XRP · OwnerCount ${ai.result.account_data.OwnerCount}`);
+log(`\nspare : ${(Number(ai.result.account_data.Balance) / 1e6).toFixed(6)} XRP, OwnerCount ${ai.result.account_data.OwnerCount}`);
 await c.disconnect();

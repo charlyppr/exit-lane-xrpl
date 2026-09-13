@@ -19,7 +19,7 @@ for (const [k, addr] of Object.entries(addrs)) {
 const objs = await c.request({ command: "account_objects", account: addrs.broker, ledger_index: "validated" });
 const vaults = objs.result.account_objects.filter((o) => o.LedgerEntryType === "Vault");
 const rec = {};
-console.log("VAULT           total    available         loss    | share holders → recoverable now");
+console.log("VAULT           total    available         loss    | share holders -> recoverable now");
 for (const v of vaults) {
   const total = BigInt(v.AssetsTotal ?? 0), avail = BigInt(v.AssetsAvailable ?? 0), loss = BigInt(v.LossUnrealized ?? 0);
   const iss = (await c.request({ command: "ledger_entry", mpt_issuance: v.ShareMPTID, ledger_index: "validated" })).result.node;
@@ -31,11 +31,11 @@ for (const v of vaults) {
     const value = out === 0n ? 0n : (sh * (total - loss)) / out;
     const exit = value < avail ? value : avail;
     rec[who] = (rec[who] ?? 0n) + exit;
-    lines.push(`${who} ${sh} shares = ${fmt(value)} → exit ${fmt(exit)}`);
+    lines.push(`${who} ${sh} shares = ${fmt(value)} -> exit ${fmt(exit)}`);
   }
-  console.log(`${v.index.slice(0, 10)}… ${fmt(total).padStart(14)} ${fmt(avail).padStart(14)} ${fmt(loss).padStart(12)} | ${lines.join(" · ") || "none of our accounts"}`);
+  console.log(`${v.index.slice(0, 10)}... ${fmt(total).padStart(14)} ${fmt(avail).padStart(14)} ${fmt(loss).padStart(12)} | ${lines.join(", ") || "none of our accounts"}`);
 }
-console.log("\n════ RECOVERABLE IMMEDIATELY, per account ════");
+console.log("\n==== RECOVERABLE IMMEDIATELY, per account ====");
 for (const [who, x] of Object.entries(rec)) console.log(`   ${who.padEnd(9)} ${fmt(x)}`);
 console.log("\n(\"exit\" = min(position value, vault AssetsAvailable): what a");
 console.log(" VaultWithdraw would return right now, including outstanding unrepaid loans.)");

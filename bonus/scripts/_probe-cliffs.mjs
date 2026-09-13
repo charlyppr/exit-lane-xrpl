@@ -31,7 +31,7 @@ const loanSet = async (B, principal, label) => {
     console.log(`${label.padEnd(34)} ${m ? m[1] + " (thrown)" : e.message.slice(0, 80)}`); return { code: m ? m[1] : "throw" }; }
 };
 
-console.log("════ WithdrawalPolicy != 1: the SDK only validates \"isNumber\" ════");
+console.log("==== WithdrawalPolicy != 1: the SDK only validates \"isNumber\" ====");
 console.log("   (the SDK's VaultWithdrawalPolicy enum contains ONLY the value 1)");
 const created = [];
 for (const p of [0, 2, 3, 99, 255]) {
@@ -39,7 +39,7 @@ for (const p of [0, 2, 3, 99, 255]) {
     AssetsMaximum: XRP(50), WithdrawalPolicy: p }, `VaultCreate WithdrawalPolicy=${p}`);
   if (r.ok) { const id = createdNode(r.result, "Vault")?.LedgerIndex;
     const n = await readEntry(c, id);
-    console.log(`   ⚠️ ACCEPTED: WithdrawalPolicy read from the node: ${n.WithdrawalPolicy}`);
+    console.log(`   ACCEPTED: WithdrawalPolicy read from the node: ${n.WithdrawalPolicy}`);
     created.push(id); }
 }
 const r0 = await safe(broker.seed, { TransactionType: "VaultCreate", Asset: { currency: "XRP" },
@@ -48,7 +48,7 @@ const V = createdNode(r0.result, "Vault").LedgerIndex;
 console.log(`   default: WithdrawalPolicy = ${(await readEntry(c, V)).WithdrawalPolicy}`);
 for (const id of created) await safe(broker.seed, { TransactionType: "VaultDelete", VaultID: id }, "  cleanup VaultDelete");
 
-console.log("\n════ H7: LoanBrokerSet from an account that is NOT the vault owner ════");
+console.log("\n==== H7: LoanBrokerSet from an account that is NOT the vault owner ====");
 await safe(spare.seed, { TransactionType: "LoanBrokerSet", VaultID: V, ManagementFeeRate: pctToRate(2),
   DebtMaximum: XRP(50), CoverRateMinimum: pctToRate(10), CoverRateLiquidation: pctToRate(5) },
   "LoanBrokerSet by spare (not owner)");
@@ -56,14 +56,14 @@ await safe(lender.seed, { TransactionType: "LoanBrokerSet", VaultID: V, Manageme
   DebtMaximum: XRP(50), CoverRateMinimum: pctToRate(10), CoverRateLiquidation: pctToRate(5) },
   "LoanBrokerSet by lender (not owner)");
 
-console.log("\n════ H10: the two cliffs, isolated ════");
+console.log("\n==== H10: the two cliffs, isolated ====");
 await safe(spare.seed, { TransactionType: "VaultDeposit", VaultID: V, Amount: XRP(10) }, "VaultDeposit spare 10 XRP");
 const brk = await safe(broker.seed, { TransactionType: "LoanBrokerSet", VaultID: V, ManagementFeeRate: pctToRate(2),
   DebtMaximum: XRP(50), CoverRateMinimum: pctToRate(10), CoverRateLiquidation: pctToRate(5) }, "LoanBrokerSet (owner)");
 const B = createdNode(brk.result, "LoanBroker").LedgerIndex;
 await safe(broker.seed, { TransactionType: "LoanBrokerCoverDeposit", LoanBrokerID: B, Amount: XRP(0.2) }, "CoverDeposit 0.2 XRP");
 const cap = async () => { const b = await readEntry(c, B); const s = await vaultSnapshot(c, V);
-  console.log(`   debt ${fmt(b.DebtTotal ?? 0)} · cover ${fmt(b.CoverAvailable ?? 0)} → debt capacity ${fmt(BigInt(b.CoverAvailable ?? 0) * 10n)} · vault liquidity ${fmt(s.assetsAvailable)}`); };
+  console.log(`   debt ${fmt(b.DebtTotal ?? 0)}, cover ${fmt(b.CoverAvailable ?? 0)} -> debt capacity ${fmt(BigInt(b.CoverAvailable ?? 0) * 10n)}, vault liquidity ${fmt(s.assetsAvailable)}`); };
 await cap();
 
 console.log("\n1) loan within both limits");
@@ -77,13 +77,13 @@ const l2 = await loanSet(B, 1, "LoanSet #2 (concurrent)");
 await cap();
 if (l1.id && l2.id) {
   const n1 = await readEntry(c, l1.id), n2 = await readEntry(c, l2.id);
-  console.log(`   loan 1 principal ${fmt(n1.PrincipalOutstanding)} · loan 2 principal ${fmt(n2.PrincipalOutstanding)}: two live loans on one vault ✅`);
+  console.log(`   loan 1 principal ${fmt(n1.PrincipalOutstanding)}, loan 2 principal ${fmt(n2.PrincipalOutstanding)}: two live loans on one vault`);
 }
-console.log("\n4) LIQUIDITY CLIFF in isolation: ample cover (5.2 → capacity 52), liquidity 7.5");
+console.log("\n4) LIQUIDITY CLIFF in isolation: ample cover (5.2 -> capacity 52), liquidity 7.5");
 await loanSet(B, 9, "LoanSet 9 XRP (> liquidity)");
 await cap();
 
-console.log("\n════ teardown ════");
+console.log("\n==== teardown ====");
 for (const [i, id] of [l1.id, l2.id].entries()) {
   if (!id) continue;
   const n = await readEntry(c, id);

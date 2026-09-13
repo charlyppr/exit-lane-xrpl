@@ -31,11 +31,11 @@ const v = await safe(broker.seed, { TransactionType: "VaultCreate", Asset: { cur
 if (!v.ok) { await c.disconnect(); process.exit(1); }
 const V = createdNode(v.result, "Vault").LedgerIndex;
 const vn = createdNode(v.result, "Vault").NewFields;
-console.log(`   VaultID ${V} · node Flags ${vn.Flags ?? 0}`);
+console.log(`   VaultID ${V}, node Flags ${vn.Flags ?? 0}`);
 await safe(spare.seed, { TransactionType: "VaultDeposit", VaultID: V, Amount: XRP(3) }, "VaultDeposit spare 3 XRP");
 const s = await vaultSnapshot(c, V);
 const ID = s.shareMPTID;
-console.log(`   spare's shares: ${await bal(spareW.address, ID)} · MPTID ${ID}`);
+console.log(`   spare's shares: ${await bal(spareW.address, ID)}, MPTID ${ID}`);
 const iss = await c.request({ command: "ledger_entry", mpt_issuance: ID, ledger_index: "validated" }).catch(() => null);
 if (iss) console.log(`   MPTokenIssuance Flags ${iss.result.node.Flags} (lsfMPTCanTransfer = 32 if transferable)`);
 
@@ -54,10 +54,10 @@ const esc = await safe(spare.seed, { TransactionType: "EscrowCreate", Destinatio
   Amount: { mpt_issuance_id: ID, value: "1000000" }, Condition: COND, CancelAfter: rippleNow() + 1800 },
   "EscrowCreate of shares");
 if (esc.ok) {
-  console.log("   ⚠️ EscrowCreate ACCEPTED on non-transferable shares, trying to settle it");
+  console.log("   EscrowCreate ACCEPTED on non-transferable shares, trying to settle it");
   const fin = await safe(borrower.seed, { TransactionType: "EscrowFinish", Owner: spareW.address,
     OfferSequence: seqOf(esc.result), Condition: COND, Fulfillment: FUL }, "EscrowFinish");
-  console.log(`   spare shares ${await bal(spareW.address, ID)} · borrower shares ${await bal(borrowerW.address, ID)}`);
+  console.log(`   spare shares ${await bal(spareW.address, ID)}, borrower shares ${await bal(borrowerW.address, ID)}`);
   if (!fin.ok) {
     await safe(spare.seed, { TransactionType: "EscrowCancel", Owner: spareW.address, OfferSequence: seqOf(esc.result) }, "EscrowCancel");
   }
@@ -74,6 +74,6 @@ if (bsh > 0n) {
     Amount: { mpt_issuance_id: ID, value: String(bsh) } }, "VaultWithdraw by borrower");
 }
 const sf = await vaultSnapshot(c, V);
-console.log(`   vault: total ${fmt(sf.assetsTotal)} · shares outstanding ${sf.sharesOutstanding}`);
+console.log(`   vault: total ${fmt(sf.assetsTotal)}, shares outstanding ${sf.sharesOutstanding}`);
 await safe(broker.seed, { TransactionType: "VaultDelete", VaultID: V }, "VaultDelete");
 await c.disconnect();

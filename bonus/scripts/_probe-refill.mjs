@@ -1,4 +1,4 @@
-// Recover the idle capital sitting in the leftover vaults, lender FIRST
+// Recover the idle capital sitting in the leftover vaults, lender first
 // (WithdrawalPolicy 1 = first come first served, and lender carries the demo).
 // Monotonic operation: a VaultWithdraw can only increase the holder's balance.
 import { Client, Wallet } from "xrpl";
@@ -18,7 +18,7 @@ const freeBalance = async (who) => {
   return Number(r.result.account_data.Balance) / 1e6 - (l.reserve_base_xrp + r.result.account_data.OwnerCount * l.reserve_inc_xrp);
 };
 const before = { lender: await freeBalance("lender"), spare: await freeBalance("spare") };
-console.log(`BEFORE  lender ${before.lender.toFixed(6)} free · spare ${before.spare.toFixed(6)} free\n`);
+console.log(`BEFORE  lender ${before.lender.toFixed(6)} free, spare ${before.spare.toFixed(6)} free\n`);
 
 const objs = await c.request({ command: "account_objects", account: addr.broker, ledger_index: "validated" });
 const vaults = objs.result.account_objects.filter((o) => o.LedgerEntryType === "Vault").map((o) => o.index);
@@ -28,7 +28,7 @@ const sharesOf = async (who, id) => {
 };
 
 for (const who of ["lender", "spare"]) {            // lender first, on purpose
-  console.log(`──────── ${who.toUpperCase()} ────────`);
+  console.log(`-------- ${who.toUpperCase()} --------`);
   for (const V of vaults) {
     const vi = await c.request({ command: "vault_info", vault_id: V, ledger_index: "validated" }).catch(() => null);
     if (!vi) continue;
@@ -45,10 +45,10 @@ for (const who of ["lender", "spare"]) {            // lender first, on purpose
       take = (avail * out) / (total - loss);
       if (take > 0n) take -= 1n;              // one-share rounding margin
     }
-    if (take <= 0n) { console.log(`  ${V.slice(0, 10)}… liquidity too low, skipping`); continue; }
+    if (take <= 0n) { console.log(`  ${V.slice(0, 10)}... liquidity too low, skipping`); continue; }
     const r = await submitRaw(c, a[who].seed, { TransactionType: "VaultWithdraw", VaultID: V,
       Amount: { mpt_issuance_id: v.ShareMPTID, value: String(take) } },
-      { label: `${V.slice(0, 10)}… withdraw ${take}/${sh} shares (~${fmt(take * (total - loss) / out)})` }).catch((e) => ({ code: String(e.message).slice(0, 40) }));
+      { label: `${V.slice(0, 10)}... withdraw ${take}/${sh} shares (~${fmt(take * (total - loss) / out)})` }).catch((e) => ({ code: String(e.message).slice(0, 40) }));
     if (!r.ok && take < sh) {
       const r2 = await submitRaw(c, a[who].seed, { TransactionType: "VaultWithdraw", VaultID: V,
         Amount: { mpt_issuance_id: v.ShareMPTID, value: String(take / 2n) } },
@@ -58,8 +58,8 @@ for (const who of ["lender", "spare"]) {            // lender first, on purpose
   console.log();
 }
 const after = { lender: await freeBalance("lender"), spare: await freeBalance("spare") };
-console.log("════ SUMMARY ════");
+console.log("==== SUMMARY ====");
 for (const who of ["lender", "spare"])
-  console.log(`  ${who.padEnd(7)} ${before[who].toFixed(6)} → ${after[who].toFixed(6)} free   (+${(after[who] - before[who]).toFixed(6)} XRP)`);
-console.log(`\n  lender: ${Math.floor(after.lender / 27)} demos possible (27 XRP per demo), floor 150 ${after.lender > 150 ? "✅" : "⛔"}`);
+  console.log(`  ${who.padEnd(7)} ${before[who].toFixed(6)} -> ${after[who].toFixed(6)} free   (+${(after[who] - before[who]).toFixed(6)} XRP)`);
+console.log(`\n  lender: ${Math.floor(after.lender / 27)} demos possible (27 XRP per demo), floor 150 ${after.lender > 150 ? "ok" : "BELOW"}`);
 await c.disconnect();

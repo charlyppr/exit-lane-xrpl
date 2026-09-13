@@ -17,8 +17,8 @@ for (const g of [1, 10, 60, 300, 900, 1800, 3600]) {
       LatePaymentFee: XRP(0.1), ClosePaymentFee: XRP(0.1),
     });
     const res = await c.submitAndWait(signLoanSetCounterparty(brokerW.sign(prepared).tx_blob, borrower.seed));
-    console.log(`GracePeriod ${String(g).padStart(5)} → ${res.result.meta?.TransactionResult}  ${res.result.hash}`);
+    console.log(`GracePeriod ${String(g).padStart(5)} -> ${res.result.meta?.TransactionResult}  ${res.result.hash}`);
     if (res.result.meta?.TransactionResult === "tesSUCCESS") break;
-  } catch (e) { console.log(`GracePeriod ${String(g).padStart(5)} → ${e.message.replace("Transaction failed, ", "").slice(0, 60)}`); }
+  } catch (e) { console.log(`GracePeriod ${String(g).padStart(5)} -> ${e.message.replace("Transaction failed, ", "").slice(0, 60)}`); }
 }
 await c.disconnect();

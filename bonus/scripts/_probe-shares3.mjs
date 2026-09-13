@@ -23,7 +23,7 @@ const go = async (label, tx, wallet) => {
   } catch (e) { console.log("REJECTED:", (e.message ?? "").slice(0, 300)); return null; }
 };
 
-// TEST 4: recipient opt-in, then retry the transfer
+// Test 4: recipient opt-in, then retry the transfer
 await go("TEST 4a: MPTokenAuthorize by the buyer", {
   TransactionType: "MPTokenAuthorize", Account: buyer.address, MPTokenIssuanceID: SHARE_MPT,
 }, buyer);
@@ -33,7 +33,7 @@ await go("TEST 4b: Payment of shares, 2nd attempt", {
   Amount: { mpt_issuance_id: SHARE_MPT, value: "1000000" },
 }, lender);
 
-// TEST 5: settle the share escrow
+// Test 5: settle the share escrow
 const esc = await c.request({ command: "tx", transaction: ESCROW_TX });
 const seq = esc.result.tx_json?.Sequence ?? esc.result.Sequence;
 console.log("\nOfferSequence of the escrow:", seq);

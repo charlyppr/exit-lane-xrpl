@@ -11,7 +11,7 @@ let bad = 0, total = 0;
 for (const f of files) {
   const txt = readFileSync(f, "utf8");
   const hashes = [...new Set([...txt.matchAll(/\b([0-9A-F]{64})\b/g)].map((m) => m[1]))];
-  console.log(`\n──── ${f}: ${hashes.length} hashes ────`);
+  console.log(`\n---- ${f}: ${hashes.length} hashes ----`);
   for (const h of hashes) {
     total++;
     try {
@@ -19,13 +19,13 @@ for (const f of files) {
       const t = r.result.tx_json ?? r.result;
       const code = r.result.meta?.TransactionResult ?? "?";
       const val = r.result.validated === true;
-      if (!val) { console.log(`  ⚠️ NOT VALIDATED  ${h.slice(0, 12)}…`); bad++; }
-      else console.log(`  ✓ ${String(t.TransactionType).padEnd(24)} ${code.padEnd(22)} ${h.slice(0, 12)}…`);
+      if (!val) { console.log(`  NOT VALIDATED  ${h.slice(0, 12)}...`); bad++; }
+      else console.log(`  ok ${String(t.TransactionType).padEnd(24)} ${code.padEnd(22)} ${h.slice(0, 12)}...`);
     } catch (e) {
-      console.log(`  ❌ NOT FOUND  ${h}  (${e.data?.error ?? e.message})`);
+      console.log(`  NOT FOUND  ${h}  (${e.data?.error ?? e.message})`);
       bad++;
     }
   }
 }
-console.log(`\n${bad === 0 ? "✅" : "⚠️"} ${total - bad}/${total} hashes valid and validated on-chain`);
+console.log(`\n${total - bad}/${total} hashes valid and validated on-chain`);
 await c.disconnect();

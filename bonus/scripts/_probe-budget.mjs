@@ -8,7 +8,7 @@ await c.connect();
 const sr = await c.request({ command: "server_info" });
 const res = sr.result.info.validated_ledger;
 const baseR = res.reserve_base_xrp, incR = res.reserve_inc_xrp;
-console.log(`rippled ${sr.result.info.build_version} · ledger ${res.seq} · reserve base ${baseR} inc ${incR}`);
+console.log(`rippled ${sr.result.info.build_version}, ledger ${res.seq}, reserve base ${baseR} inc ${incR}`);
 
 const accts = loadAccounts();
 for (const [name, a] of Object.entries(accts)) {
@@ -17,7 +17,7 @@ for (const [name, a] of Object.entries(accts)) {
   const oc = r.result.account_data.OwnerCount;
   const reserve = baseR + oc * incR;
   const free = bal - reserve;
-  const flag = name === "lender" ? (free < 150 ? "  ⛔ BELOW THE FLOOR" : "  ✅ > 150") : "";
-  console.log(`${name.padEnd(9)} balance ${bal.toFixed(6).padStart(12)} · OwnerCount ${String(oc).padStart(3)} · reserved ${String(reserve).padStart(4)} · free ${free.toFixed(6).padStart(12)}${flag}`);
+  const flag = name === "lender" ? (free < 150 ? "  BELOW THE FLOOR" : "  above 150") : "";
+  console.log(`${name.padEnd(9)} balance ${bal.toFixed(6).padStart(12)}, OwnerCount ${String(oc).padStart(3)}, reserved ${String(reserve).padStart(4)}, free ${free.toFixed(6).padStart(12)}${flag}`);
 }
 await c.disconnect();

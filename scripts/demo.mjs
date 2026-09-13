@@ -1,14 +1,15 @@
-// PITCH DEMO: 4 minutes, live on the Custom Hackathon Devnet.
+// Pitch demo: 4 minutes, live on the Custom Hackathon Devnet.
 //
 //   node scripts/demo.mjs           pauses between scenes (Enter to advance)
 //   node scripts/demo.mjs --auto    chained, no pause, to rehearse and time it
 //
-// The scenario lives in lib/scenario.mjs, shared with bonus/scripts/step-8-secondary.mjs:
-// you cannot rehearse with one script and present the other.
+// The scenario lives in lib/scenario.mjs and is shared with
+// bonus/scripts/step-8-secondary.mjs, so the rehearsal runs the same code as
+// the pitch.
 //
-// Safety net: if the network drops during the pitch, the hashes of previous
-// runs are in bonus/notes/FEEDBACK-RAW.md and the README. Open the explorer
-// and walk through the same story on already validated transactions.
+// If the network drops during the pitch, the hashes of previous runs are in
+// bonus/notes/FEEDBACK-RAW.md and the README: show the same flow in the
+// explorer.
 
 import { Client } from "xrpl";
 import { NET, txUrl } from "./config.mjs";
@@ -24,12 +25,12 @@ const clock = () => {
 
 const W = 74;
 const log = (...a) => console.log(...a);
-const rule = (c = "─") => log(c.repeat(W));
+const rule = (c = "-") => log(c.repeat(W));
 
 const waitKey = () =>
   new Promise((resolve) => {
     if (AUTO || !process.stdin.isTTY) return resolve();
-    process.stdout.write("\n      … press Enter to continue ");
+    process.stdout.write("\n      press Enter to continue ");
     process.stdin.setRawMode?.(true);
     process.stdin.resume();
     process.stdin.once("data", () => {
@@ -49,19 +50,19 @@ const SPOKEN_SCRIPT = {
   ],
   2: [
     "An unexpected invoice lands. The treasurer wants out.",
-    "The protocol refuses: her money is gone for four installments.",
-    "The vault is called open-ended. In practice, it is closed.",
+    "The protocol refuses: her money is locked for four installments.",
+    "The vault is open-ended on paper and closed in practice.",
   ],
   3: [
     "Vault shares are MPTs. So she can sell them.",
     "Two escrows, one cryptographic condition.",
     "To take the shares, the buyer has to publish the secret",
-    "that releases the payment. Stealing from the other side is impossible.",
+    "that releases the payment to the seller.",
   ],
   4: [
     "The borrower repays, liquidity comes back.",
-    "And it is the buyer, who never deposited, who gets paid.",
-    "The loans themselves did not move by a single drop.",
+    "The buyer, who never deposited, gets paid.",
+    "The loan itself is unchanged.",
   ],
 };
 
@@ -69,25 +70,25 @@ const ui = {
   async scene(n, title) {
     await waitKey();
     log("");
-    rule("═");
+    rule("=");
     log(`  SCENE ${n}/4: ${title}`.padEnd(W - 8) + `[${clock()}]`);
-    rule("═");
-    for (const l of SPOKEN_SCRIPT[n] ?? []) log(`  » ${l}`);
+    rule("=");
+    for (const l of SPOKEN_SCRIPT[n] ?? []) log(`  > ${l}`);
     log("");
   },
-  step(t) { log(`\n── ${t} ${"─".repeat(Math.max(0, W - 5 - t.length))}`); },
+  step(t) { log(`\n-- ${t} ${"-".repeat(Math.max(0, W - 5 - t.length))}`); },
   line(t) { log(t); },
-  beat(t) { log(`\n  ▸▸ ${t}\n`); },
+  beat(t) { log(`\n  >> ${t}\n`); },
   tx(label, code, hash) { log(`${label.padEnd(28)} ${code}\n  ${txUrl(hash)}`); },
 };
 
 const client = new Client(NET.wss);
 
 try {
-  rule("═");
+  rule("=");
   log("  EXIT LANE: a secondary market for vault shares");
-  log("  Track 1 · Lending Protocol V1 · Custom Hackathon Devnet · xrpl@4.6.0");
-  rule("═");
+  log("  Track 1, Lending Protocol V1, Custom Hackathon Devnet, xrpl@4.6.0");
+  rule("=");
   log(`  ${NET.wss}`);
 
   await client.connect();
@@ -95,38 +96,38 @@ try {
 
   await waitKey();
   log("");
-  rule("═");
-  log(`  WHAT WE JUST PROVED, IN ${timeline.length} TRANSACTIONS   [${clock()}]`);
-  rule("═");
+  rule("=");
+  log(`  SUMMARY: ${timeline.length} TRANSACTIONS   [${clock()}]`);
+  rule("=");
   log("  1. A single loan can absorb 100 % of an open-ended vault,");
   log("     with no warning. The depositor is locked in.");
   log("  2. Vault shares can be sold over the counter, atomically,");
   log("     because they are MPTs and TokenEscrow accepts them.");
   log("  3. The secondary holder inherits the redemption right AND the yield.");
   log("");
-  log("  What the protocol refused us along the way:");
-  log("     · OfferCreate on an MPT → temDISABLED, even though the protocol");
+  log("  Rejections met along the way:");
+  log("     - OfferCreate on an MPT: temDISABLED, even though the protocol");
   log("       itself sets the lsfMPTCanTrade flag on the shares.");
-  log("     · Payment of shares → tecNO_AUTH, a cause missing from the five");
+  log("     - Payment of shares: tecNO_AUTH, a cause missing from the five");
   log("       failure scenarios documented on the vault shares page.");
   log("");
-  rule("─");
+  rule("-");
   log("  Transactions of this run:");
   for (const t of timeline) {
-    const flag = t.code === "tesSUCCESS" ? " " : t.code?.startsWith("tec") ? "⛔" : "⚠️";
+    const flag = t.code === "tesSUCCESS" ? " " : t.code?.startsWith("tec") ? "x" : "!";
     log(`  ${flag} ${String(t.label).padEnd(26)} ${String(t.code).padEnd(22)} ${t.hash ?? ""}`);
   }
-  rule("─");
+  rule("-");
   log(`  VaultID    ${ids.vaultId}`);
   log(`  BrokerID   ${ids.brokerId}`);
   log(`  LoanID     ${ids.loanId}`);
   log(`  ShareMPTID ${ids.shareMPTID}`);
-  rule("═");
+  rule("=");
   log(`  Total duration: ${clock()}`);
 } catch (e) {
-  log(`\n💥 STOPPED: ${e.message}`);
-  log("   → safety net: walk through the same story in the explorer");
-  log("     on the already validated hashes (README + bonus/notes/FEEDBACK-RAW.md).");
+  log(`\nSTOPPED: ${e.message}`);
+  log("Fallback: show the same flow in the explorer, using the validated hashes");
+  log("listed in the README and bonus/notes/FEEDBACK-RAW.md.");
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 500));
 } finally {
   await client.disconnect();

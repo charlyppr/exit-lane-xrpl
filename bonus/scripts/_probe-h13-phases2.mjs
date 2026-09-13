@@ -5,7 +5,7 @@
 //
 // The V1.1 doc (updated-transactions) promises:
 //   SUBSCRIPTION phase : deposit OK, withdrawal unconstrained
-//   INVESTMENT phase   : deposit → tecEXPIRED · withdrawal → tecTOO_SOON
+//   INVESTMENT phase   : deposit -> tecEXPIRED, withdrawal -> tecTOO_SOON
 //   REDEMPTION phase   : withdrawal OK
 // and requires RedemptionDate - SubscriptionDate >= 180 s. We take 200 s, the
 // shortest possible window, to go through the three phases in ~4 min.
@@ -42,7 +42,7 @@ const submit = async (wallet, tx, label, expected) => {
     const prepared = await client.autofill({ Account: wallet.address, ...tx });
     const res = await client.submitAndWait(signRaw(prepared, wallet));
     const code = res.result.meta.TransactionResult;
-    const verdict = expected ? (code === expected ? "✓ matches doc" : `✗ DIVERGENCE (doc: ${expected})`) : "";
+    const verdict = expected ? (code === expected ? "matches doc" : `DIVERGENCE (doc: ${expected})`) : "";
     log(`  ${label.padEnd(32)} ${code.padEnd(20)} ${verdict}`);
     log(`    ${txUrl(res.result.hash)}`);
     return { code, hash: res.result.hash, result: res.result, ok: code === "tesSUCCESS" };
@@ -55,12 +55,12 @@ const submit = async (wallet, tx, label, expected) => {
 
 const waitUntil = async (target, what) => {
   let t = await closeTime();
-  log(`\n  ⏳ waiting for ${what} : close_time ${t} → ${target} (${target - t} s)`);
+  log(`\n  waiting for ${what} : close_time ${t} -> ${target} (${target - t} s)`);
   while (t <= target) {
     await new Promise((r) => setTimeout(r, 5000));
     t = await closeTime();
   }
-  log(`  ⏱  close_time ${t}, phase crossed.`);
+  log(`  close_time ${t}, phase crossed.`);
 };
 
 const found = { vault: null, mpt: null };
@@ -71,9 +71,9 @@ try {
   const t0 = await closeTime();
   const SUB = t0 + 30;
   const RED = SUB + 200;   // 200 s > documented minimum of 180 s
-  log(`close_time ${t0} · SubscriptionDate ${SUB} (+30 s) · RedemptionDate ${RED} (+230 s)`);
+  log(`close_time ${t0}, SubscriptionDate ${SUB} (+30 s), RedemptionDate ${RED} (+230 s)`);
 
-  log("\n─── PHASE 1 · SUBSCRIPTION");
+  log("\n--- PHASE 1: SUBSCRIPTION");
   const v = rec("VaultCreate closed C", await submit(spareW, {
     TransactionType: "VaultCreate",
     Asset: { currency: "XRP" },
@@ -97,7 +97,7 @@ try {
 
   await waitUntil(SUB, "the end of subscription");
 
-  log("\n─── PHASE 2 · INVESTMENT (the test that matters)");
+  log("\n--- PHASE 2: INVESTMENT (the test that matters)");
   const dep = rec("VaultDeposit investment", await submit(lenderW, {
     TransactionType: "VaultDeposit", VaultID: found.vault, Amount: XRP(10),
   }, "VaultDeposit (investment)", "tecEXPIRED"));
@@ -108,7 +108,7 @@ try {
 
   await waitUntil(RED, "the redemption date");
 
-  log("\n─── PHASE 3 · REDEMPTION");
+  log("\n--- PHASE 3: REDEMPTION");
   const cur = (await client.request({ command: "ledger_entry", index: found.vault, ledger_index: "validated" })).result.node;
   const remaining = cur.AssetsTotal ?? "0";
   log(`  AssetsTotal remaining : ${Number(remaining) / 1e6} XRP`);
@@ -116,19 +116,19 @@ try {
     TransactionType: "VaultWithdraw", VaultID: found.vault, Amount: remaining,
   }, "VaultWithdraw (redemption)", "tesSUCCESS"));
 
-  log("\n═══ VERDICT");
+  log("\n=== VERDICT");
   log(`  deposit in investment    : ${dep.code}  ${dep.code === "tecEXPIRED" ? "matches doc" : "DIVERGENCE"}`);
   log(`  withdrawal in investment : ${wit.code}  ${wit.code === "tecTOO_SOON" ? "matches doc" : "DIVERGENCE"}`);
   if (dep.ok || wit.ok) {
-    log("\n  ⚠️  An operation the V1.1 doc forbids SUCCEEDED in the investment phase.");
-    log("      Rule 5 of CLAUDE.md → mentor in private BEFORE any publication.");
+    log("\n  An operation the V1.1 doc forbids SUCCEEDED in the investment phase.");
+    log("      Rule 5 of CLAUDE.md -> mentor in private BEFORE any publication.");
   } else {
     log("\n  The closed-ended phase locks are enforced on this build.");
   }
 } catch (e) {
-  log(`\n💥 ABORT : ${e.message}`);
+  log(`\nABORT: ${e.message}`);
 } finally {
-  log("\n─── Summary (FEEDBACK-RAW.md)");
+  log("\n--- Summary (FEEDBACK-RAW.md)");
   for (const t of timeline) log(`  ${t.label.padEnd(30)} ${String(t.code).padEnd(14)} ${t.hash ?? ""}`);
   log(`  VaultID : ${found.vault ?? "-"}`);
   await client.disconnect();

@@ -11,7 +11,7 @@ const c = new Client(NET.wss, { connectionTimeout: 20000 });
 await c.connect();
 const { broker, spare } = loadAccounts();
 const show = async (V, t) => { const s = await vaultSnapshot(c, V);
-  console.log(`   ${t}: AssetsTotal ${fmt(s.assetsTotal)} · AssetsMaximum ${s.raw.AssetsMaximum ? fmt(s.raw.AssetsMaximum) : "ABSENT"}`); return s; };
+  console.log(`   ${t}: AssetsTotal ${fmt(s.assetsTotal)}, AssetsMaximum ${s.raw.AssetsMaximum ? fmt(s.raw.AssetsMaximum) : "ABSENT"}`); return s; };
 
 const v = await submitRaw(c, broker.seed, { TransactionType: "VaultCreate", Asset: { currency: "XRP" },
   AssetsMaximum: XRP(5), WithdrawalPolicy: 1 }, { label: "VaultCreate(max=5)" });
@@ -30,7 +30,7 @@ await submitRaw(c, broker.seed, { TransactionType: "VaultSet", VaultID: V, Asset
 await show(V, "after max=0");
 const d = await submitRaw(c, spare.seed, { TransactionType: "VaultDeposit", VaultID: V, Amount: XRP(4) }, { label: "Deposit 4 XRP (total 7 > 5)" });
 const s = await show(V, "after deposit");
-console.log(`\n   VERDICT: AssetsMaximum = 0 means ${d.ok ? "UNLIMITED (the cap is DISABLED) ⚠️" : "FREEZE (deposits blocked)"}`);
+console.log(`\n   VERDICT: AssetsMaximum = 0 means ${d.ok ? "UNLIMITED (the cap is DISABLED)" : "FREEZE (deposits blocked)"}`);
 
 console.log("\n3) Can a cap be set again after a 0?");
 await submitRaw(c, broker.seed, { TransactionType: "VaultSet", VaultID: V, AssetsMaximum: XRP(5) }, { label: "VaultSet max=5 (< total 7)" });

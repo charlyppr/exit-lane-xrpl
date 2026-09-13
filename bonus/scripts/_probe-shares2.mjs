@@ -26,7 +26,7 @@ const go = async (label, tx, wallet) => {
   }
 };
 
-// TEST 2: simple transfer of shares (lsfMPTCanTransfer)
+// Test 2: simple transfer of shares (lsfMPTCanTransfer)
 await go("TEST 2: Payment of 1,000,000 shares lender -> spare", {
   TransactionType: "Payment",
   Account: lender.address,
@@ -34,7 +34,7 @@ await go("TEST 2: Payment of 1,000,000 shares lender -> spare", {
   Amount: { mpt_issuance_id: SHARE_MPT, value: "1000000" },
 }, lender);
 
-// TEST 3: conditional escrow of shares (lsfMPTCanEscrow) = one leg of an atomic swap
+// Test 3: conditional escrow of shares (lsfMPTCanEscrow) = one leg of an atomic swap
 const preimage = randomBytes(32);
 const cond = createHash("sha256").update(preimage).digest("toString" in preimage ? undefined : undefined);
 const condHex = createHash("sha256").update(preimage).digest("hex").toUpperCase();

@@ -90,7 +90,7 @@ const main = async () => {
   }
 
   console.log(`\n${ROLES.length}/${ROLES.length} accounts funded on the first try.`);
-  console.log("→ record the count and the delays in bonus/notes/FEEDBACK-RAW.md.");
+  console.log("Record the count and the delays in bonus/notes/FEEDBACK-RAW.md.");
 };
 
 main().catch((e) => {

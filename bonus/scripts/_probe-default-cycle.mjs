@@ -1,7 +1,7 @@
-// PROBE A2 + D: LoanManage (tfLoanUnimpair, tfLoanDefault), LoanDelete,
+// Probe A2 + D: LoanManage (tfLoanUnimpair, tfLoanDefault), LoanDelete,
 // LoanBrokerDelete: 4 of the 7 types/flags never submitted. Plus the full
 // default cycle and its effect on the depositor's share.
-// Depositor: spare. NEVER lender.
+// Depositor: spare. Never lender.
 
 import { Client, Wallet } from "xrpl";
 import { encode, encodeForSigning } from "ripple-binary-codec";
@@ -50,7 +50,7 @@ const loanState = async (L) => {
 const brokerState = async (B) => { const n = await readEntry(c, B);
   return { cover: BigInt(n.CoverAvailable ?? 0), debt: BigInt(n.DebtTotal ?? 0), n }; };
 
-console.log("\n════ BENCH ════");
+console.log("\n==== BENCH ====");
 const v = M("VaultCreate", await submitRaw(c, broker.seed, { TransactionType: "VaultCreate",
   Asset: { currency: "XRP" }, AssetsMaximum: XRP(100), WithdrawalPolicy: 1,
   Data: Buffer.from("probe-default").toString("hex").toUpperCase() }, { label: "VaultCreate" }));
@@ -79,10 +79,10 @@ if (!L) { console.log("no loan, aborting"); await c.disconnect(); process.exit(1
 let ls = await loanState(L);
 const t0 = rippleNow();
 console.log(`  LoanID ${L}`);
-console.log(`  StartDate ${ls.n.StartDate} · NextPaymentDueDate ${ls.due} (in ${ls.due - t0} s) · grace ${ls.n.GracePeriod} s`);
-console.log(`  PeriodicPayment ${ls.n.PeriodicPayment} · PrincipalOutstanding ${ls.principal} · Flags ${ls.flags}`);
+console.log(`  StartDate ${ls.n.StartDate}, NextPaymentDueDate ${ls.due} (in ${ls.due - t0} s), grace ${ls.n.GracePeriod} s`);
+console.log(`  PeriodicPayment ${ls.n.PeriodicPayment}, PrincipalOutstanding ${ls.principal}, Flags ${ls.flags}`);
 
-console.log("\n════ PHASE 1: HEALTHY loan, the expected refusals ════");
+console.log("\n==== PHASE 1: HEALTHY loan, the expected refusals ====");
 M("tfLoanUnimpair on a healthy loan", await submitRaw(c, broker.seed, { TransactionType: "LoanManage",
   LoanID: L, Flags: F.tfLoanUnimpair }, { label: "tfLoanUnimpair (healthy)" }));
 M("tfLoanDefault on a healthy loan", await submitRaw(c, broker.seed, { TransactionType: "LoanManage",
@@ -100,7 +100,7 @@ M("LoanBrokerDelete with a live loan", await submitRaw(c, broker.seed, { Transac
 M("VaultDelete with a live broker", await submitRaw(c, broker.seed, { TransactionType: "VaultDelete",
   VaultID: V }, { label: "VaultDelete (live broker)" }));
 
-console.log("\n════ PHASE 2: from WHEN is tfLoanImpair allowed? ════");
+console.log("\n==== PHASE 2: from WHEN is tfLoanImpair allowed? ====");
 console.log("   (tecTOO_SOON does not say from when: measure the boundary)");
 let impaired = null;
 for (let i = 0; i < 14; i++) {
@@ -109,7 +109,7 @@ for (let i = 0; i < 14; i++) {
   const dDue = now - ls.due, dGrace = now - (ls.due + ls.n.GracePeriod);
   const r = await submitRaw(c, broker.seed, { TransactionType: "LoanManage", LoanID: L, Flags: F.tfLoanImpair },
     { label: `impair @ due${dDue >= 0 ? "+" : ""}${dDue}s grace${dGrace >= 0 ? "+" : ""}${dGrace}s` });
-  console.log(`      → ${r.code}  (due date ${dDue >= 0 ? "exceeded by " + dDue : "in " + -dDue} s · end of grace ${dGrace >= 0 ? "exceeded by " + dGrace : "in " + -dGrace} s)`);
+  console.log(`      ${r.code}  (due date ${dDue >= 0 ? "exceeded by " + dDue : "in " + -dDue} s, end of grace ${dGrace >= 0 ? "exceeded by " + dGrace : "in " + -dGrace} s)`);
   if (r.ok) { impaired = { dDue, dGrace, hash: r.hash };
     log.push(`tfLoanImpair OK at due+${dDue}s / grace+${dGrace}s        tesSUCCESS  ${r.hash}`); break; }
   log.push(`tfLoanImpair refused at due${dDue >= 0 ? "+" : ""}${dDue}s / grace${dGrace >= 0 ? "+" : ""}${dGrace}s   ${r.code}`);
@@ -117,24 +117,24 @@ for (let i = 0; i < 14; i++) {
 }
 if (!impaired) { console.log("   impair never accepted in 14 attempts, stopping here"); }
 
-console.log("\n════ PHASE 3: effect of IMPAIRMENT on the vault and the depositor ════");
+console.log("\n==== PHASE 3: effect of IMPAIRMENT on the vault and the depositor ====");
 let s = await vaultSnapshot(c, V);
 let bs = await brokerState(B);
 ls = await loanState(L);
 console.log(`   Loan Flags ${ls.flags} (impaired ${ls.impaired}, default ${ls.defaulted})`);
-console.log(`   Vault: AssetsTotal ${fmt(s.assetsTotal)} · available ${fmt(s.assetsAvailable)} · share ${s.navPerShare.toFixed(9)}`);
-console.log(`   Broker: cover ${fmt(bs.cover)} · DebtTotal ${fmt(bs.debt)}`);
+console.log(`   Vault: AssetsTotal ${fmt(s.assetsTotal)}, available ${fmt(s.assetsAvailable)}, share ${s.navPerShare.toFixed(9)}`);
+console.log(`   Broker: cover ${fmt(bs.cover)}, DebtTotal ${fmt(bs.debt)}`);
 const navAfterImpair = s.navPerShare, totalAfterImpair = s.assetsTotal;
 
 if (impaired) {
-  console.log("\n════ PHASE 4: tfLoanUnimpair on an ACTUALLY impaired loan ════");
+  console.log("\n==== PHASE 4: tfLoanUnimpair on an ACTUALLY impaired loan ====");
   const un = M("tfLoanUnimpair (impaired loan)", await submitRaw(c, broker.seed, { TransactionType: "LoanManage",
     LoanID: L, Flags: F.tfLoanUnimpair }, { label: "tfLoanUnimpair (impaired)" }));
   ls = await loanState(L); s = await vaultSnapshot(c, V);
-  console.log(`   Flags ${ls.flags} (impaired ${ls.impaired}) · AssetsTotal ${fmt(s.assetsTotal)} · share ${s.navPerShare.toFixed(9)}`);
-  console.log(`   reversible: ${s.assetsTotal === totalAfterImpair && un.ok ? "no effect on the vault" : "effect observed ⚠️"}`);
+  console.log(`   Flags ${ls.flags} (impaired ${ls.impaired}), AssetsTotal ${fmt(s.assetsTotal)}, share ${s.navPerShare.toFixed(9)}`);
+  console.log(`   reversible: ${s.assetsTotal === totalAfterImpair && un.ok ? "no effect on the vault" : "effect observed"}`);
 
-  console.log("\n════ PHASE 5: re-impair then tfLoanDefault ════");
+  console.log("\n==== PHASE 5: re-impair then tfLoanDefault ====");
   M("tfLoanImpair (2nd time)", await submitRaw(c, broker.seed, { TransactionType: "LoanManage",
     LoanID: L, Flags: F.tfLoanImpair }, { label: "tfLoanImpair #2" }));
   const before = { s: await vaultSnapshot(c, V), b: await brokerState(B) };
@@ -142,14 +142,14 @@ if (impaired) {
     LoanID: L, Flags: F.tfLoanDefault }, { label: "tfLoanDefault" }));
   const after = { s: await vaultSnapshot(c, V), b: await brokerState(B) };
   ls = await loanState(L).catch(() => null);
-  console.log(`   Loan after default: ${ls ? `Flags ${ls.flags} (default ${ls.defaulted}) · principal ${ls.principal}` : "NODE DELETED"}`);
-  console.log(`   cover      ${fmt(before.b.cover)} → ${fmt(after.b.cover)}   (drawn ${fmt(before.b.cover - after.b.cover)})`);
-  console.log(`   DebtTotal  ${fmt(before.b.debt)} → ${fmt(after.b.debt)}`);
-  console.log(`   AssetsTotal ${fmt(before.s.assetsTotal)} → ${fmt(after.s.assetsTotal)}   (loss ${fmt(before.s.assetsTotal - after.s.assetsTotal)})`);
-  console.log(`   available  ${fmt(before.s.assetsAvailable)} → ${fmt(after.s.assetsAvailable)}`);
-  console.log(`   share      ${before.s.navPerShare.toFixed(9)} → ${after.s.navPerShare.toFixed(9)}`);
+  console.log(`   Loan after default: ${ls ? `Flags ${ls.flags} (default ${ls.defaulted}), principal ${ls.principal}` : "NODE DELETED"}`);
+  console.log(`   cover      ${fmt(before.b.cover)} -> ${fmt(after.b.cover)}   (drawn ${fmt(before.b.cover - after.b.cover)})`);
+  console.log(`   DebtTotal  ${fmt(before.b.debt)} -> ${fmt(after.b.debt)}`);
+  console.log(`   AssetsTotal ${fmt(before.s.assetsTotal)} -> ${fmt(after.s.assetsTotal)}   (loss ${fmt(before.s.assetsTotal - after.s.assetsTotal)})`);
+  console.log(`   available  ${fmt(before.s.assetsAvailable)} -> ${fmt(after.s.assetsAvailable)}`);
+  console.log(`   share      ${before.s.navPerShare.toFixed(9)} -> ${after.s.navPerShare.toFixed(9)}`);
 
-  console.log("\n════ PHASE 6: cleanup after default: LoanDelete, LoanBrokerDelete ════");
+  console.log("\n==== PHASE 6: cleanup after default: LoanDelete, LoanBrokerDelete ====");
   M("LoanPay on a defaulted loan", await submitRaw(c, borrower.seed, { TransactionType: "LoanPay",
     LoanID: L, Amount: XRP(1) }, { label: "LoanPay (in default)" }));
   M("LoanDelete after default", await submitRaw(c, broker.seed, { TransactionType: "LoanDelete",
@@ -157,7 +157,7 @@ if (impaired) {
   M("LoanBrokerDelete after default", await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerDelete",
     LoanBrokerID: B }, { label: "LoanBrokerDelete (after default)" }));
   const s2 = await vaultSnapshot(c, V);
-  console.log(`   Final vault: AssetsTotal ${fmt(s2.assetsTotal)} · available ${fmt(s2.assetsAvailable)} · share ${s2.navPerShare.toFixed(9)}`);
+  console.log(`   Final vault: AssetsTotal ${fmt(s2.assetsTotal)}, available ${fmt(s2.assetsAvailable)}, share ${s2.navPerShare.toFixed(9)}`);
   console.log(`   Can the depositor exit? shares outstanding ${s2.sharesOutstanding}`);
   const r = await c.request({ command: "account_objects", account: spareW.address, type: "mptoken", ledger_index: "validated" });
   const sh = BigInt(r.result.account_objects.find((o) => o.MPTokenIssuanceID === s2.shareMPTID)?.MPTAmount ?? 0);
@@ -167,7 +167,7 @@ if (impaired) {
   M("Final VaultDelete", await submitRaw(c, broker.seed, { TransactionType: "VaultDelete", VaultID: V }, { label: "Final VaultDelete" }));
 }
 
-console.log("\n════ SUMMARY ════");
+console.log("\n==== SUMMARY ====");
 log.forEach((l) => console.log("  " + l));
 console.log(`\nIDs: vault ${V}\n      broker ${B}\n      loan ${L}`);
 await c.disconnect();

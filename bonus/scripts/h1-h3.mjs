@@ -14,8 +14,8 @@ import { vaultSnapshot, fmt } from "../../scripts/lib/nav.mjs";
 
 const XRP = (n) => String(Math.round(n * 1_000_000));
 const log = (...a) => console.log(...a);
-const title = (t) => log(`\n${"═".repeat(72)}\n  ${t}\n${"═".repeat(72)}`);
-const step = (t) => log(`\n── ${t} ${"─".repeat(Math.max(0, 62 - t.length))}`);
+const title = (t) => log(`\n${"=".repeat(72)}\n  ${t}\n${"=".repeat(72)}`);
+const step = (t) => log(`\n-- ${t} ${"-".repeat(Math.max(0, 62 - t.length))}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const createdNode = (r, t) =>
   (r?.meta?.AffectedNodes ?? []).find((n) => n.CreatedNode?.LedgerEntryType === t)?.CreatedNode ?? null;
@@ -31,7 +31,7 @@ try {
   const brokerW = Wallet.fromSeed(broker.seed);
   const borrowerW = Wallet.fromSeed(borrower.seed);
 
-  // ── Shared setup ──────────────────────────────────────────────────────
+  // Shared setup
   title("Setup: vault 200 XRP, cover 50 XRP, CoverRateMinimum 10 %, CoverRateLiquidation 5 %");
   const v = await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate", Asset: { currency: "XRP" },
@@ -76,7 +76,7 @@ try {
   const dueOf = (loan) =>
     Math.ceil(Number(loan.PeriodicPayment)) + Number(loan.LoanServiceFee);
 
-  // ══ H3 ════════════════════════════════════════════════════════════════
+  // H3
   title("H3: overpayment, silent partial success or rejection?");
 
   step("Loan A: 50 XRP, WITHOUT lsfLoanOverpayment");
@@ -86,18 +86,18 @@ try {
   log(`  exact installment: ${dueA} drops (${fmt(dueA)})`);
   log(`  PrincipalOutstanding before: ${fmt(loanA0.PrincipalOutstanding)}`);
 
-  step(`LoanPay of 3 × the installment (${fmt(dueA * 3)}) with no flag at all`);
+  step(`LoanPay of 3 times the installment (${fmt(dueA * 3)}) with no flag at all`);
   const payA = await submitRaw(client, borrower.seed, {
     TransactionType: "LoanPay", LoanID: A.loanId, Amount: String(dueA * 3),
-  }, { label: "LoanPay ×3 no flag" });
+  }, { label: "LoanPay x3 no flag" });
   const loanA1 = await readEntry(client, A.loanId);
   const deltaA = Number(loanA0.PrincipalOutstanding) - Number(loanA1.PrincipalOutstanding);
   log(`  code ${payA.code}`);
-  log(`  PrincipalOutstanding after: ${fmt(loanA1.PrincipalOutstanding)}  (−${fmt(deltaA)})`);
-  log(`  PaymentRemaining: ${loanA0.PaymentRemaining} → ${loanA1.PaymentRemaining}`);
+  log(`  PrincipalOutstanding after: ${fmt(loanA1.PrincipalOutstanding)}  (-${fmt(deltaA)})`);
+  log(`  PaymentRemaining: ${loanA0.PaymentRemaining} -> ${loanA1.PaymentRemaining}`);
   findings.push({
-    h: "H3", scenario: "overpayment ×3 no flag", code: payA.code, hash: payA.hash,
-    note: `${fmt(deltaA)} of principal debited, installments ${loanA0.PaymentRemaining}→${loanA1.PaymentRemaining}`,
+    h: "H3", scenario: "overpayment x3 no flag", code: payA.code, hash: payA.hash,
+    note: `${fmt(deltaA)} of principal debited, installments ${loanA0.PaymentRemaining} -> ${loanA1.PaymentRemaining}`,
   });
 
   step("Loan B: 50 XRP, WITH tfLoanOverpayment on LoanSet");
@@ -107,22 +107,22 @@ try {
     log(`  Loan node Flags: ${loanB0.Flags} (lsfLoanOverpayment = 262144)`);
     const dueB = dueOf(loanB0);
 
-    step("LoanPay ×3 WITH tfLoanOverpayment on the transaction");
+    step("LoanPay x3 WITH tfLoanOverpayment on the transaction");
     const payB = await submitRaw(client, borrower.seed, {
       TransactionType: "LoanPay", LoanID: B.loanId, Amount: String(dueB * 3), Flags: 65536,
-    }, { label: "LoanPay ×3 + flag" });
+    }, { label: "LoanPay x3 + flag" });
     const loanB1 = await readEntry(client, B.loanId);
     const deltaB = Number(loanB0.PrincipalOutstanding) - Number(loanB1.PrincipalOutstanding);
     log(`  code ${payB.code}`);
-    log(`  PrincipalOutstanding: ${fmt(loanB0.PrincipalOutstanding)} → ${fmt(loanB1.PrincipalOutstanding)}  (−${fmt(deltaB)})`);
-    log(`  PaymentRemaining: ${loanB0.PaymentRemaining} → ${loanB1.PaymentRemaining}`);
+    log(`  PrincipalOutstanding: ${fmt(loanB0.PrincipalOutstanding)} -> ${fmt(loanB1.PrincipalOutstanding)}  (-${fmt(deltaB)})`);
+    log(`  PaymentRemaining: ${loanB0.PaymentRemaining} -> ${loanB1.PaymentRemaining}`);
     findings.push({
-      h: "H3", scenario: "overpayment ×3 WITH both flags", code: payB.code, hash: payB.hash,
-      note: `${fmt(deltaB)} of principal debited, installments ${loanB0.PaymentRemaining}→${loanB1.PaymentRemaining}`,
+      h: "H3", scenario: "overpayment x3 WITH both flags", code: payB.code, hash: payB.hash,
+      note: `${fmt(deltaB)} of principal debited, installments ${loanB0.PaymentRemaining} -> ${loanB1.PaymentRemaining}`,
     });
   }
 
-  // ══ H1 ════════════════════════════════════════════════════════════════
+  // H1
   title("H1: first-loss capital, does the name keep its promise?");
 
   step("Loan C: 50 XRP, short GracePeriod to be able to default quickly");
@@ -164,16 +164,16 @@ try {
   const expected = Math.min(debt * (COVER_MIN_PCT / 100) * (COVER_LIQ_PCT / 100), Number(loanC0.PrincipalOutstanding));
 
   log(`\n  AFTER default`);
-  log(`    CoverAvailable   ${fmt(brokerBefore.CoverAvailable ?? 0)} → ${fmt(brokerAfter.CoverAvailable ?? 0)}`);
+  log(`    CoverAvailable   ${fmt(brokerBefore.CoverAvailable ?? 0)} -> ${fmt(brokerAfter.CoverAvailable ?? 0)}`);
   log(`    drawn from the first-loss capital     : ${fmt(Math.round(coverUsed))}`);
   log(`    loss borne by the vault               : ${fmt(Math.round(vaultLoss))}`);
   log(`    cover still available                 : ${fmt(brokerAfter.CoverAvailable ?? 0)}`);
   log(`\n  Formula from the docs:`);
-  log(`    min(DebtTotal × CoverRateMinimum × CoverRateLiquidation, amount in default)`);
-  log(`    = min(${fmt(debt)} × ${COVER_MIN_PCT}% × ${COVER_LIQ_PCT}%, ${fmt(loanC0.PrincipalOutstanding)})`);
-  log(`    = ${fmt(Math.round(expected))}   → observed ${fmt(Math.round(coverUsed))}`);
+  log(`    min(DebtTotal * CoverRateMinimum * CoverRateLiquidation, amount in default)`);
+  log(`    = min(${fmt(debt)} * ${COVER_MIN_PCT}% * ${COVER_LIQ_PCT}%, ${fmt(loanC0.PrincipalOutstanding)})`);
+  log(`    = ${fmt(Math.round(expected))}   -> observed ${fmt(Math.round(coverUsed))}`);
   const ratio = vaultLoss > 0 ? (100 * coverUsed) / (coverUsed + vaultLoss) : 0;
-  log(`\n  ▸▸ The first-loss capital absorbed ${ratio.toFixed(2)} % of the loss,`);
+  log(`\n  >> The first-loss capital absorbed ${ratio.toFixed(2)} % of the loss,`);
   log(`     while ${fmt(brokerAfter.CoverAvailable ?? 0)} remained available.`);
   findings.push({
     h: "H1", scenario: "default summary", code: "-", hash: "",
@@ -182,10 +182,10 @@ try {
 
   log(`\n  VaultID ${vaultId}\n  BrokerID ${brokerId}\n  LoanA ${A.loanId}\n  LoanB ${B.loanId}\n  LoanC ${C.loanId}`);
 } catch (e) {
-  log(`\n💥 ABORTED: ${e.message}`);
+  log(`\nABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 600));
 } finally {
-  log("\n─── Summary ───");
+  log("\n--- Summary ---");
   for (const f of findings) log(`  ${f.h}  ${String(f.scenario).padEnd(34)} ${String(f.code).padEnd(22)} ${f.note}\n       ${f.hash}`);
   await client.disconnect();
 }

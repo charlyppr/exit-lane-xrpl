@@ -18,10 +18,10 @@ const brokerW = Wallet.fromSeed(broker.seed), spareW = Wallet.fromSeed(spare.see
 const safe = async (seed, tx, label) => { try { return await submitRaw(c, seed, tx, { label }); }
   catch (e) { const m = String(e.message).match(/(tem[A-Z_]+|tec[A-Z_]+)/); console.log(`${label.padEnd(40)} ${m ? m[1] + " (thrown)" : e.message.slice(0,70)}`); return { code: m ? m[1] : "throw" }; } };
 
-console.log("── is there an RPC command to read a loan? ──");
+console.log("-- is there an RPC command to read a loan? --");
 for (const cmd of ["loan_info", "loan_broker_info", "vault_info"]) {
-  try { await c.request({ command: cmd, ledger_index: "validated" }); console.log(`   ${cmd} → exists`); }
-  catch (e) { console.log(`   ${cmd} → ${e.data?.error ?? e.message}`.slice(0, 90)); }
+  try { await c.request({ command: cmd, ledger_index: "validated" }); console.log(`   ${cmd} -> exists`); }
+  catch (e) { console.log(`   ${cmd} -> ${e.data?.error ?? e.message}`.slice(0, 90)); }
 }
 
 const v = await safe(broker.seed, { TransactionType: "VaultCreate", Asset: { currency: "XRP" },
@@ -33,7 +33,7 @@ const brk = await safe(broker.seed, { TransactionType: "LoanBrokerSet", VaultID:
 const B = createdNode(brk.result, "LoanBroker").LedgerIndex;
 await safe(broker.seed, { TransactionType: "LoanBrokerCoverDeposit", LoanBrokerID: B, Amount: XRP(1) }, "CoverDeposit 1");
 
-console.log("\n── LoanSet with LateInterestRate 30 % (InterestRate 8 %) ──");
+console.log("\n-- LoanSet with LateInterestRate 30 % (InterestRate 8 %) --");
 const prep = await c.autofill({ TransactionType: "LoanSet", Account: brokerW.address, LoanBrokerID: B,
   Counterparty: borrowerW.address, PrincipalRequested: XRP(3), InterestRate: pctToRate(8),
   LateInterestRate: pctToRate(30), PaymentInterval: 90, PaymentTotal: 4, GracePeriod: 60,
@@ -42,48 +42,48 @@ const r0 = await c.submitAndWait(signLoanSetCounterparty(brokerW.sign(prep).tx_b
 console.log(`LoanSet ${r0.result.meta?.TransactionResult}  ${r0.result.hash}`);
 const L = createdNode(r0.result, "Loan")?.LedgerIndex;
 let n = await readEntry(c, L);
-console.log(`   LateInterestRate stored : ${n.LateInterestRate ?? "ABSENT ⚠️"} · InterestRate ${n.InterestRate}`);
-console.log(`   installment due in ${n.NextPaymentDueDate - rippleNow()} s · PeriodicPayment ${n.PeriodicPayment}`);
+console.log(`   LateInterestRate stored : ${n.LateInterestRate ?? "ABSENT"}, InterestRate ${n.InterestRate}`);
+console.log(`   installment due in ${n.NextPaymentDueDate - rippleNow()} s, PeriodicPayment ${n.PeriodicPayment}`);
 
 const due = (x) => Math.ceil(Number(x.PeriodicPayment)) + Number(x.LoanServiceFee ?? 0) + Number(x.LatePaymentFee ?? 0);
-console.log("\n── waiting for the due date to pass ──");
+console.log("\n-- waiting for the due date to pass --");
 while (rippleNow() <= n.NextPaymentDueDate + 8) { await sleep(10000); n = await readEntry(c, L);
   console.log(`   installment due in ${n.NextPaymentDueDate - rippleNow()} s`); }
 
-console.log("\n════ H2: does the amount due drift over time? ════");
+console.log("\n==== H2: does the amount due drift over time? ====");
 const obs = [];
 for (let i = 0; i < 5; i++) {
   n = await readEntry(c, L);
   const t = rippleNow() - n.NextPaymentDueDate;
   obs.push({ t, periodic: n.PeriodicPayment, total: n.TotalValueOutstanding, due: due(n), principal: n.PrincipalOutstanding });
-  console.log(`   late by ${String(t).padStart(4)} s · PeriodicPayment ${n.PeriodicPayment} · TotalValueOutstanding ${n.TotalValueOutstanding} · computed due ${due(n)}`);
+  console.log(`   late by ${String(t).padStart(4)} s, PeriodicPayment ${n.PeriodicPayment}, TotalValueOutstanding ${n.TotalValueOutstanding}, computed due ${due(n)}`);
   if (i < 4) await sleep(20000);
 }
 const drift = obs[obs.length - 1].due - obs[0].due;
 console.log(`\n   drift of the amount due over ${obs[obs.length - 1].t - obs[0].t} s : ${drift} drops`);
 
-console.log("\n── decisive test: pay an amount that is 60 s STALE ──");
+console.log("\n-- decisive test: pay an amount that is 60 s STALE --");
 const stale = obs[0].due;
 console.log(`   amount read ${obs[obs.length - 1].t - obs[0].t} s ago : ${stale} drops`);
 const p1 = await safe(borrower.seed, { TransactionType: "LoanPay", LoanID: L, Amount: String(stale), Flags: LATE },
   `LoanPay stale amount (${stale})`);
 if (!p1.ok) {
   n = await readEntry(c, L);
-  console.log(`   → rejected. Fresh amount : ${due(n)} drops`);
+  console.log(`   rejected. Fresh amount : ${due(n)} drops`);
   await safe(borrower.seed, { TransactionType: "LoanPay", LoanID: L, Amount: String(due(n)), Flags: LATE },
     `LoanPay fresh amount (${due(n)})`);
 }
-console.log("\n── and a late overpayment: is the excess ignored? ──");
+console.log("\n-- and a late overpayment: is the excess ignored? --");
 n = await readEntry(c, L).catch(() => null);
 if (n && Number(n.PaymentRemaining ?? 0) > 0) {
   const before = { p: n.PrincipalOutstanding, r: n.PaymentRemaining };
   await safe(borrower.seed, { TransactionType: "LoanPay", LoanID: L, Amount: String(due(n) + 2_000_000), Flags: LATE },
     `LoanPay late + 2 XRP excess`);
   const a = await readEntry(c, L).catch(() => null);
-  console.log(`   principal ${before.p} → ${a?.PrincipalOutstanding ?? "paid off"} · installments ${before.r} → ${a?.PaymentRemaining ?? 0}`);
+  console.log(`   principal ${before.p} -> ${a?.PrincipalOutstanding ?? "paid off"}, installments ${before.r} -> ${a?.PaymentRemaining ?? 0}`);
 }
 
-console.log("\n── teardown ──");
+console.log("\n-- teardown --");
 n = await readEntry(c, L).catch(() => null);
 while (n && Number(n.PaymentRemaining ?? 0) > 0) {
   const late = rippleNow() > n.NextPaymentDueDate;
@@ -103,5 +103,5 @@ const sh = await (async () => { const r = await c.request({ command: "account_ob
 if (sh > 0n) await safe(spare.seed, { TransactionType: "VaultWithdraw", VaultID: V,
   Amount: { mpt_issuance_id: sf.shareMPTID, value: String(sh) } }, "VaultWithdraw spare");
 await safe(broker.seed, { TransactionType: "VaultDelete", VaultID: V }, "VaultDelete");
-console.log(`\nIDs : vault ${V} · broker ${B} · loan ${L}`);
+console.log(`\nIDs : vault ${V}, broker ${B}, loan ${L}`);
 await c.disconnect();

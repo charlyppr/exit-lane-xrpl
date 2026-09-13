@@ -1,15 +1,14 @@
 // Reads the state of a Single Asset Vault and the derived quantities.
 //
-// Why this file exists: `vault_info` returns the RAW ledger fields. None of
-// the quantities a depositor needs (value of one share, utilization rate,
-// locked capital) is exposed. Every client has to reimplement this
-// arithmetic, and they will diverge on rounding. That is hypothesis H9, and
-// this file is the evidence: 60 lines to display four numbers.
+// `vault_info` returns the raw ledger fields only. The quantities a depositor
+// needs (value of one share, utilization rate, locked capital) are not
+// exposed, so every client reimplements this arithmetic and may round
+// differently. See hypothesis H9.
 //
-// Pitfall verified on 12/09 (FEEDBACK-RAW [14:05]): `AssetsAvailable`
-// DISAPPEARS from the node when it equals zero. A naive client reads
-// `undefined`, prints "NaN" or crashes, exactly at the most critical moment
-// for a depositor: the one where they can no longer withdraw.
+// Verified on 12/09 (FEEDBACK-RAW [14:05]): `AssetsAvailable` is omitted from
+// the node when it equals zero. A client that reads the field directly gets
+// `undefined` and prints "NaN" or crashes, at the moment the depositor can no
+// longer withdraw.
 
 const DROPS = 1_000_000n;
 
@@ -34,7 +33,7 @@ export async function vaultSnapshot(client, vaultId) {
   const v = res.result.vault;
 
   const assetsTotal = BigInt(v.AssetsTotal ?? 0);
-  // ⚠️ Missing field means zero. Never write `BigInt(v.AssetsAvailable)`.
+  // A missing field means zero: do not write `BigInt(v.AssetsAvailable)`.
   const assetsAvailable = BigInt(v.AssetsAvailable ?? 0);
   const sharesOutstanding = BigInt(v.shares?.OutstandingAmount ?? 0);
   const lent = assetsTotal - assetsAvailable;
@@ -87,7 +86,7 @@ export function render(snap) {
     `  Total assets        ${fmt(snap.assetsTotal)}`,
     `  Lent                ${fmt(snap.lent)}  (${pct} % of the vault)`,
     `  Available           ${fmt(snap.assetsAvailable)}` +
-      (snap.availableAbsent ? "   ← field ABSENT from the node, not an explicit zero" : ""),
+      (snap.availableAbsent ? "   (field absent from the node, not an explicit zero)" : ""),
     `  Shares outstanding  ${snap.sharesOutstanding}`,
     `  Value of one share  ${snap.navPerShare.toFixed(9)}  (1.000000000 at opening)`,
   ].join("\n");

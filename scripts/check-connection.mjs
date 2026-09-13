@@ -49,15 +49,15 @@ const main = async () => {
   console.log("server_state    :", si.server_state);
   console.log("validated_ledger:", si.validated_ledger?.seq);
 
-  // Which amendments are enabled on THIS ledger?
-  // Goal: confirm SingleAssetVault / LendingProtocol, and above all detect
-  // LendingProtocolV1_1 (see rule 4 of CLAUDE.md), hence the preference for
-  // `feature`, the only method that returns NAMES.
+  // Which amendments are enabled on this ledger?
+  // Goal: confirm SingleAssetVault / LendingProtocol and detect
+  // LendingProtocolV1_1 (rule 4 of CLAUDE.md). `feature` is tried first
+  // because it is the only method that returns names.
   //
   // Three fallback levels, from most readable to most raw:
-  //   1. `feature`                        → names + status (often admin-only)
-  //   2. `ledger_entry {amendments:true}` → documented shortcut, IDs only
-  //   3. computed index sha512half(0x0066) → what the shortcut does
+  //   1. `feature`: names and status (often admin-only)
+  //   2. `ledger_entry {amendments:true}`: documented shortcut, IDs only
+  //   3. index computed as sha512half(0x0066): what the shortcut does
   // If we have to go down to level 3, that is a bonus/notes/FEEDBACK-RAW.md
   // item, category `documentation/tutorials`: there is no simple way to
   // answer "which version of the protocol runs here?".
@@ -73,12 +73,12 @@ const main = async () => {
       .map(([, v]) => v.name);
     console.log("\nenabled amendments:", enabled.length, "(via `feature`)");
     for (const n of enabled.filter((n) => /lending|vault|loan/i.test(n))) {
-      console.log("  →", n);
+      console.log("  -", n);
     }
     if (enabled.some((n) => /LendingProtocolV1_1|V1_1/i.test(n))) {
-      console.log("\n⚠️  LendingProtocolV1_1 LOOKS ENABLED on this ledger.");
-      console.log("   Rule 4 of CLAUDE.md: LoanSet on an open vault may fail.");
-      console.log("   This is not our bug → talk to a mentor.");
+      console.log("\nWARNING: LendingProtocolV1_1 looks enabled on this ledger.");
+      console.log("Rule 4 of CLAUDE.md: LoanSet on an open vault may fail.");
+      console.log("This is not our bug, talk to a mentor.");
     }
   } catch (e) {
     console.log("\n`feature` unavailable:", e.message);
@@ -102,12 +102,12 @@ const main = async () => {
         console.log("enabled amendments:", amendmentIds.length, "(via raw index)");
       } catch (e3) {
         console.log("Cannot read the amendments:", e3.message);
-        console.log("→ candidate for bonus/notes/FEEDBACK-RAW.md if unexpected.");
+        console.log("Candidate for bonus/notes/FEEDBACK-RAW.md if unexpected.");
       }
     }
     if (amendmentIds) {
       console.log("(IDs only; compare with xrpl.org/resources/known-amendments)");
-      console.log("→ bonus/notes/FEEDBACK-RAW.md: no amendment name without an external table.");
+      console.log("For bonus/notes/FEEDBACK-RAW.md: no amendment name without an external table.");
     }
   }
 
@@ -143,13 +143,13 @@ const main = async () => {
 
   const secs = Math.round((Date.now() - t0) / 1000);
   console.log(`\nTime to first transaction (this script): ${secs}s`);
-  console.log("→ record the end-to-end value in bonus/notes/FEEDBACK-RAW.md.");
+  console.log("Record the end-to-end value in bonus/notes/FEEDBACK-RAW.md.");
 
   if (code !== "tesSUCCESS") process.exit(1);
 };
 
 /**
- * Waits until the account is readable on the VALIDATED ledger.
+ * Waits until the account is readable on the validated ledger.
  * Without it, autofill reads a sequence that does not exist yet.
  */
 async function waitVisible(client, address, tries = 20, delayMs = 2000) {
@@ -191,6 +191,6 @@ async function fundOne() {
 
 main().catch((e) => {
   console.error("\nFAILED:", e.message);
-  console.error("→ bonus/notes/FEEDBACK-RAW.md entry, onboarding phase.");
+  console.error("Log it in bonus/notes/FEEDBACK-RAW.md, onboarding phase.");
   process.exit(1);
 });

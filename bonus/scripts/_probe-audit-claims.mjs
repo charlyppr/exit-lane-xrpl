@@ -28,7 +28,7 @@ for (const n of await nodesOf("C8678C1C0A10BE889124F40C03017038654B278E2D464FAC5
     console.log("   ShareMPT OutstandingAmount:", r.result.node.OutstandingAmount);
   } catch (e) { console.log("   mpt_issuance:", e.data?.error ?? e.message); }
   const at = BigInt(n.final.AssetsTotal), lu = BigInt(n.final.LossUnrealized ?? 0);
-  console.log(`   AssetsTotal ${at} · LossUnrealized ${lu} · net ${at - lu} · ratio net/gross = ${Number(at - lu) / Number(at)}`);
+  console.log(`   AssetsTotal ${at}, LossUnrealized ${lu}, net ${at - lu}, ratio net/gross = ${Number(at - lu) / Number(at)}`);
 }
 
 console.log("\n### FINDING 3: broker parameters of the two defaults");
@@ -42,8 +42,8 @@ for (const [tag, h] of [["A (vault 200 XRP)", "91F458E3E6244E1C3005345C5C83CDFAF
   const debt = BigInt(ln?.prev?.PrincipalOutstanding ?? ln?.final?.PrincipalOutstanding ?? 0);
   const cm = BigInt(b.CoverRateMinimum ?? 0), cl = BigInt(b.CoverRateLiquidation ?? 0);
   const coverTaken = BigInt(br.prev?.CoverAvailable ?? 0) - BigInt(br.final?.CoverAvailable ?? 0);
-  console.log(`   debt before default ${debt} · cover taken ${coverTaken}`);
-  console.log(`   debt × CoverRateMinimum/1e5 × CoverRateLiquidation/1e5 = ${(debt * cm * cl) / 10_000_000_000n} drops`);
+  console.log(`   debt before default ${debt}, cover taken ${coverTaken}`);
+  console.log(`   debt * CoverRateMinimum/1e5 * CoverRateLiquidation/1e5 = ${(debt * cm * cl) / 10_000_000_000n} drops`);
   console.log(`   share of the debt absorbed = ${(Number(coverTaken) / Number(debt) * 100).toFixed(4)} %`);
 }
 
@@ -56,7 +56,7 @@ for (const vid of ["4E75909E40B05E55C2BD12C663147ECC5FD9CDF3AEB0DC23BA6A73FC87CA
 
 console.log("\n### RPC commands: do they exist?");
 for (const [cmd, extra] of [["vault_info", { vault_id: "0".repeat(64) }], ["loan_info", { loan_id: "0".repeat(64) }], ["loan_broker_info", { loan_broker_id: "0".repeat(64) }], ["mpt_holders", { mpt_issuance_id: "0".repeat(48) }], ["mpt_issuance_info", { mpt_issuance_id: "0".repeat(48) }]]) {
-  try { await c.request({ command: cmd, ...extra }); console.log(`  ${cmd.padEnd(20)} → OK`); }
-  catch (e) { console.log(`  ${cmd.padEnd(20)} → ${e.data?.error ?? e.message}`); }
+  try { await c.request({ command: cmd, ...extra }); console.log(`  ${cmd.padEnd(20)} -> OK`); }
+  catch (e) { console.log(`  ${cmd.padEnd(20)} -> ${e.data?.error ?? e.message}`); }
 }
 await c.disconnect();

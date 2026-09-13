@@ -1,12 +1,12 @@
-// CORRECTION OF MY OWN TEST: the withdrawals in _probe-h13-closed.mjs took
-// place BEFORE SubscriptionDate, so during the subscription phase. The V1.1
-// doc only forbids withdrawal in the INVESTMENT phase (`tecTOO_SOON`) and
+// Correction of my own test: the withdrawals in _probe-h13-closed.mjs took
+// place before SubscriptionDate, so during the subscription phase. The V1.1
+// doc only forbids withdrawal in the investment phase (`tecTOO_SOON`) and
 // deposit in the investment or redemption phase (`tecEXPIRED`). Vault A has
 // since passed its SubscriptionDate: we retest in the right phase.
 //
 // Expected by the doc, on a closed-ended vault in the investment phase:
-//   VaultDeposit  → tecEXPIRED
-//   VaultWithdraw → tecTOO_SOON
+//   VaultDeposit  -> tecEXPIRED
+//   VaultWithdraw -> tecTOO_SOON
 
 import { Client, Wallet } from "xrpl";
 import { encode, encodeForSigning } from "ripple-binary-codec";
@@ -36,7 +36,7 @@ const submit = async (tx, label, expected) => {
     const prepared = await client.autofill({ Account: w.address, ...tx });
     const res = await client.submitAndWait(signRaw(prepared, w));
     const code = res.result.meta?.TransactionResult;
-    log(`  ${label.padEnd(34)} ${code.padEnd(20)} expected ${expected} ${code === expected ? "✓" : "✗ DIVERGENCE"}`);
+    log(`  ${label.padEnd(34)} ${code.padEnd(20)} expected ${expected} ${code === expected ? "ok" : "DIVERGENCE"}`);
     log(`    ${txUrl(res.result.hash)}`);
     return { code, hash: res.result.hash };
   } catch (e) {
@@ -57,20 +57,20 @@ log(`  now              ${now}`);
 log(`  CURRENT PHASE    ${phase}\n`);
 
 if (phase !== "INVESTMENT") {
-  log(`⚠️  The vault is not in the investment phase: test inconclusive, stopping.`);
+  log(`The vault is not in the investment phase: test inconclusive, stopping.`);
 } else {
-  log("─── What the V1.1 doc promises in the investment phase");
+  log("--- What the V1.1 doc promises in the investment phase");
   const dep = await submit({ TransactionType: "VaultDeposit", VaultID: VAULT_A, Amount: XRP(10) },
     "VaultDeposit in investment", "tecEXPIRED");
   const wit = await submit({ TransactionType: "VaultWithdraw", VaultID: VAULT_A, Amount: XRP(5) },
     "VaultWithdraw in investment", "tecTOO_SOON");
 
-  log("\n═══ VERDICT");
+  log("\n=== VERDICT");
   log(`  deposit    : ${dep.code} ${dep.code === "tecEXPIRED" ? "(matches doc)" : "(DIVERGENCE)"}`);
   log(`  withdrawal : ${wit.code} ${wit.code === "tecTOO_SOON" ? "(matches doc)" : "(DIVERGENCE)"}`);
   if (dep.code === "tesSUCCESS" || wit.code === "tesSUCCESS") {
-    log("  ⚠️  An operation forbidden by the doc SUCCEEDED in the investment phase.");
-    log("      → rule 5 of CLAUDE.md: mentor in private before any publication.");
+    log("  An operation forbidden by the doc SUCCEEDED in the investment phase.");
+    log("      rule 5 of CLAUDE.md: mentor in private before any publication.");
   }
 }
 

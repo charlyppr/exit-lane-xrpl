@@ -41,7 +41,7 @@ async function send(w, tx, label, expected) {
     Fee: "20",
     Sequence: ai.account_data.Sequence,
     LastLedgerSequence: Number(li) + 20,
-    NetworkID: 4001,          // network_id > 1024 → NetworkID is mandatory
+    NetworkID: 4001,          // network_id > 1024 -> NetworkID is mandatory
   };
   const sub = await rpc("submit", { tx_blob: signRaw(full, w) });
   const hash = sub.tx_json?.hash;
@@ -54,7 +54,7 @@ async function send(w, tx, label, expected) {
       if (t.validated) { code = t.meta?.TransactionResult ?? code; break; }
     } catch { /* not found yet */ }
   }
-  log(`  ${label.padEnd(30)} ${String(code).padEnd(20)} ${expected ? (code === expected ? "✓ as documented" : `✗ doc: ${expected}`) : ""}`);
+  log(`  ${label.padEnd(30)} ${String(code).padEnd(20)} ${expected ? (code === expected ? "as documented" : `DIVERGENCE (doc: ${expected})`) : ""}`);
   if (hash) log(`    ${txUrl(hash)}`);
   return code;
 }
@@ -63,18 +63,18 @@ const { spare, lender } = loadAccounts();
 const lw = Wallet.fromSeed(lender.seed), sw = Wallet.fromSeed(spare.seed);
 
 const si = await rpc("server_info");
-log(`RPC OK, build ${si.info.build_version} · ledgers ${si.info.complete_ledgers}`);
+log(`RPC OK, build ${si.info.build_version}, ledgers ${si.info.complete_ledgers}`);
 
 const ct = (await rpc("ledger", { ledger_index: "validated" })).ledger.close_time;
 const v = (await rpc("ledger_entry", { index: C, ledger_index: "validated" })).node;
-log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
+log(`close_time ${ct}, RedemptionDate ${v.RedemptionDate} -> phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
 log(`AssetsTotal ${Number(v.AssetsTotal ?? 0) / 1e6} XRP\n`);
 
-log("─── PHASE 3 · REDEMPTION");
+log("--- PHASE 3: REDEMPTION");
 await send(lw, { TransactionType: "VaultWithdraw", VaultID: C, Amount: v.AssetsTotal ?? "0" },
   "VaultWithdraw (redemption)", "tesSUCCESS");
 
-log("\n─── Cleanup");
+log("\n--- Cleanup");
 await send(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (emptied)", "tesSUCCESS");
 await send(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attached)", null);
 

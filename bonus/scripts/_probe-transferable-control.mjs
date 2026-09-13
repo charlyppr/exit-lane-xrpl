@@ -1,4 +1,4 @@
-// Control: can a depositor tell a NORMAL vault from a non-transferable one?
+// Control: can a depositor tell a normal vault from a non-transferable one?
 // Where is the difference written?
 import { Client, Wallet } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
@@ -14,7 +14,7 @@ const safe = async (seed, tx, label) => { try { return await submitRaw(c, seed, 
   catch (e) { const m = String(e.message).match(/(tem[A-Z_]+|tec[A-Z_]+)/); console.log(`${label.padEnd(34)} ${m ? m[1] : e.message.slice(0,60)}`); return { code: m ? m[1] : "throw" }; } };
 
 for (const [label, flags] of [["NORMAL (no flag)", undefined], ["NON-TRANSFERABLE (131072)", 131072]]) {
-  console.log(`\n════ vault ${label} ════`);
+  console.log(`\n==== vault ${label} ====`);
   const v = await safe(broker.seed, { TransactionType: "VaultCreate", Asset: { currency: "XRP" },
     AssetsMaximum: XRP(50), WithdrawalPolicy: 1, ...(flags ? { Flags: flags } : {}) }, "VaultCreate");
   const V = createdNode(v.result, "Vault").LedgerIndex;
@@ -24,7 +24,7 @@ for (const [label, flags] of [["NORMAL (no flag)", undefined], ["NON-TRANSFERABL
   const iss = (await c.request({ command: "ledger_entry", mpt_issuance: s.shareMPTID, ledger_index: "validated" })).result.node;
   console.log(`   Vault.Flags            = ${vnode.Flags}`);
   console.log(`   MPTokenIssuance.Flags  = ${iss.Flags}   (lsfMPTCanTransfer = 32)`);
-  console.log(`   → transferable according to the flag: ${(iss.Flags & 32) ? "YES" : "NO"}`);
+  console.log(`   transferable according to the flag: ${(iss.Flags & 32) ? "YES" : "NO"}`);
   console.log(`   issuance fields: ${Object.keys(iss).filter(k => k !== "index").join(", ")}`);
   await safe(borrower.seed, { TransactionType: "MPTokenAuthorize", MPTokenIssuanceID: s.shareMPTID }, "MPTokenAuthorize dest.");
   await safe(spare.seed, { TransactionType: "Payment", Destination: borrowerW.address,

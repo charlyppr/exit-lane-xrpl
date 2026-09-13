@@ -23,7 +23,7 @@ const submit = async (w, tx, label, expected) => {
     const p = await c.autofill({ Account: w.address, ...tx });
     const r = await c.submitAndWait(signRaw(p, w));
     const code = r.result.meta.TransactionResult;
-    log(`  ${label.padEnd(30)} ${code.padEnd(20)} ${expected ? (code === expected ? "✓ matches doc" : `✗ doc: ${expected}`) : ""}`);
+    log(`  ${label.padEnd(30)} ${code.padEnd(20)} ${expected ? (code === expected ? "matches doc" : `DIVERGENCE (doc: ${expected})`) : ""}`);
     log(`    ${txUrl(r.result.hash)}`);
     return code;
   } catch (e) { log(`  ${label.padEnd(30)} rejected: ${e.message}`); return "throw"; }
@@ -34,14 +34,14 @@ const node = async (i) => {
 };
 const ct = (await c.request({ command: "ledger", ledger_index: "validated" })).result.ledger.close_time;
 const v = await node(C);
-log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
+log(`close_time ${ct}, RedemptionDate ${v.RedemptionDate} -> phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
 log(`AssetsTotal ${Number(v.AssetsTotal ?? 0) / 1e6} XRP`);
 
-log("\n─── PHASE 3 · REDEMPTION");
+log("\n--- PHASE 3: REDEMPTION");
 await submit(lw, { TransactionType: "VaultWithdraw", VaultID: C, Amount: v.AssetsTotal ?? "0" },
   "VaultWithdraw (redemption)", "tesSUCCESS");
 
-log("\n─── Cleanup: VaultDelete on the test vaults");
+log("\n--- Cleanup: VaultDelete on the test vaults");
 await submit(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (empty)", "tesSUCCESS");
 await submit(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attached)", null);
 

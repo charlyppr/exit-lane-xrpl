@@ -1,9 +1,9 @@
-// DECISIVE TEST H13 + H14: do closed-ended vaults exist on this build?
+// Decisive test H13 + H14: do closed-ended vaults exist on this build?
 //
 // H13 says: the V1.1 doc forbids LoanBrokerSet on an open-ended vault, the
 // ledger allows it (tesSUCCESS, two runs). Three explanations were still
 // competing: (a) restriction not wired in, (b) conditioned on something else,
-// (c) doc ahead of the build. To settle it, we need the OTHER branch:
+// (c) doc ahead of the build. To settle it, we need the other branch:
 // create a closed-ended vault (VaultKind: 1) and see what the ledger does with it.
 //
 // H14 says: ripple-binary-codec 2.11.0 serializes VaultKind / SubscriptionDate /
@@ -26,12 +26,12 @@ const RIPPLE_EPOCH = 946_684_800;
 const nowRipple = () => Math.floor(Date.now() / 1000) - RIPPLE_EPOCH;
 
 const log = (...a) => console.log(...a);
-const step = (t) => log(`\n─── ${t} ${"─".repeat(Math.max(0, 56 - t.length))}`);
+const step = (t) => log(`\n--- ${t} ${"-".repeat(Math.max(0, 56 - t.length))}`);
 
 const timeline = [];
 const mark = (label, code, hash) => {
   timeline.push({ label, code, hash });
-  log(`  → ${code}`);
+  log(`  ${code}`);
   if (hash) log(`    ${txUrl(hash)}`);
 };
 
@@ -70,14 +70,14 @@ try {
   const spareW = Wallet.fromSeed(spare.seed);
 
   const si = await client.request({ command: "server_info" });
-  log(`build ${si.result.info.build_version} · network ${si.result.info.network_id}`);
+  log(`build ${si.result.info.build_version}, network ${si.result.info.network_id}`);
   const feat = await client.request({ command: "feature", feature: "LendingProtocolV1_1" });
   const entry = Object.values(feat.result)[0];
   log(`LendingProtocolV1_1 : enabled=${entry?.enabled} supported=${entry?.supported}`);
   log(`spare (owner of the test vaults) : ${spareW.address}`);
   log(`Ripple clock : ${nowRipple()}`);
 
-  // ═══ H14: does the typed SDK accept the V1.1 fields? ═══════════════════
+  // H14: does the typed SDK accept the V1.1 fields?
   step("H14.a - validate() of xrpl@4.6.0 on VaultKind");
   const closedTx = {
     TransactionType: "VaultCreate",
@@ -114,7 +114,7 @@ try {
     timeline.push({ label: "encode/decode round-trip", code: `throw: ${e.message}`, hash: null });
   }
 
-  // ═══ H13: does the ledger know about closed-ended vaults? ══════════════
+  // H13: does the ledger know about closed-ended vaults?
   step("H13.a - closed-ended VaultCreate (subscription window OPEN)");
   const { VaultKind, SubscriptionDate, RedemptionDate, ...base } = closedTx;
   const vA = await submit(client, spareW, {
@@ -133,7 +133,7 @@ try {
     log(`  STORAGE VERDICT : ${persisted.length}/3 V1.1 fields persisted`);
   }
 
-  // ═══ The test that settles (a)/(b)/(c) ═════════════════════════════════
+  // The test that settles (a)/(b)/(c)
   if (found.vaultA) {
     step("H13.b - LoanBrokerSet on the CLOSED-ended vault (V1.1 doc: allowed)");
     const brk = await submit(client, spareW, {
@@ -160,7 +160,7 @@ try {
     }, "VaultWithdraw before redemption");
   }
 
-  // ═══ Second vault: subscription window ALREADY CLOSED ═══════════════════
+  // Second vault: subscription window already closed
   step("H13.e - closed-ended VaultCreate, subscription already CLOSED");
   const vB = await submit(client, spareW, {
     ...base,
@@ -179,7 +179,7 @@ try {
     }, "VaultDeposit (window closed)");
   }
 
-  // Inconsistent dates: redemption BEFORE subscription. No ordering
+  // Inconsistent dates: redemption before subscription. No ordering
   // constraint is documented; if the ledger accepts it, that is an item.
   step("H13.g - VaultCreate with RedemptionDate < SubscriptionDate");
   await submit(client, spareW, {
@@ -190,10 +190,10 @@ try {
     Data: Buffer.from("H13 inverted dates").toString("hex").toUpperCase(),
   }, "VaultCreate inverted dates");
 } catch (e) {
-  log(`\n💥 ABORT : ${e.message}`);
+  log(`\nABORT: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 900));
 } finally {
-  log("\n─── Summary (paste into FEEDBACK-RAW.md) ───");
+  log("\n--- Summary (paste into FEEDBACK-RAW.md) ---");
   for (const t of timeline) {
     log(`  ${t.label.padEnd(30)} ${String(t.code).padEnd(22)} ${t.hash ?? ""}`);
   }

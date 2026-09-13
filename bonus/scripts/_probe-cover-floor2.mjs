@@ -1,4 +1,4 @@
-// Follow-up to probe H8: can the broker LOWER CoverRateMinimum while a loan
+// Follow-up to probe H8: can the broker lower CoverRateMinimum while a loan
 // is live, to get around the cover floor?
 // Then LoanBrokerCoverClawback (7th type never submitted). Then teardown.
 import { Client, Wallet } from "xrpl";
@@ -37,34 +37,34 @@ const loans = await c.request({ command: "account_objects", account: Wallet.from
 const L = loans?.result.account_objects.find((o) => o.LoanBrokerID === B)?.index;
 console.log(`broker ${B}\nvault  ${V}\nloan   ${L ?? "not found"}`);
 let b = await readEntry(c, B);
-console.log(`DebtTotal ${fmt(b.DebtTotal ?? 0)} · CoverAvailable ${fmt(b.CoverAvailable ?? 0)} · CoverRateMinimum ${b.CoverRateMinimum} (${b.CoverRateMinimum / 1000} %) · floor ${fmt(BigInt(b.DebtTotal ?? 0) * BigInt(b.CoverRateMinimum) / 100000n)}`);
+console.log(`DebtTotal ${fmt(b.DebtTotal ?? 0)}, CoverAvailable ${fmt(b.CoverAvailable ?? 0)}, CoverRateMinimum ${b.CoverRateMinimum} (${b.CoverRateMinimum / 1000} %), floor ${fmt(BigInt(b.DebtTotal ?? 0) * BigInt(b.CoverRateMinimum) / 100000n)}`);
 
-console.log("\n════ 1) Lower CoverRateMinimum from 10 % to 1 % with a live loan ════");
+console.log("\n==== 1) Lower CoverRateMinimum from 10 % to 1 % with a live loan ====");
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerSet", VaultID: V, LoanBrokerID: B,
-  CoverRateMinimum: pctToRate(1), CoverRateLiquidation: pctToRate(1) }, { label: "LoanBrokerSet min 10 %→1 %" });
+  CoverRateMinimum: pctToRate(1), CoverRateLiquidation: pctToRate(1) }, { label: "LoanBrokerSet min 10 % -> 1 %" });
 b = await readEntry(c, B);
-console.log(`   CoverRateMinimum read ${b.CoverRateMinimum} (${b.CoverRateMinimum / 1000} %) · CoverRateLiquidation ${b.CoverRateLiquidation}`);
-console.log(`   new floor ${fmt(BigInt(b.DebtTotal ?? 0) * BigInt(b.CoverRateMinimum) / 100000n)} · available ${fmt(b.CoverAvailable ?? 0)}`);
-console.log("   → if the decrease was accepted, try to withdraw the freed cover");
+console.log(`   CoverRateMinimum read ${b.CoverRateMinimum} (${b.CoverRateMinimum / 1000} %), CoverRateLiquidation ${b.CoverRateLiquidation}`);
+console.log(`   new floor ${fmt(BigInt(b.DebtTotal ?? 0) * BigInt(b.CoverRateMinimum) / 100000n)}, available ${fmt(b.CoverAvailable ?? 0)}`);
+console.log("   if the decrease was accepted, try to withdraw the freed cover");
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerCoverWithdraw", LoanBrokerID: B, Amount: "300000" },
   { label: "CoverWithdraw 0.3 XRP after decrease" });
 b = await readEntry(c, B);
-console.log(`   CoverAvailable ${fmt(b.CoverAvailable ?? 0)} · actual ratio ${(Number(b.CoverAvailable ?? 0) / Number(b.DebtTotal ?? 1) * 100).toFixed(2)} %`);
+console.log(`   CoverAvailable ${fmt(b.CoverAvailable ?? 0)}, actual ratio ${(Number(b.CoverAvailable ?? 0) / Number(b.DebtTotal ?? 1) * 100).toFixed(2)} %`);
 
-console.log("\n════ 2) Other fields changeable live? ════");
+console.log("\n==== 2) Other fields changeable live? ====");
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerSet", VaultID: V, LoanBrokerID: B,
-  ManagementFeeRate: pctToRate(9) }, { label: "ManagementFeeRate 2 %→9 %" });
+  ManagementFeeRate: pctToRate(9) }, { label: "ManagementFeeRate 2 % -> 9 %" });
 b = await readEntry(c, B);
-console.log(`   ManagementFeeRate read ${b.ManagementFeeRate} · CoverRateMinimum ${b.CoverRateMinimum} · CoverRateLiquidation ${b.CoverRateLiquidation}`);
+console.log(`   ManagementFeeRate read ${b.ManagementFeeRate}, CoverRateMinimum ${b.CoverRateMinimum}, CoverRateLiquidation ${b.CoverRateLiquidation}`);
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerSet", VaultID: V, LoanBrokerID: B,
-  DebtMaximum: "1" }, { label: "DebtMaximum → 1 drop (< DebtTotal)" });
+  DebtMaximum: "1" }, { label: "DebtMaximum -> 1 drop (< DebtTotal)" });
 b = await readEntry(c, B);
-console.log(`   DebtMaximum read ${b.DebtMaximum} · DebtTotal ${b.DebtTotal}`);
+console.log(`   DebtMaximum read ${b.DebtMaximum}, DebtTotal ${b.DebtTotal}`);
 console.log("   LoanBrokerSet with the LoanBrokerID of a broker from ANOTHER vault:");
 await submitRaw(c, spare.seed, { TransactionType: "LoanBrokerSet", VaultID: V, LoanBrokerID: B,
   ManagementFeeRate: pctToRate(1) }, { label: "LoanBrokerSet by a third party" });
 
-console.log("\n════ 3) LoanBrokerCoverClawback: 7th and last type never submitted ════");
+console.log("\n==== 3) LoanBrokerCoverClawback: 7th and last type never submitted ====");
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerCoverClawback", LoanBrokerID: B },
   { label: "CoverClawback by the broker" });
 await submitRaw(c, spare.seed, { TransactionType: "LoanBrokerCoverClawback", LoanBrokerID: B },
@@ -72,7 +72,7 @@ await submitRaw(c, spare.seed, { TransactionType: "LoanBrokerCoverClawback", Loa
 await submitUnvalidated(c, broker.seed, { TransactionType: "LoanBrokerCoverClawback", LoanBrokerID: B, Amount: "100000" },
   "CoverClawback Amount in drops (raw)");
 
-console.log("\n════ teardown ════");
+console.log("\n==== teardown ====");
 if (L) {
   const n = await readEntry(c, L);
   await submitRaw(c, borrower.seed, { TransactionType: "LoanPay", LoanID: L,
@@ -84,7 +84,7 @@ if (bn && BigInt(bn.CoverAvailable ?? 0) > 0n) await submitRaw(c, broker.seed,
   { TransactionType: "LoanBrokerCoverWithdraw", LoanBrokerID: B, Amount: String(bn.CoverAvailable) }, { label: "Final CoverWithdraw" });
 await submitRaw(c, broker.seed, { TransactionType: "LoanBrokerDelete", LoanBrokerID: B }, { label: "LoanBrokerDelete" });
 const sf = await vaultSnapshot(c, V);
-console.log(`   vault: AssetsTotal ${fmt(sf.assetsTotal)} · available ${fmt(sf.assetsAvailable)} · LossUnrealized ${sf.raw.LossUnrealized ?? "ABSENT"}`);
+console.log(`   vault: AssetsTotal ${fmt(sf.assetsTotal)}, available ${fmt(sf.assetsAvailable)}, LossUnrealized ${sf.raw.LossUnrealized ?? "ABSENT"}`);
 const sh = await (async () => { const r = await c.request({ command: "account_objects", account: spareW.address, type: "mptoken", ledger_index: "validated" });
   return BigInt(r.result.account_objects.find((o) => o.MPTokenIssuanceID === sf.shareMPTID)?.MPTAmount ?? 0); })();
 if (sh > 0n) await submitRaw(c, spare.seed, { TransactionType: "VaultWithdraw", VaultID: V,
