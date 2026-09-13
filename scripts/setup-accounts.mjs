@@ -4,7 +4,7 @@
 // Usage : node scripts/setup-accounts.mjs
 // Écrit .accounts.json (gitignored — il contient des seeds).
 //
-// Relever dans FEEDBACK-RAW.md : combien de comptes financés du premier coup,
+// Relever dans bonus/notes/FEEDBACK-RAW.md : combien de comptes financés du premier coup,
 // le délai par compte, et tout échec silencieux (faucet qui répond 200 avec
 // un corps inattendu, compte non encore financé au moment de la lecture, etc.).
 
@@ -83,14 +83,14 @@ const main = async () => {
   }
 
   if (failures.length) {
-    console.log("\n--- Pour FEEDBACK-RAW.md ---");
+    console.log("\n--- Pour bonus/notes/FEEDBACK-RAW.md ---");
     console.log(`Comptes financés du premier coup : ${ROLES.length - failures.length}/${ROLES.length}`);
     for (const f of failures) console.log(`  ${f.role} : ${f.error}`);
     process.exit(1);
   }
 
   console.log(`\n${ROLES.length}/${ROLES.length} comptes financés du premier coup.`);
-  console.log("→ noter le chiffre et les délais dans FEEDBACK-RAW.md.");
+  console.log("→ noter le chiffre et les délais dans bonus/notes/FEEDBACK-RAW.md.");
 };
 
 main().catch((e) => {

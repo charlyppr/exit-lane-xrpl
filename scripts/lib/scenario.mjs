@@ -1,12 +1,12 @@
 // Le scénario du use case, en un seul exemplaire.
 //
 // Deux enveloppes l'utilisent :
-//   - step-8-secondary.mjs : mode preuve, enchaîné, pour capturer des hashes.
+//   - bonus/scripts/step-8-secondary.mjs : mode preuve, enchaîné, pour capturer des hashes.
 //   - demo.mjs             : mode pitch, avec pauses et narration.
 // Un seul code : impossible de répéter avec l'un et de présenter l'autre.
 //
 // L'objet `ui` reçoit les événements. Voir demo.mjs pour une implémentation
-// bavarde, step-8-secondary.mjs pour une implémentation sobre.
+// bavarde, bonus/scripts/step-8-secondary.mjs pour une implémentation sobre.
 
 import { Wallet } from "xrpl";
 import { createHash, randomBytes } from "node:crypto";

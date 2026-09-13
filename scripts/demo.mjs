@@ -3,11 +3,11 @@
 //   node scripts/demo.mjs           pauses entre les scènes (Entrée pour avancer)
 //   node scripts/demo.mjs --auto    enchaîné, sans pause — pour répéter et chronométrer
 //
-// Le scénario vit dans lib/scenario.mjs, partagé avec step-8-secondary.mjs :
+// Le scénario vit dans lib/scenario.mjs, partagé avec bonus/scripts/step-8-secondary.mjs :
 // on ne peut pas répéter avec un script et présenter l'autre.
 //
 // Filet de sécurité : en cas de coupure réseau pendant le pitch, les hashes
-// des runs précédents sont dans FEEDBACK-RAW.md et le README. Ouvrir l'explorer
+// des runs précédents sont dans bonus/notes/FEEDBACK-RAW.md et le README. Ouvrir l'explorer
 // et dérouler la même histoire sur des transactions déjà validées.
 
 import { Client } from "xrpl";
@@ -126,7 +126,7 @@ try {
 } catch (e) {
   log(`\n💥 ARRÊT : ${e.message}`);
   log("   → filet de sécurité : dérouler la même histoire dans l'explorer");
-  log("     sur les hashes déjà validés (README + FEEDBACK-RAW.md).");
+  log("     sur les hashes déjà validés (README + bonus/notes/FEEDBACK-RAW.md).");
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 500));
 } finally {
   await client.disconnect();

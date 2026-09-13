@@ -4,7 +4,7 @@
 //
 // Usage : node scripts/check-connection.mjs
 //
-// Chronomètre le "time to first transaction" et reporte-le dans FEEDBACK-RAW.md.
+// Chronomètre le "time to first transaction" et reporte-le dans bonus/notes/FEEDBACK-RAW.md.
 
 import { Client, Wallet } from "xrpl";
 import { readFileSync } from "node:fs";
@@ -58,7 +58,7 @@ const main = async () => {
   //   1. `feature`                      → noms + statut (souvent admin-only)
   //   2. `ledger_entry {amendments:true}` → raccourci documenté, IDs seuls
   //   3. index calculé sha512half(0x0066) → ce que fait le raccourci
-  // Si on doit descendre au niveau 3, c'est un item FEEDBACK-RAW.md
+  // Si on doit descendre au niveau 3, c'est un item bonus/notes/FEEDBACK-RAW.md
   // catégorie `documentation/tutorials` : il n'existe aucun moyen simple
   // de répondre à « quelle version du protocole tourne ici ? ».
   const AMENDMENTS_INDEX =
@@ -102,12 +102,12 @@ const main = async () => {
         console.log("amendments actifs :", amendmentIds.length, "(via index brut)");
       } catch (e3) {
         console.log("Lecture des amendments impossible :", e3.message);
-        console.log("→ candidat pour FEEDBACK-RAW.md si c'est inattendu.");
+        console.log("→ candidat pour bonus/notes/FEEDBACK-RAW.md si c'est inattendu.");
       }
     }
     if (amendmentIds) {
       console.log("(IDs seuls — comparer avec xrpl.org/resources/known-amendments)");
-      console.log("→ FEEDBACK-RAW.md : pas de nom d'amendment sans table externe.");
+      console.log("→ bonus/notes/FEEDBACK-RAW.md : pas de nom d'amendment sans table externe.");
     }
   }
 
@@ -120,7 +120,7 @@ const main = async () => {
   // validé. Appeler autofill tout de suite produit une transaction qui
   // n'est jamais appliquée et qui expire 60 s plus tard sur un message
   // trompeur (« LastLedgerSequence », alors que la cause est « le compte
-  // n'existait pas encore »). Cf. FEEDBACK-RAW.md entrée [13:12] — échec
+  // n'existait pas encore »). Cf. bonus/notes/FEEDBACK-RAW.md entrée [13:12] — échec
   // reproduit 2 fois sur 2 sans cette attente.
   await waitVisible(client, a.address);
 
@@ -143,7 +143,7 @@ const main = async () => {
 
   const secs = Math.round((Date.now() - t0) / 1000);
   console.log(`\nTime to first transaction (ce script) : ${secs}s`);
-  console.log("→ noter la valeur bout-en-bout dans FEEDBACK-RAW.md.");
+  console.log("→ noter la valeur bout-en-bout dans bonus/notes/FEEDBACK-RAW.md.");
 
   if (code !== "tesSUCCESS") process.exit(1);
 };
@@ -191,6 +191,6 @@ async function fundOne() {
 
 main().catch((e) => {
   console.error("\nÉCHEC :", e.message);
-  console.error("→ entrée FEEDBACK-RAW.md, phase onboarding.");
+  console.error("→ entrée bonus/notes/FEEDBACK-RAW.md, phase onboarding.");
   process.exit(1);
 });

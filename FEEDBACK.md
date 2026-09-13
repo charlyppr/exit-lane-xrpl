@@ -12,7 +12,7 @@ Three-page version with explorer screenshots: [`FEEDBACK.pdf`](./FEEDBACK.pdf).
 
 The 143 transactions cited in this report, the raw log and the README are validated on the
 ledger, type and result code included
-(`node scripts/_probe-audit-hashes.mjs FEEDBACK.md FEEDBACK-RAW.md README.md`). Documentation
+(`node bonus/scripts/_probe-audit-hashes.mjs FEEDBACK.md bonus/notes/FEEDBACK-RAW.md README.md`). Documentation
 claims are checked against XLS-65, XLS-66 and xrpl.org, library claims against the `rippled` and
 `xrpl.js` source.
 
@@ -91,10 +91,10 @@ grace period: the instalment, the instalment with `LatePaymentFee`, the full bal
 
 **Repro steps**
 1. `LoanSet` with `PaymentInterval` 90, `GracePeriod` 60, `PaymentTotal` 4
-   ([`scripts/_probe-pay-states.mjs`](./scripts/_probe-pay-states.mjs)).
+   ([`bonus/scripts/_probe-pay-states.mjs`](./bonus/scripts/_probe-pay-states.mjs)).
 2. 10 s after the due date, `LoanPay` of `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`
    returns `tecEXPIRED` with `Flags: 0`, and `tesSUCCESS` with `Flags: 262144`.
-3. With `LateInterestRate` 30 % ([`scripts/_probe-h2-race.mjs`](./scripts/_probe-h2-race.mjs)), the
+3. With `LateInterestRate` 30 % ([`bonus/scripts/_probe-h2-race.mjs`](./bonus/scripts/_probe-h2-race.mjs)), the
    same amount returns `tecINSUFFICIENT_PAYMENT`. Sending 2 765 001 drops succeeds and takes
    765 003.
 
@@ -134,7 +134,7 @@ the broker withdrew the rest. Second vault, UTC:
 | 14:27:22 | `LoanBrokerCoverWithdraw`: 0.98 XRP | [`68DD97D9`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E) |
 
 **Repro steps**
-1. [`node scripts/h1-default.mjs`](./scripts/h1-default.mjs), after `setup-accounts.mjs`: a
+1. [`node bonus/scripts/h1-default.mjs`](./bonus/scripts/h1-default.mjs), after `setup-accounts.mjs`: a
    200 XRP vault, 50 XRP of cover, one 50 XRP loan, defaulted after `GracePeriod`.
 2. Compare `CoverAvailable` and `AssetsTotal` before and after the default.
 3. `LoanBrokerCoverWithdraw` of the remaining cover returns `tesSUCCESS`.
@@ -217,7 +217,7 @@ wait for deposits. Three other codes share the problem.
 | | non-transferable shares sent | [`E9DE504D`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/E9DE504D40B8AB27F7C7EA433B0C1E68DC91854AA04A5D600163A64DB8BE5FD9) |
 
 **Repro steps**
-1. [`node scripts/_probe-cliffs.mjs`](./scripts/_probe-cliffs.mjs): a `LoanSet` above the cover
+1. [`node bonus/scripts/_probe-cliffs.mjs`](./bonus/scripts/_probe-cliffs.mjs): a `LoanSet` above the cover
    limit with ample liquidity, then one above the liquidity with ample cover. Both return
    `tecINSUFFICIENT_FUNDS`.
 
@@ -239,7 +239,7 @@ mention the revert.
 1. `feature`: `LendingProtocolV1_1` is enabled.
 2. `LoanBrokerSet` on an open-ended vault returns `tesSUCCESS`.
 3. `LoanBrokerSet` on a `VaultKind: 1` vault returns `tesSUCCESS`
-   ([`scripts/_probe-h13-closed.mjs`](./scripts/_probe-h13-closed.mjs)).
+   ([`bonus/scripts/_probe-h13-closed.mjs`](./bonus/scripts/_probe-h13-closed.mjs)).
 
 **Transactions** open-ended
 [`781F54B5`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4),
@@ -262,7 +262,7 @@ trading amendment, only `MPTokensV1` and `DynamicMPT`.
 **Repro steps**
 1. `vault_info`: `shares.Flags` is 56, that is 0x08, 0x10 and 0x20.
 2. `OfferCreate` by a holder, `TakerGets` the share MPT, `TakerPays` XRP: `temDISABLED`, a local
-   rejection with no hash ([`scripts/_probe-shares.mjs`](./scripts/_probe-shares.mjs)).
+   rejection with no hash ([`bonus/scripts/_probe-shares.mjs`](./bonus/scripts/_probe-shares.mjs)).
 
 **Proposed fix** State on the `MPTokenIssuance` reference that DEX trading of MPTs needs an
 amendment not yet available, or leave `lsfMPTCanTrade` unset on vault shares until then.

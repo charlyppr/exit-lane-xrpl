@@ -1,0 +1,466 @@
+% XRPL Lending Protocol Hackathon · CY-HACK · Developer Feedback (3 pages)
+% Build : tectonic -X compile bonus/deck-source/feedback-report.tex --outdir bonus/deck-source && mv bonus/deck-source/feedback-report.pdf FEEDBACK.pdf
+% Captures : node bonus/deck-source/capture-explorer.mjs   (→ bonus/deck-source/shots/*.png)
+% DA du deck : navy 001C5C · bleu 006AFF · ciel 6DC3FF · corps 5F666E
+%
+% Chaque constat porte les champs de la consigne : title, category, severity, library
+% and version, description, repro steps, transaction/code links, proposed fix.
+% Règles de rédaction : une information à un seul endroit ; la description dit le
+% problème, la repro donne les valeurs mesurées ; une seule icône, la sévérité.
+\documentclass[a4paper,10pt]{extarticle}
+
+\usepackage[left=13mm,right=13mm,top=11mm,bottom=13mm,footskip=6mm]{geometry}
+\usepackage{fontspec}
+\usepackage[table]{xcolor}
+\usepackage{tabularx,booktabs,array,colortbl}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage{xfp}
+\usepackage{xstring}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{ragged2e}
+\usepackage{lastpage}
+\usepackage{fontawesome5}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{pdftitle={XRPL Lending Protocol: Developer Feedback, CY-HACK},pdfauthor={CY-HACK}}
+\tcbuselibrary{skins}
+\graphicspath{{bonus/deck-source/shots/}{shots/}}
+
+% ── DA ──
+\definecolor{navy}{HTML}{001C5C}
+\definecolor{blue}{HTML}{006AFF}
+\definecolor{sky}{HTML}{6DC3FF}
+\definecolor{body}{HTML}{5F666E}
+\definecolor{muted}{HTML}{8A9096}
+\definecolor{card}{HTML}{F6F7F8}
+\definecolor{line}{HTML}{E2E5E8}
+\definecolor{bluecard}{HTML}{EFF6FF}
+% sévérité : texte, fond de pastille, filet gauche de la carte
+\definecolor{highfg}{HTML}{B93A1F}\definecolor{highbg}{HTML}{FBE9E4}\definecolor{highrule}{HTML}{E0532F}
+\definecolor{medfg}{HTML}{8A5700}\definecolor{medbg}{HTML}{FDF1D6}\definecolor{medrule}{HTML}{E2A21B}
+\definecolor{lowfg}{HTML}{4F5B66}\definecolor{lowbg}{HTML}{ECEFF2}\definecolor{lowrule}{HTML}{A7B0B8}
+
+% Faces déclarées explicitement : laissée à la résolution automatique,
+% HelveticaNeue.ttc sort \bfseries en Bold Italic. Pas d'option Color= non plus :
+% elle casse xdvipdfmx avec tcolorbox (« Invalid object type »).
+\setmainfont{Helvetica Neue}[
+  UprightFont = {Helvetica Neue}, BoldFont = {Helvetica Neue Bold},
+  ItalicFont = {Helvetica Neue Italic}, BoldItalicFont = {Helvetica Neue Bold Italic}]
+\setmonofont{Menlo}[Scale=0.84,
+  UprightFont = {Menlo Regular}, BoldFont = {Menlo Bold},
+  ItalicFont = {Menlo Italic}, BoldItalicFont = {Menlo Bold Italic}]
+\newfontfamily\hdfont{Poppins}[BoldFont={Poppins SemiBold}]
+\makeatletter\renewcommand\normalsize{\@setfontsize\normalsize{9}{12}}\makeatother
+\AtBeginDocument{\color{body}\normalsize}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\raggedcolumns
+% Les listes posent une pénalité négative (−51) avant et après elles : avec des
+% colonnes non étirées, c'est la coupure la moins chère, et multicols coupe là en
+% laissant un vide. On la neutralise, et on interdit les lignes orphelines ou veuves
+% (LaTeX recharge \clubpenalty depuis \@clubpenalty à chaque paragraphe).
+\makeatletter
+\@beginparpenalty=0 \@endparpenalty=0 \@itempenalty=0
+\@clubpenalty=10000 \clubpenalty=10000 \widowpenalty=10000
+\makeatother
+\setlength{\columnsep}{8mm}
+\arrayrulecolor{line}
+\renewcommand{\tabularxcolumn}[1]{m{#1}}
+\renewcommand{\arraystretch}{1.3}
+
+\pagestyle{fancy}\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyfoot[L]{\scriptsize\color{muted}CY-HACK · Developer feedback}
+\fancyfoot[R]{\scriptsize\color{muted}\thepage\,/\,\pageref{LastPage}}
+
+% ── briques ──
+% \leavevmode : un \color posé en mode vertical (item ou paragraphe qui commence par du
+% code) laisse un whatsit dans la liste verticale, donc un point de coupure légal juste
+% après un intitulé. En mode horizontal, le whatsit reste dans la ligne.
+\newcommand{\hh}[1]{\par\addvspace{14pt}{\raggedright\hdfont\color{navy}\fontsize{10.5}{12.5}\selectfont\bfseries #1\par}\nobreak\addvspace{3pt}}
+\newcommand{\hs}[1]{\leavevmode{\color{navy}\bfseries #1}}
+\newcommand{\tm}[1]{\leavevmode{\ttfamily\color{navy}#1}}
+\newcommand{\eyebrow}[1]{{\color{blue}\bfseries\fontsize{6.6}{8}\selectfont\addfontfeature{LetterSpace=6}#1}}
+
+% liens : transaction dans l'explorer (hash abrégé à 8 caractères), fichier du repo
+\newcommand{\explorer}{https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/}
+\newcommand{\tx}[1]{\leavevmode\href{\explorer#1}{{\ttfamily\color{blue}\StrLeft{#1}{8}…}}}
+\newcommand{\repo}[2]{\leavevmode\href{https://github.com/charlyppr/xrpl-lending/blob/main/#1}{{\ttfamily\color{blue}#2}}}
+
+% sévérité : seule pastille et seule icône du document
+\newcommand{\pill}[4]{\tcbox[on line,colback=#1,colframe=#1,boxrule=0pt,boxsep=0pt,left=3.2pt,right=3.2pt,
+  top=1.5pt,bottom=1.5pt,arc=1.6pt]{\fontsize{6.4}{7}\selectfont\color{#2}#3\hspace{2.6pt}\bfseries #4}}
+\newcommand{\sevHigh}{\pill{highbg}{highfg}{\faExclamationTriangle}{HIGH}}
+\newcommand{\sevMedium}{\pill{medbg}{medfg}{\faExclamationCircle}{MEDIUM}}
+\newcommand{\sevLow}{\pill{lowbg}{lowfg}{\faInfoCircle}{LOW}}
+
+% en-tête d'un constat : numéro et titre, puis sévérité, catégorie, librairie
+% #1 numéro · #2 High|Medium|Low · #3 catégorie · #4 titre
+% after={\par\nobreak…} : le \nobreak suit directement la carte (avec after skip, le
+% ressort posé entre la carte et le \nobreak laissait une coupure légale sous l'en-tête)
+\newcommand{\finding}[4]{\par\addvspace{15pt}\noindent
+  \IfStrEq{#2}{High}{\colorlet{sevrule}{highrule}}{\IfStrEq{#2}{Medium}{\colorlet{sevrule}{medrule}}{\colorlet{sevrule}{lowrule}}}%
+  \begin{tcolorbox}[enhanced,colback=card,colframe=card,boxrule=0pt,arc=2pt,
+    left=7pt,right=6pt,top=5pt,bottom=5.5pt,boxsep=0pt,before skip=0pt,
+    after={\par\nobreak\nointerlineskip\vskip\glueexpr 5pt-\parskip\relax},
+    borderline west={2.6pt}{0pt}{sevrule}]
+  \hypertarget{f#1}{}\raggedright
+  {\hangindent=13pt\hangafter=1\noindent\makebox[13pt][l]{\hdfont\color{blue}\fontsize{10}{12}\selectfont\bfseries #1}{\hdfont\color{navy}\fontsize{10}{12}\selectfont\bfseries #4}\par}
+  \vspace{4pt}\hspace{13pt}\csname sev#2\endcsname\hspace{6pt}{\fontsize{7.2}{8}\selectfont\color{body}#3\hspace{4pt}·\hspace{4pt}\texttt{xrpl@4.6.0}}
+  \end{tcolorbox}}
+
+% intitulés en ligne, sans icône
+\newcommand{\lbl}[1]{\hs{#1}\enspace}
+\makeatletter
+% \@afterheading : l'intitulé reste collé à la liste, comme un titre de section
+\newcommand{\repro}{\par\addvspace{3pt}\lbl{Repro steps}\par\nobreak\vspace{0.5pt}\@afterheading}
+\makeatother
+\newcommand{\txs}{\par\addvspace{2pt}\lbl{Transactions}}
+\newcommand{\fix}[1]{\par\addvspace{5pt}\begin{tcolorbox}[colback=bluecard,colframe=bluecard,boxrule=0pt,arc=2pt,
+  left=6pt,right=6pt,top=4.5pt,bottom=4.5pt,boxsep=0pt,before skip=1pt,after skip=0pt]\raggedright
+  \lbl{Proposed fix}#1\end{tcolorbox}\par}
+\newenvironment{steps}{\begin{enumerate}[leftmargin=12pt,itemsep=1.5pt,topsep=2pt,parsep=0pt,beginpenalty=10000,
+  label={\color{blue}\bfseries\fontsize{7.8}{8}\selectfont\arabic*}]}{\end{enumerate}}
+\newcommand{\tabhead}[1]{{\bfseries\color{navy}#1}}
+
+% ── captures d'écran de l'explorer ──
+% Toutes au même grossissement : 460 px CSS (2415 px à ×5,25) remplissent la largeur
+% utile de la colonne. Pas de titre de transaction : la pastille de statut seule.
+\newtcolorbox{screen}{enhanced,colback=black,colframe=black,boxrule=0pt,arc=2.4pt,
+  left=3.5pt,right=3.5pt,top=3pt,bottom=3pt,boxsep=0pt,before skip=0pt,after skip=2pt}
+\newcommand{\shot}[1]{\includegraphics[scale=\fpeval{\linewidth/2415bp}]{#1.png}\par}
+\newcommand{\capt}[1]{{\raggedright\fontsize{6.6}{8}\selectfont\color{muted}#1\par}}
+% capture + légende : un seul bloc insécable, jamais coupé entre deux colonnes
+\newenvironment{shotblock}{\par\addvspace{8pt}\noindent\begin{minipage}{\linewidth}\setlength{\parskip}{0pt}}{\end{minipage}\par\addvspace{2pt}}
+
+\begin{document}
+
+% ═══════════ BANDEAU ═══════════
+\begin{tcolorbox}[colback=navy,colframe=navy,boxrule=0pt,arc=2.5pt,left=10pt,right=10pt,top=8pt,bottom=8pt,boxsep=0pt]
+\begin{minipage}[c]{0.7\linewidth}
+{\hyphenpenalty=10000\hdfont\color{white}\fontsize{15}{17}\selectfont\bfseries XRPL Lending Protocol · Developer Feedback}\\[3pt]
+{\fontsize{7.4}{9}\selectfont\color{sky}DeVinci Blockchain × Ripple hackathon · 12 and 13 September 2026}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.28\linewidth}\raggedleft
+{\hdfont\color{white}\fontsize{9.5}{11}\selectfont\bfseries CY-HACK}\\[2pt]
+{\fontsize{6.8}{8.4}\selectfont\color{sky}DevEx pseudonym \texttt{late-quail-92}\\
+\href{https://github.com/charlyppr/xrpl-lending}{\texttt{github.com/charlyppr/xrpl-lending}}}
+\end{minipage}
+\end{tcolorbox}
+
+% ═══════════ EN-TÊTE EXIGÉ PAR LA CONSIGNE ═══════════
+\vspace{8pt}
+{\setlength{\tabcolsep}{0pt}\fontsize{7.6}{9.6}\selectfont\renewcommand{\arraystretch}{1}\renewcommand{\tabularxcolumn}[1]{p{#1}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.16\linewidth}@{}}
+\eyebrow{TRACK} & \eyebrow{FLAVOUR} & \eyebrow{ENVIRONMENT} & \eyebrow{LIBRARY AND VERSION}\\[3pt]
+\hs{Track 1}, open-ended vault &
+\hs{Loaded}: XLS-65, XLS-66, TokenEscrow &
+\hs{Custom Hackathon Devnet}, \tm{rippled} 3.4.0-rc1 (hackathon branch), \tm{LendingProtocolV1\_1} and \tm{fixCleanup3\_4\_0} enabled &
+\hs{\texttt{xrpl@4.6.0}}\\
+\end{tabularx}}
+
+\vspace{8pt}
+{\fontsize{7.4}{9.6}\selectfont\color{body}The 143 transactions cited are validated on the ledger, type and result code
+included (\repo{bonus/scripts/_probe-audit-hashes.mjs}{\_probe-audit-hashes.mjs}). Documentation claims are checked against XLS-65, XLS-66 and
+xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashes link to the explorer.\par}
+
+% ═══════════ SYNTHÈSE ═══════════
+\vspace{8pt}
+{\renewcommand{\arraystretch}{1.42}\setlength{\tabcolsep}{4pt}\fontsize{7.8}{9.4}\selectfont
+\begin{tabularx}{\linewidth}{@{}r >{\raggedright\arraybackslash}X l l@{}}
+\toprule
+\tabhead{\#} & \tabhead{Finding} & \tabhead{Category} & \tabhead{Severity}\\
+\midrule
+\hyperlink{f1}{\color{blue}\bfseries 1} & \hyperlink{f1}{\tm{fixCleanup3\_4\_0} is enabled and missing from xrpl.org} & client libraries & \sevHigh\\
+\hyperlink{f2}{\color{blue}\bfseries 2} & \hyperlink{f2}{A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}} & documentation/tutorials & \sevHigh\\
+\hyperlink{f3}{\color{blue}\bfseries 3} & \hyperlink{f3}{First-loss capital covered 0.5\,\% of a defaulted loan} & UX & \sevHigh\\
+\hyperlink{f4}{\color{blue}\bfseries 4} & \hyperlink{f4}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent} & documentation/tutorials & \sevMedium\\
+\hyperlink{f5}{\color{blue}\bfseries 5} & \hyperlink{f5}{No read command for loans or brokers} & missing primitive & \sevMedium\\
+\hyperlink{f6}{\color{blue}\bfseries 6} & \hyperlink{f6}{One result code covers causes that need different actions} & UX & \sevMedium\\
+\hyperlink{f7}{\color{blue}\bfseries 7} & \hyperlink{f7}{The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction} & documentation/tutorials & \sevMedium\\
+\hyperlink{f8}{\color{blue}\bfseries 8} & \hyperlink{f8}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them} & documentation/tutorials & \sevMedium\\
+\hyperlink{f9}{\color{blue}\bfseries 9} & \hyperlink{f9}{No flag closes a vault to deposits} & missing primitive & \sevLow\\
+\bottomrule
+\end{tabularx}}
+\vspace{5pt}
+{\fontsize{6.9}{8.8}\selectfont\color{muted}\hs{High}: blocks a minimum bar step, or misstates a depositor's risk. \hs{Medium}: costs time or a wrong design, with a workaround. \hs{Low}: documented elsewhere, or cosmetic.\par}
+
+\vspace{4pt}
+\begin{multicols}{2}\RaggedRight
+
+\hh{The brief's questions}
+{\renewcommand{\arraystretch}{1.35}\setlength{\tabcolsep}{0pt}\fontsize{8}{10.2}\selectfont\renewcommand{\tabularxcolumn}[1]{p{#1}}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}X@{}}
+\hs{Vault, broker, loan} & Clear. Only the vault owner can submit \tm{LoanBrokerSet}. The drawdown has no transaction: \tm{LoanSet} moves the principal (\tx{D19CD59FB93CCF28547533C76CC1AFA71CF592FD0EC9D0A9E217A9F6EAAD85DA}).\\
+\hs{First-loss parameters} & Not as named (\hyperlink{f3}{3}).\\
+\hs{Multi-party \tm{LoanSet}} & Broker signs, borrower countersigns and submits. The \tm{xrpl@4.6.0} helper fails here (\hyperlink{f1}{1}).\\
+\hs{SDK or raw JSON} & All 15 XLS-65/66 types are typed. No raw JSON.\\
+\hs{Position and yield} & Computed client-side from five calls (\hyperlink{f5}{5}).\\
+\hs{Docs and explorer} & The docs differ in \hyperlink{f1}{1}, \hyperlink{f2}{2}, \hyperlink{f4}{4}, \hyperlink{f8}{8}. The explorer hides a flag name (\hyperlink{f2}{2}) and \tm{Vault} fields (\hyperlink{f4}{4}).\\
+\end{tabularx}}
+
+% ───────────── 1 ─────────────
+\finding{1}{High}{client libraries}{\tm{fixCleanup3\_4\_0} is enabled and missing from xrpl.org}
+
+The amendment is active on the devnet and absent from \emph{Known Amendments}. It changes two
+lending behaviours, and neither the tutorial nor \tm{xrpl@4.6.0} reflects them.
+
+\hs{Impairment.} XLS-66, section 3.10.4.2, condition 9 rejects \tm{tfLoanImpair} while
+\tm{currentTime <= NextPaymentDueDate}. The tutorial \emph{Manage a Loan} still says a broker
+can impair ``\emph{before a payment due date passes}''.
+
+\hs{Counterparty signature.} Since rippled PR \#8162, \tm{CounterpartySignature} is signed with
+the \tm{CPT} prefix. \tm{signLoanSetByCounterparty} signs with \tm{encodeForSigning}, the
+previous prefix, and offers no option.
+
+\repro
+\begin{steps}
+\item \tm{LoanSet} with \tm{PaymentInterval} 60 and \tm{GracePeriod} 60. \tm{LoanManage} \tm{tfLoanImpair} returns \tm{tecTOO\_SOON} 31 s and 13 s before \tm{NextPaymentDueDate}, and \tm{tesSUCCESS} 5 s after.
+\item The broker signs a \tm{LoanSet}, the borrower applies \tm{signLoanSetByCounterparty} and submits: \tm{Counterparty: Invalid signature}, a local check with no hash.
+\item The same blob signed over \tm{encodeForSigningCounterparty} (\repo{scripts/raw-submit.mjs}{raw-submit.mjs}) returns \tm{tesSUCCESS}.
+\end{steps}
+
+\txs impairment \tx{5486020BA8FF227C58409042F96BDC07246FDACC3F9B0EF24749555E319E972E}, countersigned \tm{LoanSet} \tx{23631C3610DA97926E8BF9FC5BC4E76E504C9DFB2683C928E825DE0138397B2B}
+
+\fix{List \tm{fixCleanup3\_4\_0} on \emph{Known Amendments} with both lending changes. Update \emph{Manage a Loan}: impairment is accepted once \tm{NextPaymentDueDate} has passed. In \tm{xrpl.js}, sign \tm{CounterpartySignature} with \tm{encodeForSigningCounterparty}, keeping the previous prefix as an option for networks without the amendment.}
+
+% ───────────── 2 ─────────────
+\finding{2}{High}{documentation/tutorials}{A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}}
+
+Once \tm{NextPaymentDueDate} has passed, every \tm{LoanPay} without the flag fails, even within
+the grace period: the instalment, the instalment with \tm{LatePaymentFee}, the full balance, and
+\tm{tfLoanFullPayment}. XLS-66, section 3.11.4.2, condition 11 defines this failure; the xrpl.org
+\tm{LoanPay} reference lists eight error codes, not this one. The explorer shows the flag as
+\tm{0x00040000}, and no \tm{Loan} field holds the accrued late interest.
+
+\repro
+\begin{steps}
+\item \tm{LoanSet} with \tm{PaymentInterval} 90, \tm{GracePeriod} 60, \tm{PaymentTotal} 4 (\repo{bonus/scripts/_probe-pay-states.mjs}{\_probe-pay-states.mjs}).
+\item 10 s after the due date, \tm{LoanPay} of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returns \tm{tecEXPIRED} with \tm{Flags: 0}, and \tm{tesSUCCESS} with \tm{Flags: 262144}.
+\item With \tm{LateInterestRate} 30\,\% (\repo{bonus/scripts/_probe-h2-race.mjs}{\_probe-h2-race.mjs}), the same amount returns \tm{tecINSUFFICIENT\_PAYMENT}. Sending 2\,765\,001 drops succeeds and takes 765\,003.
+\end{steps}
+
+\txs no flag \tx{96C3870480E4CB0C9E3B925F2965347DA0815A486CDB4B49545928E32D6B0BA4}, flag \tx{EFAD383F9B622357CE67CBB0518D9F9F5FC27BE611D43F26FD69427713FB608F}, late interest \tx{9A7589384C5142703AFFACBB91B12E223EC734F7ACBE51272A87525FE4EE9CA8}
+
+\fix{Add \tm{tecEXPIRED} to the \tm{LoanPay} error table, with \tm{tfLoanLatePayment} as the remedy. Name the flag in the explorer. Expose the amount due now, late interest included, in a \tm{Loan} field or a read command.}
+
+\begin{shotblock}
+\begin{screen}
+\shot{f1a-badge}\shot{f1a-status}\vspace{3pt}\shot{f1b-badge}\shot{f1b-flags}
+\end{screen}
+\capt{Explorer. Same loan and amount, without the flag, then with it.}
+\end{shotblock}
+
+% ───────────── 3 ─────────────
+\finding{3}{High}{UX}{First-loss capital covered 0.5\,\% of a defaulted loan}
+
+Two brokers, both with \tm{CoverRateMinimum} 10\,\% and \tm{CoverRateLiquidation} 5\,\%:
+
+{\setlength{\tabcolsep}{3pt}\fontsize{7.4}{9}\selectfont
+\begin{tabularx}{\linewidth}{@{}r r r r r >{\raggedleft\arraybackslash}X@{}}
+\toprule
+\tabhead{Vault} & \tabhead{Loan} & \tabhead{Cover} & \tabhead{Taken} & \tabhead{Loss} & \tabhead{Share value}\\
+\midrule
+200 XRP & 50 & 50 & 0.25 & 49.75 & 1.000\,$\rightarrow$\,0.751\\
+5 XRP & 4 & 1 & 0.02 & 3.98 & 1.000\,$\rightarrow$\,0.204\\
+\bottomrule
+\end{tabularx}}
+
+The cover taken is \tm{debt $\times$ 10\% $\times$ 5\%}, to the drop. This is the documented
+formula: \tm{CoverRateLiquidation} applies to the minimum cover, not to the defaulted debt, and
+the xrpl.org example covers 1\,\% of the debt. After the default \tm{DebtTotal} is zero, so is
+the cover floor, and the broker withdrew the rest. Second vault, UTC:\par\nobreak
+
+{\setlength{\tabcolsep}{3pt}\fontsize{7.4}{9}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X r@{}}
+\toprule
+14:23:50 & \tm{VaultWithdraw}: \tm{tecINSUFFICIENT\_FUNDS} & \tx{D91BA47E816FDA60F9BBAD7F100B383099D87021B08DE065E841B9E8E34AFE2D}\\
+14:27:01 & \tm{tfLoanDefault}: 0.02 XRP from the cover & \tx{923F7D616B094C82197506CF2867907A93067041E3990D24BD07A19035F73EAC}\\
+14:27:11 & \tm{VaultWithdraw}: 1.02 XRP & \tx{3338BA629F8772CDEC07B6F714F2AF3A1ADC8E93642429A54B95CF372FDB2880}\\
+14:27:22 & \tm{LoanBrokerCoverWithdraw}: 0.98 XRP & \tx{68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E}\\
+\bottomrule
+\end{tabularx}}
+
+\repro
+\begin{steps}
+\item \repo{bonus/scripts/h1-default.mjs}{h1-default.mjs}, after \tm{setup-accounts.mjs}: a 200 XRP vault, 50 XRP of cover, one 50 XRP loan, defaulted after \tm{GracePeriod}.
+\item Compare \tm{CoverAvailable} and \tm{AssetsTotal} before and after the default.
+\item \tm{LoanBrokerCoverWithdraw} of the remaining cover returns \tm{tesSUCCESS}.
+\end{steps}
+
+\txs first vault default \tx{91F458E3E6244E1C3005345C5C83CDFAF0E8A1AF6E5587E100C302CA56743BC7}
+
+\fix{Next to the formula, state the share of a defaulted debt the cover absorbs: \tm{CoverRateMinimum $\times$ CoverRateLiquidation}, 0.5\,\% at 10\,\% and 5\,\%. Hold \tm{LoanBrokerCoverWithdraw} for a set delay after a default, or state that no delay exists.}
+
+% ───────────── 4 ─────────────
+\finding{4}{Medium}{documentation/tutorials}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent}
+
+XLS-65 redeems shares at \tm{(AssetsTotal − LossUnrealized) / total shares}, except for the sole
+outstanding holder, who is not charged \tm{LossUnrealized}. The xrpl.org Single Asset Vault page
+gives the formula without the exception. \tm{LossUnrealized} is absent until an impairment
+writes it, as are \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining} and
+\tm{TotalValueOutstanding} at zero. The explorer's \emph{Detailed} tab shows no field of the
+\tm{Vault} node.
+
+\repro
+\begin{steps}
+\item \tm{vault\_info} on a vault without an impaired loan: no \tm{LossUnrealized} field.
+\item \tm{tfLoanImpair} on one of its loans, after \tm{NextPaymentDueDate}.
+\item \tm{vault\_info} returns \tm{LossUnrealized} \tm{"3000001"} with \tm{AssetsTotal} \tm{"5000002"}. Compare the explorer's \emph{Detailed} and \emph{Raw} tabs.
+\end{steps}
+
+\txs impairment \tx{C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC}
+
+\fix{Add the sole-holder exception to the xrpl.org formula. Return zero-valued fields as \tm{"0"} in \tm{vault\_info}, or document their absence. Show changed field values in the explorer's \emph{Detailed} tab.}
+
+\begin{shotblock}
+\begin{screen}
+\shot{f2-badge}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
+\end{screen}
+\capt{Explorer. The impairment: \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
+\end{shotblock}
+
+% ───────────── 5 ─────────────
+\finding{5}{Medium}{missing primitive}{No read command for loans or brokers}
+
+A depositor's position takes five calls, then six values computed client-side in
+\repo{scripts/lib/nav.mjs}{lib/nav.mjs}: gross and net share value, position value, withdrawable
+amount, utilisation, broker debt capacity. \tm{mpt\_holders} is documented as Clio-only, and the
+devnet serves \tm{rippled}.\par\nobreak
+
+{\setlength{\tabcolsep}{3pt}\fontsize{7.4}{9}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
+\toprule
+\tabhead{Call} & \tabhead{Returns}\\
+\midrule
+\tm{vault\_info} & totals, share issuance and flags\\
+\tm{account\_objects} \tm{mptoken} & the depositor's shares\\
+\tm{account\_objects}, owner & the broker, filtered on \tm{VaultID}\\
+\tm{account\_objects} \tm{loan} & the loans, on the broker's pseudo-account\\
+\tm{mpt\_holders} & \tm{unknownCmd}\\
+\bottomrule
+\end{tabularx}}
+
+\repro
+\begin{steps}
+\item Send \tm{loan\_info} and \tm{loan\_broker\_info} to the devnet JSON-RPC endpoint: \tm{unknownCmd}. Neither has a documentation page.
+\end{steps}
+
+\fix{Add \tm{loan\_broker\_info} and \tm{loan\_info}, or list a vault's brokers and loans in \tm{vault\_info}. Return share value, withdrawable amount and utilisation. Expose Clio on the devnet.}
+
+% ───────────── 6 ─────────────
+\finding{6}{Medium}{UX}{One result code covers causes that need different actions}
+
+A broker who receives \tm{tecINSUFFICIENT\_FUNDS} on \tm{LoanSet} cannot tell whether to add
+cover or wait for deposits. Three other codes share the problem.\par\nobreak
+
+{\setlength{\tabcolsep}{3pt}\fontsize{7.2}{8.8}\selectfont
+\begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X r@{}}
+\toprule
+\tabhead{Code} & \tabhead{Cause} & \\
+\midrule
+\tm{tecINSUFFICIENT\_FUNDS} & \tm{LoanSet} above the cover limit & \tx{5DC3A6E00F31DA82C69AB77669C64691BD71CAC49C169736F53D7C724147618B}\\
+ & \tm{LoanSet} above the vault liquidity & \tx{B92A90F59EBF79108B5414F61A12656F321EBC264E1BB186FCC14CAF259F9CAA}\\
+ & \tm{LoanBrokerCoverWithdraw} below the floor & \tx{4FB4A2B0D01DD2411A5E8592680D50B1F4CCA51ED97C243C2A506516262F1370}\\
+\midrule
+\tm{tecLIMIT\_EXCEEDED} & \tm{VaultDeposit} above \tm{AssetsMaximum} & \tx{132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F}\\
+ & \tm{AssetsMaximum} set below \tm{AssetsTotal} & \tx{37053F15A20E6153EDBAD2DE6DD48E039E7A234328382A58DD97607FA88C3DC6}\\
+ & \tm{DebtMaximum} set below \tm{DebtTotal} & \tx{82C14ED4071391EC1EF25637D2FEC28CF784BB19FEB4E89082A64CD9748E4121}\\
+\midrule
+\tm{tecNO\_PERMISSION} & \tm{tfLoanImpair} sent by the borrower & \tx{F030419492FB6A9A8CD4BA3015E8A55A9A86B9A1288A6458C5CC36475DE2C112}\\
+ & \tm{tfLoanUnimpair} on an unimpaired loan & \tx{13975FD33EFA2F97D3120920E6F613BAFB95D09459350E7693C207E66AA24537}\\
+\midrule
+\tm{tecNO\_AUTH} & shares sent to a holder without \tm{MPToken} & \tx{789AAF7E228CC085199E2FB38B07A10DFC68A45C76C5FC3EFDB498BC5FD512A4}\\
+ & non-transferable shares sent & \tx{E9DE504D40B8AB27F7C7EA433B0C1E68DC91854AA04A5D600163A64DB8BE5FD9}\\
+\bottomrule
+\end{tabularx}}
+
+\repro
+\begin{steps}
+\item \repo{bonus/scripts/_probe-cliffs.mjs}{\_probe-cliffs.mjs}: a \tm{LoanSet} above the cover limit with ample liquidity, then one above the liquidity with ample cover. Both return \tm{tecINSUFFICIENT\_FUNDS}.
+\end{steps}
+
+\fix{Where one transaction type maps two causes to one code (\tm{LoanSet}, \tm{LoanManage}, a \tm{Payment} of shares), return distinct codes or a result message naming the check that failed.}
+
+% ───────────── 7 ─────────────
+\finding{7}{Medium}{documentation/tutorials}{The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction}
+
+The V1.1 documentation restricts \tm{LoanBrokerSet} on open-ended vaults, a rule added by
+rippled PR \#8076. A revert of \#8076 reached the lending hackathon branch on 10 September 2026.
+The other V1.1 rules tested (new fields, date validation, phase locks) are enforced. The event
+brief does not mention the revert.
+
+\repro
+\begin{steps}
+\item \tm{feature}: \tm{LendingProtocolV1\_1} is enabled.
+\item \tm{LoanBrokerSet} on an open-ended vault returns \tm{tesSUCCESS}.
+\item \tm{LoanBrokerSet} on a \tm{VaultKind: 1} vault returns \tm{tesSUCCESS} (\repo{bonus/scripts/_probe-h13-closed.mjs}{\_probe-h13-closed.mjs}).
+\end{steps}
+
+\txs open-ended \tx{781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4}, closed-ended \tx{1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40}
+
+\fix{State in the event brief which V1.1 rules the hackathon build enforces, and that the \#8076 restriction is reverted.}
+
+% ───────────── 8 ─────────────
+\finding{8}{Medium}{documentation/tutorials}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them}
+
+\tm{VaultCreate} sets \tm{lsfMPTCanEscrow}, \tm{lsfMPTCanTrade} and \tm{lsfMPTCanTransfer} on the
+share issuance, with no field to change them. The xrpl.org \tm{MPTokenIssuance} reference says
+\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. The devnet has
+no MPT trading amendment, only \tm{MPTokensV1} and \tm{DynamicMPT}.
+
+\repro
+\begin{steps}
+\item \tm{vault\_info}: \tm{shares.Flags} is 56, that is 0x08, 0x10 and 0x20.
+\item \tm{OfferCreate} by a holder, \tm{TakerGets} the share MPT, \tm{TakerPays} XRP: \tm{temDISABLED}, a local rejection with no hash (\repo{bonus/scripts/_probe-shares.mjs}{\_probe-shares.mjs}).
+\end{steps}
+
+\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs an amendment not yet available, or leave \tm{lsfMPTCanTrade} unset on vault shares until then.}
+
+% ───────────── 9 ─────────────
+\finding{9}{Low}{missing primitive}{No flag closes a vault to deposits}
+
+\tm{VaultSet} exposes \tm{Data}, \tm{AssetsMaximum} and \tm{DomainID}. The only way to stop
+deposits is a cap equal to \tm{AssetsTotal}. \tm{AssetsMaximum: 0} means no cap in XLS-65 and
+the \tm{Vault} entry; the \tm{VaultSet} reference does not repeat it.
+
+\repro
+\begin{steps}
+\item \tm{VaultSet} with \tm{AssetsMaximum} equal to \tm{AssetsTotal} returns \tm{tesSUCCESS}.
+\item A 1 XRP \tm{VaultDeposit} returns \tm{tecLIMIT\_EXCEEDED}.
+\end{steps}
+
+\txs deposit refused \tx{132BAF7C1B8208E695A453C0EE061BC5E3528FC97571589D8A2EA66F027B5B4F}
+
+\fix{Add a \tm{VaultSet} flag that closes a vault to deposits. Repeat that \tm{0} means no cap on the \tm{VaultSet} reference.}
+
+% ───────────── fin ─────────────
+\hh{Minor issues}
+{\renewcommand{\arraystretch}{1.35}\setlength{\tabcolsep}{3pt}\fontsize{7.4}{9}\selectfont
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}X l l@{}}
+\toprule
+\tabhead{Issue} & \tabhead{Category} & \tabhead{Severity}\\
+\midrule
+The Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. & documentation/tutorials & \sevLow\\
+\tm{validateVaultCreate} in \tm{xrpl@4.6.0} accepts any \tm{WithdrawalPolicy}; 0, 2, 3, 99 and 255 return \tm{temMALFORMED}. & client libraries & \sevLow\\
+The faucet ignores \tm{destination} and funds a new account instead. & other & \sevLow\\
+\bottomrule
+\end{tabularx}}
+
+\hh{What worked}
+\tm{tecHAS\_OBLIGATIONS} names its cause on the three delete transactions. \tm{VaultDelete}
+removes third-party \tm{MPToken} objects and refunds their reserve. The cover floor is enforced
+to the drop, and cover rates cannot change on an existing broker (\tm{temINVALID}). Closed-ended
+vault phases behave as XLS-65 describes.
+
+\hs{Limits.} XRP only, so no clawback with an issued asset. Payment intervals of 60 to 90 s. One
+build. The minimum bar run, the guardrails and the escrow swap are in the
+\href{https://github.com/charlyppr/xrpl-lending\#readme}{\color{blue}README}.
+
+\end{multicols}
+\end{document}

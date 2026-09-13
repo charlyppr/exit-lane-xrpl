@@ -96,6 +96,15 @@ The five transactions of the Exit Lane swap, from one `demo.mjs` run.
 | Buyer claims the shares and reveals the preimage | `EscrowFinish` | buyer | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/029559F027CBCA450F8BF25B3F5DD7BBFB77E952DC569E8616A54CFB1D26A179) |
 | Seller claims the payment with the preimage read from the ledger | `EscrowFinish` | seller | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/5F359ADB7BC18CD1F07609FFE8A8B0FA020187FA2290BB39BFF99FEF50BEF991) |
 
+## Repository layout
+
+| Path | Content |
+|---|---|
+| [`FEEDBACK.md`](./FEEDBACK.md), [`FEEDBACK.pdf`](./FEEDBACK.pdf) | Developer feedback report |
+| [`deck/`](./deck) | Pitch deck, `.pptx` and `.pdf` |
+| [`scripts/`](./scripts) | Demo, guardrail rejections, account setup, signer and shared helpers |
+| [`bonus/`](./bonus) | Raw feedback log, probe and reproduction scripts, deck and report sources |
+
 ## Team
 
 **CY-HACK**
