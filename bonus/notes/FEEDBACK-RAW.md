@@ -65,7 +65,7 @@ Proposition :
 - Temps d'installation du DevEx hook, par machine : **~4 min** sur la machine 1
   (12:39 → 12:43), dont une friction d'agent, cf. entrée [12:43]. Machines 2+
   restent à faire. Pseudonyme `late-quail-92`, équipe CY-HACK,
-  événement `btf-paris-2026-09`, code `BFT-PARIS-26` accepté.
+  événement `btf-paris-2026-09`, code d'invitation accepté.
 
 ---
 

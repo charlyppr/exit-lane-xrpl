@@ -62,7 +62,6 @@ toute sa durée de vie. Les prêts sont à terme fixe, le vault non.
 ### DevEx hook — obligatoire
 
 https://github.com/RippleDevRel/xrpl-devex-hook/tree/main
-Code d'invitation : `BFT-PARIS-26`
 À installer sur la machine de **chaque** développeur de l'équipe. C'est la
 moitié automatisée des 40%. Première tâche, avant même le faucet.
 
