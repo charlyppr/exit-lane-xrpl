@@ -220,7 +220,7 @@ previous prefix, and offers no option.
 
 \repro
 \begin{steps}
-\item \tm{LoanSet} with \tm{PaymentInterval} 60 and \tm{GracePeriod} 60. \tm{LoanManage} \tm{tfLoanImpair} returns \tm{tecTOO\_SOON} 31 s and 13 s before \tm{NextPaymentDueDate}, and \tm{tesSUCCESS} 5 s after.
+\item \tm{LoanSet} with \tm{PaymentInterval} 60 and \tm{GracePeriod} 60. \tm{LoanManage} \tm{tfLoanImpair} returns \tm{tecTOO\_SOON} 31 s and 13 s before \tm{NextPaymentDueDate}, and \tm{tesSUCCESS} 5 s after, by the script's clock. The ledger closes the accepted transaction 8 s after the due date.
 \item The broker signs a \tm{LoanSet}, the borrower applies \tm{signLoanSetByCounterparty} and submits: \tm{Counterparty: Invalid signature}, a local check with no hash.
 \item The same blob signed over \tm{encodeForSigningCounterparty} (\repo{scripts/raw-submit.mjs}{raw-submit.mjs}) returns \tm{tesSUCCESS}.
 \end{steps}
@@ -241,7 +241,7 @@ the grace period: the instalment, the instalment with \tm{LatePaymentFee}, the f
 \repro
 \begin{steps}
 \item \tm{LoanSet} with \tm{PaymentInterval} 90, \tm{GracePeriod} 60, \tm{PaymentTotal} 4 (\repo{bonus/scripts/_probe-pay-states.mjs}{\_probe-pay-states.mjs}).
-\item 10 s after the due date, \tm{LoanPay} of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returns \tm{tecEXPIRED} with \tm{Flags: 0}, and \tm{tesSUCCESS} with \tm{Flags: 262144}.
+\item 11 s after the due date by ledger close time, \tm{LoanPay} of \tm{ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee} returns \tm{tecEXPIRED} with \tm{Flags: 0}, and \tm{tesSUCCESS} with \tm{Flags: 262144}.
 \item With \tm{LateInterestRate} 30\,\% (\repo{bonus/scripts/_probe-h2-race.mjs}{\_probe-h2-race.mjs}), the same amount returns \tm{tecINSUFFICIENT\_PAYMENT}. Sending 2\,765\,001 drops succeeds and takes 765\,003.
 \end{steps}
 
@@ -390,7 +390,7 @@ cover or wait for deposits. Three other codes share the problem.\par\nobreak
 % ───────────── 7 ─────────────
 \finding{7}{Medium}{documentation/tutorials}{The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction}
 
-The V1.1 documentation restricts \tm{LoanBrokerSet} on open-ended vaults, a rule added by
+The V1.1 documentation, \href{https://opensource.ripple.com/docs/lending-protocol-v1-1/closed-ended-vaults}{\emph{Closed-ended vaults}} on opensource.ripple.com, restricts \tm{LoanBrokerSet} on open-ended vaults, a rule added by
 rippled PR \#8076. A revert of \#8076 reached the lending hackathon branch on 10 September 2026.
 The other V1.1 rules tested (new fields, date validation, phase locks) are enforced. The event
 brief does not mention the revert.
@@ -411,8 +411,8 @@ brief does not mention the revert.
 
 \tm{VaultCreate} sets \tm{lsfMPTCanEscrow}, \tm{lsfMPTCanTrade} and \tm{lsfMPTCanTransfer} on the
 share issuance, with no field to change them. The xrpl.org \tm{MPTokenIssuance} reference says
-\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. The devnet has
-no MPT trading amendment, only \tm{MPTokensV1} and \tm{DynamicMPT}.
+\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. No amendment
+enabled on the devnet opens the DEX to MPTs.
 
 \repro
 \begin{steps}

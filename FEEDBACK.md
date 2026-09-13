@@ -62,7 +62,8 @@ offers no option.
 
 **Repro steps**
 1. `LoanSet` with `PaymentInterval` 60 and `GracePeriod` 60. `LoanManage` `tfLoanImpair` returns
-   `tecTOO_SOON` 31 s and 13 s before `NextPaymentDueDate`, and `tesSUCCESS` 5 s after.
+   `tecTOO_SOON` 31 s and 13 s before `NextPaymentDueDate`, and `tesSUCCESS` 5 s after, by the
+   script's clock. The ledger closes the accepted transaction 8 s after the due date.
 2. The broker signs a `LoanSet`, the borrower applies `signLoanSetByCounterparty` and submits:
    `Counterparty: Invalid signature`, a local check with no hash.
 3. The same blob signed over `encodeForSigningCounterparty`
@@ -92,7 +93,7 @@ grace period: the instalment, the instalment with `LatePaymentFee`, the full bal
 **Repro steps**
 1. `LoanSet` with `PaymentInterval` 90, `GracePeriod` 60, `PaymentTotal` 4
    ([`bonus/scripts/_probe-pay-states.mjs`](./bonus/scripts/_probe-pay-states.mjs)).
-2. 10 s after the due date, `LoanPay` of `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`
+2. 11 s after the due date by ledger close time, `LoanPay` of `ceil(PeriodicPayment) + LoanServiceFee + LatePaymentFee`
    returns `tecEXPIRED` with `Flags: 0`, and `tesSUCCESS` with `Flags: 262144`.
 3. With `LateInterestRate` 30 % ([`bonus/scripts/_probe-h2-race.mjs`](./bonus/scripts/_probe-h2-race.mjs)), the
    same amount returns `tecINSUFFICIENT_PAYMENT`. Sending 2 765 001 drops succeeds and takes
@@ -230,7 +231,8 @@ that failed.
 
 🟠 **Medium** · documentation/tutorials · `xrpl@4.6.0`
 
-The V1.1 documentation restricts `LoanBrokerSet` on open-ended vaults, a rule added by rippled PR
+The V1.1 documentation, [*Closed-ended vaults*](https://opensource.ripple.com/docs/lending-protocol-v1-1/closed-ended-vaults)
+on opensource.ripple.com, restricts `LoanBrokerSet` on open-ended vaults, a rule added by rippled PR
 #8076. A revert of #8076 reached the lending hackathon branch on 10 September 2026. The other V1.1
 rules tested (new fields, date validation, phase locks) are enforced. The event brief does not
 mention the revert.
@@ -256,8 +258,8 @@ the #8076 restriction is reverted.
 
 `VaultCreate` sets `lsfMPTCanEscrow`, `lsfMPTCanTrade` and `lsfMPTCanTransfer` on the share
 issuance, with no field to change them. The xrpl.org `MPTokenIssuance` reference says
-`lsfMPTCanTrade` lets holders trade "*using the XRP Ledger DEX or AMM*". The devnet has no MPT
-trading amendment, only `MPTokensV1` and `DynamicMPT`.
+`lsfMPTCanTrade` lets holders trade "*using the XRP Ledger DEX or AMM*". No amendment enabled on the
+devnet opens the DEX to MPTs.
 
 **Repro steps**
 1. `vault_info`: `shares.Flags` is 56, that is 0x08, 0x10 and 0x20.

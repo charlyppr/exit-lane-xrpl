@@ -194,7 +194,7 @@ A corporate treasurer deposits 25 XRP. A broker lends to small businesses, over 
 
 No XLS-66 transaction transfers a loan. But the vault share is an MPT, so it can be transferred. She sells it over the counter, at 97% of its value, with two escrows under the same SHA-256 condition: to take the shares, the buyer publishes the secret that pays the seller.
 
-Q&A: the seller's escrow expires before the buyer's so she has time to collect. Limit: the buyer holds a free one-hour option (README, Known limitations). BatchV1_1 is enabled, another atomic path, not tested.`,
+Q&A: the seller's escrow expires before the buyer's so she has time to collect. Limit: the buyer holds a free one-hour option (README, Limits). BatchV1_1 is enabled, another atomic path, not tested.`,
 
 `1:00 → 2:00 (60 s)
 
@@ -217,7 +217,7 @@ Fix: list the amendment on xrpl.org, update the tutorial, sign with encodeForSig
 
 `2:40 → 3:05 (25 s)
 
-Two: a loan 10 seconds late, within its grace period. Without the flag: tecEXPIRED, on the left. With tfLoanLatePayment: success, on the right, and the explorer shows that flag in hex. The failure is defined in XLS-66, but not in the xrpl.org LoanPay reference.
+Two: a loan 11 seconds late, within its grace period. Without the flag: tecEXPIRED, on the left. Same amount with tfLoanLatePayment: success, on the right, and the explorer shows that flag in hex. The failure is defined in XLS-66, but not in the xrpl.org LoanPay reference.
 Fix: add tecEXPIRED to the reference with the flag as the remedy, and name the flag in the explorer.`,
 
 `3:05 → 3:35 (30 s)
@@ -327,7 +327,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
     S(4, "Origination + drawdown", "LoanSet"),
     S(5, "Repayment", "LoanPay"),
     S(6, "Principal + yield", "VaultWithdraw"),
-    S(7, "Guardrails triggered", "6 × tec + 2 controls", X.bad),
+    S(7, "Guardrails triggered", "12 × tec in the README", X.bad),
     S(8, "Use case", "Exit Lane"),
     null,
     [["   share value  1.000000000  →  ", X.dim], ["1.006443880", X.ok]],
@@ -382,7 +382,7 @@ const facts = (sl, y0, rows) => {
 {
   const sl = slide();
   title(sl, "A late LoanPay requires tfLoanLatePayment");
-  txt(sl, "Loan past due, still within its grace period.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
+  txt(sl, "Same loan, same amount, past its due date.", { x: ML, y: 1.62, w: CW, h: 0.35, fs: 16, color: GREY, ff: FL });
 
   const W = (CW - 0.4) / 2;
   const h = explorer(sl, { x: ML, y: 2.45, w: W, files: ["f1a-type", "f1a-status"], label: "Flags 0  ›  96C38704…" });

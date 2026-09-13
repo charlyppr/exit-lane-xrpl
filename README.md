@@ -28,7 +28,7 @@ Track 1, open-ended vault. Flavour: Loaded (XLS-65 + XLS-66 + TokenEscrow).
 
 | | |
 |---|---|
-| Protocol | Lending Protocol V1 |
+| Protocol | Lending Protocol V1, the Track 1 definition. The devnet also has `LendingProtocolV1_1` enabled, see finding 7 of [`FEEDBACK.md`](./FEEDBACK.md) |
 | Network | Custom Hackathon Devnet (`network_id` 4001, `rippled` 3.4.0-rc1) |
 | RPC | `https://lending-hackathon.dev.ripplex.io:51234` |
 | WSS | `wss://lending-hackathon.dev.ripplex.io:51233` |
@@ -64,7 +64,7 @@ validated transaction.
 |---|---|---|---|
 | `VaultCreate` | Open-ended XRP vault | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/A14CB64FFF00DC4D2E19E459DBB32212013FB510A8881D39E6888F20159502E4) | |
 | `VaultDeposit` | Lender deposits 25 XRP | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/98A6A315146820D3487F2C1D847B6ACADCA0FFBEB5CE1985B97BB0CDFB772A0A) | |
-| `VaultWithdraw` | Buyer redeems shares with accrued yield; withdrawal beyond available liquidity | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/53133F7685815723FBE734E7F98C78CA127E0E3413527C028F03D49C642895BE) | [`tecINSUFFICIENT_FUNDS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/FB47313D52001E893E629975825807E8D368A9FE232AAD02B816967CD76DAAC4) |
+| `VaultWithdraw` | Buyer redeems shares with accrued yield; seller's withdrawal while the whole vault is on loan; withdrawal of 10 000 XRP beyond available liquidity | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/53133F7685815723FBE734E7F98C78CA127E0E3413527C028F03D49C642895BE) | [`tecINSUFFICIENT_FUNDS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/7AB5622EAEFC70A6B005EAED9411EA3D62539A16E5EF5D8C8E33F8BE493CF934), [`tecINSUFFICIENT_FUNDS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/FB47313D52001E893E629975825807E8D368A9FE232AAD02B816967CD76DAAC4) |
 | `VaultSet` | Cap `AssetsMaximum` at `AssetsTotal`; cap below `AssetsTotal` | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/6DC46A2D238E4F16B9480525D63FACE4A3259084E206A6E5FF2BBC31B66CBDD4) | [`tecLIMIT_EXCEEDED`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/37053F15A20E6153EDBAD2DE6DD48E039E7A234328382A58DD97607FA88C3DC6) |
 | `VaultDelete` | Delete an empty vault; delete a vault that still carries a broker and a loan | [`tesSUCCESS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/E23FD79766486B2FDC038569CC1B9EBAE3FCF5E626DB5BB212B5699DEE1318BC) | [`tecHAS_OBLIGATIONS`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/80CF578E955A35BAB856AF2D969C71B4E6C5FB380B8D64E608C4094C5F87FC29) |
 | `VaultClawback` | Clawback by the vault owner on an XRP vault | | [`tecNO_PERMISSION`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/E110F2CA3B076B2B36F7089DFD9D3C352C3DB340FA50831776CA0014A2C3534F) |
@@ -104,6 +104,17 @@ The five transactions of the Exit Lane swap, from one `demo.mjs` run.
 | [`deck/`](./deck) | Pitch deck, `.pptx` and `.pdf` |
 | [`scripts/`](./scripts) | Demo, guardrail rejections, account setup, signer and shared helpers |
 | [`bonus/`](./bonus) | Raw feedback log, probe and reproduction scripts, deck and report sources |
+
+## Limits
+
+- **The buyer holds a free one-hour option.** He locks his payment, watches for an hour, and
+  can let both escrows expire: he recovers his XRP at +2h, the seller her shares at +1h. The
+  seller financed that option by immobilising her position. A non-refundable commitment premium
+  or buyer-side collateral would fix it, with the same primitives.
+- **No price discovery.** `OfferCreate` on vault shares returns `temDISABLED`, so buyer and
+  seller agree off-chain. Only settlement is on-chain.
+- **Clawback untested in its working case.** The vault asset is XRP, which has no issuer, so
+  `VaultClawback` and `LoanBrokerCoverClawback` were only observed refusing.
 
 ## Team
 
