@@ -44,8 +44,8 @@ Track 1, open-ended vault. Flavour: Loaded (XLS-65 + XLS-66 + TokenEscrow).
 ## Setup
 
 ```bash
-git clone https://github.com/charlyppr/xrpl-lending
-cd xrpl-lending
+git clone https://github.com/charlyppr/exit-lane-xrpl
+cd exit-lane-xrpl
 npm install
 node scripts/check-connection.mjs    # network and library version
 node scripts/setup-accounts.mjs      # funds lender, borrower, broker and spare accounts

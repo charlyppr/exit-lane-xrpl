@@ -295,7 +295,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   txt(sl, "13 transactions in 56 seconds,\non the devnet, live.", { x: ML, y: 3.9, w: 5, h: 0.8, fs: 18, color: SOFT, ff: FL, ls: 28 });
 
   const L = (label, code) => [["" + label.padEnd(24), X.ink], [code, code === "tesSUCCESS" ? X.ok : X.bad]];
-  term(sl, { x: 6.35, y: 1.55, w: 6.1, fs: 11.5, step: 0.31, label: "~/xrpl-lending  $ node scripts/demo.mjs --auto", lines: [
+  term(sl, { x: 6.35, y: 1.55, w: 6.1, fs: 11.5, step: 0.31, label: "~/exit-lane-xrpl  $ node scripts/demo.mjs --auto", lines: [
     L("VaultCreate", "tesSUCCESS"),
     L("VaultDeposit", "tesSUCCESS"),
     L("LoanBrokerSet", "tesSUCCESS"),
@@ -459,7 +459,7 @@ const facts = (sl, y0, rows) => {
   txt(sl, "hashes cited, re-checked on the ledger before submission", { x: ML, y: 3.5, w: CW, h: 0.4, fs: 19, color: SOFT, ff: FL });
 
   rule(sl, 4.6, "1C3D85");
-  txt(sl, "github.com/charlyppr/xrpl-lending", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });
+  txt(sl, "github.com/charlyppr/exit-lane-xrpl", { x: ML, y: 4.9, w: CW, h: 0.45, fs: 21, color: WHITE, ff: FM });
   let cx = ML;
   ["FEEDBACK.md", "FEEDBACK.pdf"].forEach((t) => { cx += chip(sl, t, { x: cx, y: 5.6, c: CHIPDARK }) + 0.14; });
   notes(sl);
