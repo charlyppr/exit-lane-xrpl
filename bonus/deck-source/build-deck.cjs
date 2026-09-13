@@ -226,7 +226,7 @@ Fix: show the share of a default the cover absorbs, and a withdrawal delay after
 
 `3:35 → 3:50 (15 s)
 
-Six more findings, each with its category, severity, repro steps and fix in the report. Only mention number 7, because it is our use case: xrpl.org says sending vault shares creates the recipient's token entry. The ledger answers tecNO_AUTH until the recipient opts in with MPTokenAuthorize.`,
+Six more findings, ordered by severity, each with its category, repro steps and fix in the report. Only mention number 4, because it is our use case: xrpl.org says sending vault shares creates the recipient's token entry. The ledger answers tecNO_AUTH until the recipient opts in with MPTokenAuthorize.`,
 
 `3:50 → 4:00 (10 s)
 
@@ -430,11 +430,11 @@ const facts = (sl, y0, rows) => {
 
   // number = section of FEEDBACK.md
   const F = [
-    [4, "Sole-holder exception missing from xrpl.org", "LossUnrealized"],
-    [5, "No loan_info or loan_broker_info", "unknownCmd"],
-    [6, "Four codes, two or three causes each", "tecINSUFFICIENT_FUNDS"],
-    [7, "Share Payment to a new holder refused", "tecNO_AUTH"],
-    [8, "Shares carry lsfMPTCanTrade, OfferCreate refused", "temDISABLED"],
+    [4, "Share Payment to a new holder refused", "tecNO_AUTH"],
+    [5, "Shares carry lsfMPTCanTrade, OfferCreate refused", "temDISABLED"],
+    [6, "No loan_info or loan_broker_info", "unknownCmd"],
+    [7, "Sole-holder exception missing from xrpl.org", "LossUnrealized"],
+    [8, "Four codes, two or three causes each", "tecINSUFFICIENT_FUNDS"],
     [9, "No flag closes a vault to deposits", "tecLIMIT_EXCEEDED"],
   ];
   const gap = 0.6, w = (CW - gap) / 2;

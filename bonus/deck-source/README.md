@@ -93,7 +93,9 @@ PDF: no overflow, no overlap. To redo after any change to `build-deck.cjs`.
 
 Content aligned with `FEEDBACK.md` as of 13/09 11h40 (severities, official categories, proposed fixes).
 Finding 7 replaced on 13/09 11h40: the V1.1 `LoanBrokerSet` revert exists only on the
-`ripple/lending-hackathon` branch of `rippled`, so it concerns no other network. Removed from the deck because
+`ripple/lending-hackathon` branch of `rippled`, so it concerns no other network. Findings
+re-sorted on 13/09 at noon: by severity; within Medium, the two docs that contradict the ledger
+first (4, 5), then 6 to 8 in the order that leaves no gap in the three-page PDF. Removed from the deck because
 the 22h45 audit invalidated them: share price "overvalued by 150%",
 "`AssetsMaximum: 0` undocumented", "V1.1 flag that lies", "`tfLoanLatePayment`
 undocumented", "xrpl.js PR to sign `LoanSet`", "8 RPC calls".

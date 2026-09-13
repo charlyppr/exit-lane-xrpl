@@ -186,16 +186,16 @@ xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashe
 \hyperlink{f1}{\color{blue}\bfseries 1} & \hyperlink{f1}{\tm{fixCleanup3\_4\_0} is enabled and missing from xrpl.org} & client libraries & \sevHigh\\
 \hyperlink{f2}{\color{blue}\bfseries 2} & \hyperlink{f2}{A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}} & documentation/tutorials & \sevHigh\\
 \hyperlink{f3}{\color{blue}\bfseries 3} & \hyperlink{f3}{First-loss capital covered 0.5\% of a defaulted loan} & UX & \sevHigh\\
-\hyperlink{f4}{\color{blue}\bfseries 4} & \hyperlink{f4}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent} & documentation/tutorials & \sevMedium\\
-\hyperlink{f5}{\color{blue}\bfseries 5} & \hyperlink{f5}{No read command for loans or brokers} & missing primitive & \sevMedium\\
-\hyperlink{f6}{\color{blue}\bfseries 6} & \hyperlink{f6}{One result code covers causes that need different actions} & UX & \sevMedium\\
-\hyperlink{f7}{\color{blue}\bfseries 7} & \hyperlink{f7}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}} & documentation/tutorials & \sevMedium\\
-\hyperlink{f8}{\color{blue}\bfseries 8} & \hyperlink{f8}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them} & documentation/tutorials & \sevMedium\\
+\hyperlink{f4}{\color{blue}\bfseries 4} & \hyperlink{f4}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}} & documentation/tutorials & \sevMedium\\
+\hyperlink{f5}{\color{blue}\bfseries 5} & \hyperlink{f5}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them} & documentation/tutorials & \sevMedium\\
+\hyperlink{f6}{\color{blue}\bfseries 6} & \hyperlink{f6}{No read command for loans or brokers} & missing primitive & \sevMedium\\
+\hyperlink{f7}{\color{blue}\bfseries 7} & \hyperlink{f7}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent} & documentation/tutorials & \sevMedium\\
+\hyperlink{f8}{\color{blue}\bfseries 8} & \hyperlink{f8}{One result code covers causes that need different actions} & UX & \sevMedium\\
 \hyperlink{f9}{\color{blue}\bfseries 9} & \hyperlink{f9}{No flag closes a vault to deposits} & missing primitive & \sevLow\\
 \bottomrule
 \end{tabularx}\par}
 \vspace{4pt}
-{\noindent\makebox[\linewidth][s]{\fontsize{6.6}{8.4}\selectfont\color{muted}\hs{High}:\space blocks a minimum bar step, or misstates a depositor's risk.\hfill\hs{Medium}:\space costs time or a wrong design, with a workaround.\hfill\hs{Low}:\space documented elsewhere, or cosmetic.}\par}
+{\noindent\makebox[\linewidth][s]{\fontsize{6.6}{8.4}\selectfont\color{muted}\hs{High}:\space blocks a minimum bar step, or misstates a depositor's risk.\hfill\hs{Medium}:\space costs time or a wrong design, with a workaround.\hfill\hs{Low}:\space cheap to work around, or cosmetic.}\par}
 
 \vspace{4pt}
 \begin{multicols}{2}\RaggedRight\hyphenpenalty=10000\exhyphenpenalty=10000
@@ -209,8 +209,8 @@ xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashe
 \hs{First-loss parameters} & Not as named (\hyperlink{f3}{3}).\\
 \hs{Multi-party \tm{LoanSet}} & Broker signs, borrower countersigns and submits. The \tm{xrpl@4.6.0} helper fails here (\hyperlink{f1}{1}).\\
 \hs{SDK or raw JSON} & All 15 XLS-65/66 types are typed. No raw JSON.\\
-\hs{Position and yield} & Computed client-side from five calls (\hyperlink{f5}{5}).\\
-\hs{Docs and explorer} & The docs differ in \hyperlink{f1}{1}, \hyperlink{f2}{2}, \hyperlink{f4}{4}, \hyperlink{f7}{7}, \hyperlink{f8}{8}. The explorer hides a flag name (\hyperlink{f2}{2}) and \tm{Vault} fields (\hyperlink{f4}{4}).\\
+\hs{Position and yield} & Computed client-side from five calls (\hyperlink{f6}{6}).\\
+\hs{Docs and explorer} & The docs differ in \hyperlink{f1}{1}, \hyperlink{f2}{2}, \hyperlink{f4}{4}, \hyperlink{f5}{5}, \hyperlink{f7}{7}. The explorer hides a flag name (\hyperlink{f2}{2}) and \tm{Vault} fields (\hyperlink{f7}{7}).\\
 \end{tabularx}}
 
 % ───────────── 1 ─────────────
@@ -308,35 +308,42 @@ the cover floor, and the broker withdrew the rest. Second vault, UTC:\par\nobrea
 \fix{Next to the formula, state the share of a defaulted debt the cover absorbs: \tm{CoverRateMinimum $\times$ CoverRateLiquidation}, 0.5\% at 10\% and 5\%. Hold \tm{LoanBrokerCoverWithdraw} for a set delay after a default, or state that no delay exists.}
 
 % ───────────── 4 ─────────────
-\finding{4}{Medium}{documentation/tutorials}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent}
+\finding{4}{Medium}{documentation/tutorials}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}}
 
-XLS-65 redeems shares at \tm{(AssetsTotal − LossUnrealized) / total shares}, except for the sole
-outstanding holder, who is not charged \tm{LossUnrealized}. The xrpl.org Single Asset Vault page
-gives the formula without the exception. \tm{LossUnrealized} is absent until an impairment
-writes it, as are \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining} and
-\tm{TotalValueOutstanding} at zero. The explorer's \emph{Detailed} tab shows no field of the
-\tm{Vault} node.
+The Single Asset Vault page, \emph{Can a Depositor Transfer Shares to Another Account?}, lists
+five failure causes, then: ``\emph{Otherwise, a new MPT entry is created for their account.}''
+Without an \tm{MPToken} for the share issuance, the payee gets \tm{tecNO\_AUTH}, a cause the page
+omits, until it submits \tm{MPTokenAuthorize}.
 
 \repro
 \begin{steps}
-\item \tm{vault\_info} on a vault without an impaired loan: no \tm{LossUnrealized} field.
-\item \tm{tfLoanImpair} on one of its loans, after \tm{NextPaymentDueDate}.
-\item \tm{vault\_info} returns \tm{LossUnrealized} \tm{"3000001"} with \tm{AssetsTotal} \tm{"5000002"}. Compare the explorer's \emph{Detailed} and \emph{Raw} tabs.
+\item Public XRP vault, no freeze. A share \tm{Payment} to an account without \tm{MPToken}: \tm{tecNO\_AUTH} (\repo{bonus/scripts/_probe-shares2.mjs}{\_probe-shares2.mjs}).
+\item The payee submits \tm{MPTokenAuthorize}, and the same \tm{Payment} returns \tm{tesSUCCESS} (\repo{bonus/scripts/_probe-shares3.mjs}{\_probe-shares3.mjs}).
 \end{steps}
 
-\txs impairment~\tx{C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC}
+\txs refused~\tx{789AAF7E228CC085199E2FB38B07A10DFC68A45C76C5FC3EFDB498BC5FD512A4}, opt-in~\tx{3AD6F7E37DF8778E03B12279F9CE4F3FD25B1C0FEECA774920E49ED2894F3EA4}, accepted~\tx{B20699B9EBB2E3B60439FD86316CEC44F9579DBFABED6C779675522233791601}
 
-\fix{Add the sole-holder exception to the xrpl.org formula. Return zero-valued fields as \tm{"0"} in \tm{vault\_info}, or document their absence. Show changed field values in the explorer's \emph{Detailed} tab.}
-
-\begin{shotblock}
-\begin{screen}
-\shot{f2-badge}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
-\end{screen}
-\capt{Explorer. The impairment: \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
-\end{shotblock}
+\fix{Replace the section's last sentence: the payee needs an \tm{MPToken} (\tm{MPTokenAuthorize}), otherwise \tm{tecNO\_AUTH}.}
 
 % ───────────── 5 ─────────────
-\finding{5}{Medium}{missing primitive}{No read command for loans or brokers}
+\finding{5}{Medium}{documentation/tutorials}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them}
+
+\tm{VaultCreate} sets \tm{lsfMPTCanEscrow}, \tm{lsfMPTCanTrade} and \tm{lsfMPTCanTransfer} on the
+share issuance, with no field to change them. The xrpl.org \tm{MPTokenIssuance} reference says
+\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. \tm{OfferCreate}
+accepts MPTs only under \tm{MPTokensV2} (XLS-82), which \tm{rippled} \tm{develop} marks as not
+supported.
+
+\repro
+\begin{steps}
+\item \tm{vault\_info}: \tm{shares.Flags} 56, i.e. 0x08, 0x10, 0x20.
+\item \tm{OfferCreate} selling shares for XRP: \tm{temDISABLED}, a local rejection with no hash (\repo{bonus/scripts/_probe-shares.mjs}{\_probe-shares.mjs}).
+\end{steps}
+
+\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs \tm{MPTokensV2}, or leave \tm{lsfMPTCanTrade} unset on vault shares until it ships.}
+
+% ───────────── 6 ─────────────
+\finding{6}{Medium}{missing primitive}{No read command for loans or brokers}
 
 A depositor's position takes five calls, then six values computed client-side in
 \repo{scripts/lib/nav.mjs}{lib/nav.mjs}: gross and net share value, position value, withdrawable
@@ -358,13 +365,40 @@ is documented as Clio-only.\par\nobreak
 
 \repro
 \begin{steps}
-\item Send \tm{loan\_info} and \tm{loan\_broker\_info} to the devnet JSON-RPC endpoint: \tm{unknownCmd}. Neither has a documentation page.
+\item \tm{loan\_info} and \tm{loan\_broker\_info} return \tm{unknownCmd}. Neither has a documentation page.
 \end{steps}
 
 \fix{Add \tm{loan\_broker\_info} and \tm{loan\_info}, or list a vault's brokers and loans in \tm{vault\_info}. Return share value, withdrawable amount and utilisation. Serve \tm{mpt\_holders} from \tm{rippled}.}
 
-% ───────────── 6 ─────────────
-\finding{6}{Medium}{UX}{One result code covers causes that need different actions}
+% ───────────── 7 ─────────────
+\finding{7}{Medium}{documentation/tutorials}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent}
+
+XLS-65 redeems shares at \tm{(AssetsTotal − LossUnrealized) / total shares}, except for the sole
+outstanding holder, who is not charged \tm{LossUnrealized}. The xrpl.org Single Asset Vault page
+gives the formula without the exception. \tm{LossUnrealized} is absent until an impairment
+writes it, as are \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining} and
+\tm{TotalValueOutstanding} at zero.
+
+\repro
+\begin{steps}
+\item \tm{vault\_info} on a vault without an impaired loan: no \tm{LossUnrealized} field.
+\item \tm{tfLoanImpair} on one of its loans, after \tm{NextPaymentDueDate}.
+\item \tm{vault\_info} returns \tm{LossUnrealized} \tm{"3000001"} with \tm{AssetsTotal} \tm{"5000002"}. Compare the explorer's \emph{Detailed} and \emph{Raw} tabs.
+\end{steps}
+
+\txs impairment~\tx{C8678C1C0A10BE889124F40C03017038654B278E2D464FAC54784F55B35318FC}
+
+\fix{Add the sole-holder exception to the xrpl.org formula. Return zero-valued fields as \tm{"0"} in \tm{vault\_info}, or document their absence. Show changed field values in the explorer's \emph{Detailed} tab.}
+
+\begin{shotblock}
+\begin{screen}
+\shot{f2-badge}\shot{f2-meta}\vspace{3pt}\shot{f2-raw}
+\end{screen}
+\capt{Explorer. The impairment: \emph{Detailed} tab, then \emph{Raw} tab with the \texttt{Vault} node expanded.}
+\end{shotblock}
+
+% ───────────── 8 ─────────────
+\finding{8}{Medium}{UX}{One result code covers causes that need different actions}
 
 A broker who receives \tm{tecINSUFFICIENT\_FUNDS} on \tm{LoanSet} cannot tell whether to add
 cover or wait for deposits. Three other codes share the problem.\par\nobreak
@@ -392,45 +426,10 @@ cover or wait for deposits. Three other codes share the problem.\par\nobreak
 
 \repro
 \begin{steps}
-\item \repo{bonus/scripts/_probe-cliffs.mjs}{\_probe-cliffs.mjs}: a \tm{LoanSet} above the cover limit with ample liquidity, then one above the liquidity with ample cover. Both return \tm{tecINSUFFICIENT\_FUNDS}.
+\item \repo{bonus/scripts/_probe-cliffs.mjs}{\_probe-cliffs.mjs}: a \tm{LoanSet} above the cover limit, then one above the liquidity. Both return \tm{tecINSUFFICIENT\_FUNDS}.
 \end{steps}
 
 \fix{Where one transaction type maps two causes to one code (\tm{LoanSet}, \tm{LoanManage}, a \tm{Payment} of shares), return distinct codes or a result message naming the check that failed.}
-
-% ───────────── 7 ─────────────
-\finding{7}{Medium}{documentation/tutorials}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}}
-
-The Single Asset Vault page, \emph{Can a Depositor Transfer Shares to Another Account?}, lists
-five failure causes, then: ``\emph{Otherwise, a new MPT entry is created for their account.}''
-Without an \tm{MPToken} for the share issuance, the payee gets \tm{tecNO\_AUTH}, a cause the page
-omits, until it submits \tm{MPTokenAuthorize}.
-
-\repro
-\begin{steps}
-\item Public XRP vault, transferable shares, no freeze. A \tm{Payment} of shares to an account without \tm{MPToken} returns \tm{tecNO\_AUTH} (\repo{bonus/scripts/_probe-shares2.mjs}{\_probe-shares2.mjs}).
-\item The payee submits \tm{MPTokenAuthorize}, and the same \tm{Payment} returns \tm{tesSUCCESS} (\repo{bonus/scripts/_probe-shares3.mjs}{\_probe-shares3.mjs}).
-\end{steps}
-
-\txs refused~\tx{789AAF7E228CC085199E2FB38B07A10DFC68A45C76C5FC3EFDB498BC5FD512A4}, opt-in~\tx{3AD6F7E37DF8778E03B12279F9CE4F3FD25B1C0FEECA774920E49ED2894F3EA4}, accepted~\tx{B20699B9EBB2E3B60439FD86316CEC44F9579DBFABED6C779675522233791601}
-
-\fix{Replace the section's last sentence: the payee needs an \tm{MPToken} (\tm{MPTokenAuthorize}), otherwise \tm{tecNO\_AUTH}.}
-
-% ───────────── 8 ─────────────
-\finding{8}{Medium}{documentation/tutorials}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them}
-
-\tm{VaultCreate} sets \tm{lsfMPTCanEscrow}, \tm{lsfMPTCanTrade} and \tm{lsfMPTCanTransfer} on the
-share issuance, with no field to change them. The xrpl.org \tm{MPTokenIssuance} reference says
-\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. \tm{OfferCreate}
-accepts MPTs only under \tm{MPTokensV2} (XLS-82), which \tm{rippled} \tm{develop} marks as not
-supported.
-
-\repro
-\begin{steps}
-\item \tm{vault\_info}: \tm{shares.Flags} is 56, that is 0x08, 0x10 and 0x20.
-\item \tm{OfferCreate} by a holder, \tm{TakerGets} the share MPT, \tm{TakerPays} XRP: \tm{temDISABLED}, a local rejection with no hash (\repo{bonus/scripts/_probe-shares.mjs}{\_probe-shares.mjs}).
-\end{steps}
-
-\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs \tm{MPTokensV2}, or leave \tm{lsfMPTCanTrade} unset on vault shares until it ships.}
 
 % ───────────── 9 ─────────────
 \finding{9}{Low}{missing primitive}{No flag closes a vault to deposits}
@@ -457,20 +456,18 @@ the \tm{Vault} entry; the \tm{VaultSet} reference does not repeat it.
 \tabhead{Issue} & \tabhead{Category}\\
 \midrule
 The Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. & documentation/tutorials\\
-\tm{validateVaultCreate} in \tm{xrpl@4.6.0} accepts any \tm{WithdrawalPolicy}; 0, 2, 3, 99 and 255 return \tm{temMALFORMED}. & client libraries\\
+\tm{validateVaultCreate} (\tm{xrpl@4.6.0}) accepts any \tm{WithdrawalPolicy}; the ledger takes only 1. & client libraries\\
 \tm{LoanManage} with no flag is an undocumented no-op (\tm{tesSUCCESS}). & documentation/tutorials\\
 \bottomrule
 \end{tabularx}}
 
 \hh{What worked}
 \tm{tecHAS\_OBLIGATIONS} names its cause on the three delete transactions. \tm{VaultDelete}
-removes third-party \tm{MPToken} objects and refunds their reserve. The cover floor is enforced
-to the drop, and cover rates cannot change on an existing broker (\tm{temINVALID}). Closed-ended
-vault phases behave as XLS-65 describes.
+removes third-party \tm{MPToken} objects and refunds their reserve. The cover floor holds to the
+drop, cover rates are immutable (\tm{temINVALID}), and closed-ended phases match XLS-65.
 
-\hs{Limits.} XRP only, so no clawback with an issued asset. Payment intervals of 60 to 90 s. One
-build. The hashes are on the hackathon devnet, which may close after the event: to replay, change
-the endpoints in \tm{scripts/config.mjs}. Full runs in the
+\hs{Limits.} XRP only. Intervals of 60 to 90 s. One build. Hashes on the hackathon devnet, which
+may close; to replay, edit \tm{scripts/config.mjs}. Full runs in the
 \href{https://github.com/charlyppr/exit-lane-xrpl\#readme}{\color{blue}README}.
 
 \end{multicols}

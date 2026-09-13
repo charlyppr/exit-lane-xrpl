@@ -28,9 +28,9 @@ accounts' devnet XRP.
 |---|---|
 | [`_probe-pay-states.mjs`](./scripts/_probe-pay-states.mjs), [`_probe-h2-race.mjs`](./scripts/_probe-h2-race.mjs) | 2, late `LoanPay` |
 | [`h1-default.mjs`](./scripts/h1-default.mjs) | 3, first-loss capital on default |
-| [`_probe-cliffs.mjs`](./scripts/_probe-cliffs.mjs) | 6, one code for two `LoanSet` causes |
-| [`_probe-shares2.mjs`](./scripts/_probe-shares2.mjs), [`_probe-shares3.mjs`](./scripts/_probe-shares3.mjs) | 7, share `Payment` without `MPToken` |
-| [`_probe-shares.mjs`](./scripts/_probe-shares.mjs) | 8, `OfferCreate` on vault shares |
+| [`_probe-shares2.mjs`](./scripts/_probe-shares2.mjs), [`_probe-shares3.mjs`](./scripts/_probe-shares3.mjs) | 4, share `Payment` without `MPToken` |
+| [`_probe-shares.mjs`](./scripts/_probe-shares.mjs) | 5, `OfferCreate` on vault shares |
+| [`_probe-cliffs.mjs`](./scripts/_probe-cliffs.mjs) | 8, one code for two `LoanSet` causes |
 | [`_probe-audit-hashes.mjs`](./scripts/_probe-audit-hashes.mjs) | Checks every hash cited in the deliverables on the ledger. Read-only. |
 
 ### By topic
