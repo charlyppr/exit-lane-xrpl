@@ -28,7 +28,7 @@ Track 1, open-ended vault. Flavour: Loaded (XLS-65 + XLS-66 + TokenEscrow).
 
 | | |
 |---|---|
-| Protocol | Lending Protocol V1, the Track 1 definition. The devnet also has `LendingProtocolV1_1` enabled, see finding 7 of [`FEEDBACK.md`](./FEEDBACK.md) |
+| Protocol | Lending Protocol V1, the Track 1 definition. The devnet also has `LendingProtocolV1_1` enabled, and its `rippled` branch reverts the V1.1 `LoanBrokerSet` restriction on open-ended vaults (rippled PR #8076) |
 | Network | Custom Hackathon Devnet (`network_id` 4001, `rippled` 3.4.0-rc1) |
 | RPC | `https://lending-hackathon.dev.ripplex.io:51234` |
 | WSS | `wss://lending-hackathon.dev.ripplex.io:51233` |

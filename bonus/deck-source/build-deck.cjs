@@ -211,8 +211,8 @@ The eight minimum bar steps in a single run, every hash in the README. The fifte
 
 `2:10 → 2:40 (30 s)
 
-One: fixCleanup3_4_0 is enabled on the devnet and missing from xrpl.org. It changes two things. Impairment: the tutorial says to impair before the due date, the ledger answers tecTOO_SOON until the due date, on the left. The borrower's signature on LoanSet: a new prefix, which the xrpl 4.6.0 helper does not use, on the right.
-Fix: list the amendment on xrpl.org, update the tutorial, sign with encodeForSigningCounterparty in xrpl.js.`,
+One: fixCleanup3_4_0 is enabled on the devnet and missing from xrpl.org. It changes two things. Impairment: the tutorial says to impair before the due date, the ledger answers tecTOO_SOON until the due date, on the left. The borrower's signature on LoanSet: a new prefix, which the xrpl 4.6.0 helper does not use, on the right. xrpl 5.2.0, released on Friday, always uses the new prefix, so it breaks on networks without the amendment.
+Fix: list the amendment on xrpl.org, update the tutorial, and pick the prefix in xrpl.js from the network's amendments.`,
 
 `2:40 → 3:05 (25 s)
 
@@ -226,7 +226,7 @@ Fix: show the share of a default the cover absorbs, and a withdrawal delay after
 
 `3:35 → 3:50 (15 s)
 
-Six more findings, each with its category, severity, repro steps and fix in the report. Only mention number 7: the hackathon branch reverted the V1.1 restriction on LoanBrokerSet, and the brief does not say so.`,
+Six more findings, each with its category, severity, repro steps and fix in the report. Only mention number 7, because it is our use case: xrpl.org says sending vault shares creates the recipient's token entry. The ledger answers tecNO_AUTH until the recipient opts in with MPTokenAuthorize.`,
 
 `3:50 → 4:00 (10 s)
 
@@ -371,8 +371,8 @@ const facts = (sl, y0, rows) => {
 
   facts(sl, 5.45, [
     ["Manage a Loan tutorial", "“impair a loan before a payment due date passes”"],
-    ["xrpl@4.6.0", "signLoanSetByCounterparty signs with the previous prefix."],
-    ["Proposed fix", "list the amendment, sign with encodeForSigningCounterparty."],
+    ["LoanSet helper", "previous prefix in xrpl@4.6.0, always CPT in xrpl@5.2.0."],
+    ["Proposed fix", "list the amendment, pick the prefix from the network."],
   ]);
   notes(sl);
 }
@@ -433,7 +433,7 @@ const facts = (sl, y0, rows) => {
     [4, "Sole-holder exception missing from xrpl.org", "LossUnrealized"],
     [5, "No loan_info or loan_broker_info", "unknownCmd"],
     [6, "Four codes, two or three causes each", "tecINSUFFICIENT_FUNDS"],
-    [7, "V1.1 LoanBrokerSet restriction reverted", "tesSUCCESS"],
+    [7, "Share Payment to a new holder refused", "tecNO_AUTH"],
     [8, "Shares carry lsfMPTCanTrade, OfferCreate refused", "temDISABLED"],
     [9, "No flag closes a vault to deposits", "tecLIMIT_EXCEEDED"],
   ];

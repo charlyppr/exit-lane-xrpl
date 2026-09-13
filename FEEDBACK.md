@@ -24,7 +24,7 @@ claims are checked against XLS-65, XLS-66 and xrpl.org, library claims against t
 | [4](#f4) | xrpl.org omits the sole-holder exception, and zero-valued fields are absent | documentation/tutorials | 🟠 Medium |
 | [5](#f5) | No read command for loans or brokers | missing primitive | 🟠 Medium |
 | [6](#f6) | One result code covers causes that need different actions | UX | 🟠 Medium |
-| [7](#f7) | The hackathon build reverts the V1.1 `LoanBrokerSet` restriction | documentation/tutorials | 🟠 Medium |
+| [7](#f7) | A share `Payment` to a new holder returns `tecNO_AUTH` | documentation/tutorials | 🟠 Medium |
 | [8](#f8) | Vault shares carry `lsfMPTCanTrade`, but `OfferCreate` rejects them | documentation/tutorials | 🟠 Medium |
 | [9](#f9) | No flag closes a vault to deposits | missing primitive | ⚪ Low |
 
@@ -40,7 +40,7 @@ wrong design, with a workaround. **Low**: documented elsewhere, or cosmetic.
 | Multi-party `LoanSet` | Broker signs, borrower countersigns and submits. The `xrpl@4.6.0` helper fails here ([1](#f1)). |
 | SDK or raw JSON | All 15 XLS-65/66 types are typed. No raw JSON. |
 | Position and yield | Computed client-side from five calls ([5](#f5)). |
-| Docs and explorer | The docs differ in [1](#f1), [2](#f2), [4](#f4), [8](#f8). The explorer hides a flag name ([2](#f2)) and `Vault` fields ([4](#f4)). |
+| Docs and explorer | The docs differ in [1](#f1), [2](#f2), [4](#f4), [7](#f7), [8](#f8). The explorer hides a flag name ([2](#f2)) and `Vault` fields ([4](#f4)). |
 
 ## Findings
 
@@ -49,16 +49,17 @@ wrong design, with a workaround. **Low**: documented elsewhere, or cosmetic.
 
 🔴 **High** · client libraries · `xrpl@4.6.0`
 
-The amendment is active on the devnet and absent from *Known Amendments*. It changes two lending
-behaviours, and neither the tutorial nor `xrpl@4.6.0` reflects them.
+The amendment, new in `rippled` 3.4.0-rc1, is active on the devnet and absent from *Known
+Amendments*. It changes two lending behaviours, and the tutorial reflects neither.
 
 **Impairment.** XLS-66, section 3.10.4.2, condition 9 rejects `tfLoanImpair` while
 `currentTime <= NextPaymentDueDate`. The tutorial *Manage a Loan* still says a broker can impair
 "*before a payment due date passes*".
 
-**Counterparty signature.** Since rippled PR #8162, `CounterpartySignature` is signed with the
-`CPT` prefix. `signLoanSetByCounterparty` signs with `encodeForSigning`, the previous prefix, and
-offers no option.
+**Counterparty signature.** Since rippled PR #8162, `CounterpartySignature` uses the `CPT` prefix
+under the amendment, the previous prefix without it. `signLoanSetByCounterparty` has no option:
+`xrpl@4.6.0` always signs with the previous prefix, `xrpl@5.2.0` (xrpl.js PR #3462) always with
+`CPT`, which `rippled` rejects on networks without the amendment.
 
 **Repro steps**
 1. `LoanSet` with `PaymentInterval` 60 and `GracePeriod` 60. `LoanManage` `tfLoanImpair` returns
@@ -75,9 +76,8 @@ countersigned `LoanSet`
 [`23631C36`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/23631C3610DA97926E8BF9FC5BC4E76E504C9DFB2683C928E825DE0138397B2B)
 
 **Proposed fix** List `fixCleanup3_4_0` on *Known Amendments* with both lending changes. Update
-*Manage a Loan*: impairment is accepted once `NextPaymentDueDate` has passed. In `xrpl.js`, sign
-`CounterpartySignature` with `encodeForSigningCounterparty`, keeping the previous prefix as an
-option for networks without the amendment.
+*Manage a Loan*: impairment is accepted once `NextPaymentDueDate` has passed. In `xrpl.js`, pick
+the counterparty prefix from the network's `fixCleanup3_4_0` status, as `rippled` does.
 
 <a id="f2"></a>
 ### 2. A late `LoanPay` without `tfLoanLatePayment` returns `tecEXPIRED`
@@ -178,8 +178,8 @@ as `"0"` in `vault_info`, or document their absence. Show changed field values i
 
 A depositor's position takes five calls, then six values computed client-side in
 [`scripts/lib/nav.mjs`](./scripts/lib/nav.mjs): gross and net share value, position value,
-withdrawable amount, utilisation, broker debt capacity. `mpt_holders` is documented as
-Clio-only, and the devnet serves `rippled`.
+withdrawable amount, utilisation, broker debt capacity. `mpt_holders`, which lists a vault's depositors, is documented as
+Clio-only.
 
 | Call | Returns |
 |---|---|
@@ -194,7 +194,7 @@ Clio-only, and the devnet serves `rippled`.
    has a documentation page.
 
 **Proposed fix** Add `loan_broker_info` and `loan_info`, or list a vault's brokers and loans in
-`vault_info`. Return share value, withdrawable amount and utilisation. Expose Clio on the devnet.
+`vault_info`. Return share value, withdrawable amount and utilisation. Serve `mpt_holders` from `rippled`.
 
 <a id="f6"></a>
 ### 6. One result code covers causes that need different actions
@@ -227,29 +227,31 @@ wait for deposits. Three other codes share the problem.
 that failed.
 
 <a id="f7"></a>
-### 7. The hackathon build reverts the V1.1 `LoanBrokerSet` restriction
+### 7. A share `Payment` to a new holder returns `tecNO_AUTH`
 
 🟠 **Medium** · documentation/tutorials · `xrpl@4.6.0`
 
-The V1.1 documentation, [*Closed-ended vaults*](https://opensource.ripple.com/docs/lending-protocol-v1-1/closed-ended-vaults)
-on opensource.ripple.com, restricts `LoanBrokerSet` on open-ended vaults, a rule added by rippled PR
-#8076. A revert of #8076 reached the lending hackathon branch on 10 September 2026. The other V1.1
-rules tested (new fields, date validation, phase locks) are enforced. The event brief does not
-mention the revert.
+The Single Asset Vault page, *Can a Depositor Transfer Shares to Another Account?*, lists five
+failure causes, then: "*Otherwise, a new MPT entry is created for their account.*" Without an
+`MPToken` for the share issuance, the payee gets `tecNO_AUTH`, a cause the page omits, until it
+submits `MPTokenAuthorize`.
 
 **Repro steps**
-1. `feature`: `LendingProtocolV1_1` is enabled.
-2. `LoanBrokerSet` on an open-ended vault returns `tesSUCCESS`.
-3. `LoanBrokerSet` on a `VaultKind: 1` vault returns `tesSUCCESS`
-   ([`bonus/scripts/_probe-h13-closed.mjs`](./bonus/scripts/_probe-h13-closed.mjs)).
+1. Public XRP vault, transferable shares, no freeze. A `Payment` of shares to an account without
+   `MPToken` returns `tecNO_AUTH`
+   ([`bonus/scripts/_probe-shares2.mjs`](./bonus/scripts/_probe-shares2.mjs)).
+2. The payee submits `MPTokenAuthorize`, and the same `Payment` returns `tesSUCCESS`
+   ([`bonus/scripts/_probe-shares3.mjs`](./bonus/scripts/_probe-shares3.mjs)).
 
-**Transactions** open-ended
-[`781F54B5`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4),
-closed-ended
-[`1961BE21`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40)
+**Transactions** refused
+[`789AAF7E`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/789AAF7E228CC085199E2FB38B07A10DFC68A45C76C5FC3EFDB498BC5FD512A4),
+opt-in
+[`3AD6F7E3`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/3AD6F7E37DF8778E03B12279F9CE4F3FD25B1C0FEECA774920E49ED2894F3EA4),
+accepted
+[`B20699B9`](https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/B20699B9EBB2E3B60439FD86316CEC44F9579DBFABED6C779675522233791601)
 
-**Proposed fix** State in the event brief which V1.1 rules the hackathon build enforces, and that
-the #8076 restriction is reverted.
+**Proposed fix** Replace the section's last sentence: the payee needs an `MPToken`
+(`MPTokenAuthorize`), otherwise `tecNO_AUTH`.
 
 <a id="f8"></a>
 ### 8. Vault shares carry `lsfMPTCanTrade`, but `OfferCreate` rejects them
@@ -258,16 +260,16 @@ the #8076 restriction is reverted.
 
 `VaultCreate` sets `lsfMPTCanEscrow`, `lsfMPTCanTrade` and `lsfMPTCanTransfer` on the share
 issuance, with no field to change them. The xrpl.org `MPTokenIssuance` reference says
-`lsfMPTCanTrade` lets holders trade "*using the XRP Ledger DEX or AMM*". No amendment enabled on the
-devnet opens the DEX to MPTs.
+`lsfMPTCanTrade` lets holders trade "*using the XRP Ledger DEX or AMM*". `OfferCreate` accepts MPTs
+only under `MPTokensV2` (XLS-82), which `rippled` `develop` marks as not supported.
 
 **Repro steps**
 1. `vault_info`: `shares.Flags` is 56, that is 0x08, 0x10 and 0x20.
 2. `OfferCreate` by a holder, `TakerGets` the share MPT, `TakerPays` XRP: `temDISABLED`, a local
    rejection with no hash ([`bonus/scripts/_probe-shares.mjs`](./bonus/scripts/_probe-shares.mjs)).
 
-**Proposed fix** State on the `MPTokenIssuance` reference that DEX trading of MPTs needs an
-amendment not yet available, or leave `lsfMPTCanTrade` unset on vault shares until then.
+**Proposed fix** State on the `MPTokenIssuance` reference that DEX trading of MPTs needs
+`MPTokensV2`, or leave `lsfMPTCanTrade` unset on vault shares until it ships.
 
 <a id="f9"></a>
 ### 9. No flag closes a vault to deposits
@@ -294,7 +296,7 @@ cap on the `VaultSet` reference.
 |---|---|---|
 | The Lending Protocol concept page spells `PrincipleOutstanding` and `depostitor`. | documentation/tutorials | ⚪ Low |
 | `validateVaultCreate` in `xrpl@4.6.0` accepts any `WithdrawalPolicy`; 0, 2, 3, 99 and 255 return `temMALFORMED`. | client libraries | ⚪ Low |
-| The faucet ignores `destination` and funds a new account instead. | other | ⚪ Low |
+| `LoanManage` with no flag is an undocumented no-op (`tesSUCCESS`). | documentation/tutorials | ⚪ Low |
 
 ## What worked
 
@@ -304,4 +306,5 @@ and cover rates cannot change on an existing broker (`temINVALID`). Closed-ended
 behave as XLS-65 describes.
 
 **Limits.** XRP only, so no clawback with an issued asset. Payment intervals of 60 to 90 s. One
-build. The minimum bar run, the guardrails and the escrow swap are in the [README](./README.md).
+build. The hashes are on the hackathon devnet, which may close after the event: to replay, change
+the endpoints in `scripts/config.mjs`. Full runs in the [README](./README.md).

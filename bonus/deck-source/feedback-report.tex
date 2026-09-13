@@ -189,7 +189,7 @@ xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashe
 \hyperlink{f4}{\color{blue}\bfseries 4} & \hyperlink{f4}{xrpl.org omits the sole-holder exception, and zero-valued fields are absent} & documentation/tutorials & \sevMedium\\
 \hyperlink{f5}{\color{blue}\bfseries 5} & \hyperlink{f5}{No read command for loans or brokers} & missing primitive & \sevMedium\\
 \hyperlink{f6}{\color{blue}\bfseries 6} & \hyperlink{f6}{One result code covers causes that need different actions} & UX & \sevMedium\\
-\hyperlink{f7}{\color{blue}\bfseries 7} & \hyperlink{f7}{The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction} & documentation/tutorials & \sevMedium\\
+\hyperlink{f7}{\color{blue}\bfseries 7} & \hyperlink{f7}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}} & documentation/tutorials & \sevMedium\\
 \hyperlink{f8}{\color{blue}\bfseries 8} & \hyperlink{f8}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them} & documentation/tutorials & \sevMedium\\
 \hyperlink{f9}{\color{blue}\bfseries 9} & \hyperlink{f9}{No flag closes a vault to deposits} & missing primitive & \sevLow\\
 \bottomrule
@@ -210,22 +210,23 @@ xrpl.org, library claims against the \tm{rippled} and \tm{xrpl.js} source. Hashe
 \hs{Multi-party \tm{LoanSet}} & Broker signs, borrower countersigns and submits. The \tm{xrpl@4.6.0} helper fails here (\hyperlink{f1}{1}).\\
 \hs{SDK or raw JSON} & All 15 XLS-65/66 types are typed. No raw JSON.\\
 \hs{Position and yield} & Computed client-side from five calls (\hyperlink{f5}{5}).\\
-\hs{Docs and explorer} & The docs differ in \hyperlink{f1}{1}, \hyperlink{f2}{2}, \hyperlink{f4}{4}, \hyperlink{f8}{8}. The explorer hides a flag name (\hyperlink{f2}{2}) and \tm{Vault} fields (\hyperlink{f4}{4}).\\
+\hs{Docs and explorer} & The docs differ in \hyperlink{f1}{1}, \hyperlink{f2}{2}, \hyperlink{f4}{4}, \hyperlink{f7}{7}, \hyperlink{f8}{8}. The explorer hides a flag name (\hyperlink{f2}{2}) and \tm{Vault} fields (\hyperlink{f4}{4}).\\
 \end{tabularx}}
 
 % ───────────── 1 ─────────────
 \finding{1}{High}{client libraries}{\tm{fixCleanup3\_4\_0} is enabled and missing from xrpl.org}
 
-The amendment is active on the devnet and absent from \emph{Known Amendments}. It changes two
-lending behaviours, and neither the tutorial nor \tm{xrpl@4.6.0} reflects them.
+The amendment, new in \tm{rippled} 3.4.0-rc1, is active on the devnet and absent from
+\emph{Known Amendments}. It changes two lending behaviours, and the tutorial reflects neither.
 
 \hs{Impairment.} XLS-66, section 3.10.4.2, condition 9 rejects \tm{tfLoanImpair} while
 \tm{currentTime <= NextPaymentDueDate}. The tutorial \emph{Manage a Loan} still says a broker
 can impair ``\emph{before a payment due date passes}''.
 
-\hs{Counterparty signature.} Since rippled PR \#8162, \tm{CounterpartySignature} is signed with
-the \tm{CPT} prefix. \tm{signLoanSetByCounterparty} signs with \tm{encodeForSigning}, the
-previous prefix, and offers no option.
+\hs{Counterparty signature.} Since rippled PR \#8162, \tm{CounterpartySignature} uses the
+\tm{CPT} prefix under the amendment, the previous prefix without it. \tm{signLoanSetByCounterparty}
+has no option: \tm{xrpl@4.6.0} always signs with the previous prefix, \tm{xrpl@5.2.0} (xrpl.js PR
+\#3462) always with \tm{CPT}, which \tm{rippled} rejects on networks without the amendment.
 
 \repro
 \begin{steps}
@@ -236,7 +237,7 @@ previous prefix, and offers no option.
 
 \txs impairment~\tx{5486020BA8FF227C58409042F96BDC07246FDACC3F9B0EF24749555E319E972E}, countersigned \tm{LoanSet}~\tx{23631C3610DA97926E8BF9FC5BC4E76E504C9DFB2683C928E825DE0138397B2B}
 
-\fix{List \tm{fixCleanup3\_4\_0} on \emph{Known Amendments} with both lending changes. Update \emph{Manage a Loan}: impairment is accepted once \tm{NextPaymentDueDate} has passed. In \tm{xrpl.js}, sign \tm{CounterpartySignature} with \tm{encodeForSigningCounterparty}, keeping the previous prefix as an option for networks without the amendment.}
+\fix{List \tm{fixCleanup3\_4\_0} on \emph{Known Amendments} with both lending changes. Update \emph{Manage a Loan}: impairment is accepted once \tm{NextPaymentDueDate} has passed. In \tm{xrpl.js}, pick the counterparty prefix from the network's \tm{fixCleanup3\_4\_0} status, as \tm{rippled} does.}
 
 % ───────────── 2 ─────────────
 \finding{2}{High}{documentation/tutorials}{A late \tm{LoanPay} without \tm{tfLoanLatePayment} returns \tm{tecEXPIRED}}
@@ -339,8 +340,8 @@ writes it, as are \tm{AssetsAvailable}, \tm{AssetsMaximum}, \tm{PaymentRemaining
 
 A depositor's position takes five calls, then six values computed client-side in
 \repo{scripts/lib/nav.mjs}{lib/nav.mjs}: gross and net share value, position value, withdrawable
-amount, utilisation, broker debt capacity. \tm{mpt\_holders} is documented as Clio-only, and the
-devnet serves \tm{rippled}.\par\nobreak
+amount, utilisation, broker debt capacity. \tm{mpt\_holders}, which lists a vault's depositors,
+is documented as Clio-only.\par\nobreak
 
 {\setlength{\tabcolsep}{3pt}\fontsize{7.4}{9}\selectfont
 \begin{tabularx}{\linewidth}{@{}l >{\raggedright\arraybackslash}X@{}}
@@ -360,7 +361,7 @@ devnet serves \tm{rippled}.\par\nobreak
 \item Send \tm{loan\_info} and \tm{loan\_broker\_info} to the devnet JSON-RPC endpoint: \tm{unknownCmd}. Neither has a documentation page.
 \end{steps}
 
-\fix{Add \tm{loan\_broker\_info} and \tm{loan\_info}, or list a vault's brokers and loans in \tm{vault\_info}. Return share value, withdrawable amount and utilisation. Expose Clio on the devnet.}
+\fix{Add \tm{loan\_broker\_info} and \tm{loan\_info}, or list a vault's brokers and loans in \tm{vault\_info}. Return share value, withdrawable amount and utilisation. Serve \tm{mpt\_holders} from \tm{rippled}.}
 
 % ───────────── 6 ─────────────
 \finding{6}{Medium}{UX}{One result code covers causes that need different actions}
@@ -397,31 +398,31 @@ cover or wait for deposits. Three other codes share the problem.\par\nobreak
 \fix{Where one transaction type maps two causes to one code (\tm{LoanSet}, \tm{LoanManage}, a \tm{Payment} of shares), return distinct codes or a result message naming the check that failed.}
 
 % ───────────── 7 ─────────────
-\finding{7}{Medium}{documentation/tutorials}{The hackathon build reverts the V1.1 \tm{LoanBrokerSet} restriction}
+\finding{7}{Medium}{documentation/tutorials}{A share \tm{Payment} to a new holder returns \tm{tecNO\_AUTH}}
 
-The V1.1 documentation, \href{https://opensource.ripple.com/docs/lending-protocol-v1-1/closed-ended-vaults}{\emph{Closed-ended vaults}} on opensource.ripple.com, restricts \tm{LoanBrokerSet} on open-ended vaults, a rule added by
-rippled PR \#8076. A revert of \#8076 reached the lending hackathon branch on 10 September 2026.
-The other V1.1 rules tested (new fields, date validation, phase locks) are enforced. The event
-brief does not mention the revert.
+The Single Asset Vault page, \emph{Can a Depositor Transfer Shares to Another Account?}, lists
+five failure causes, then: ``\emph{Otherwise, a new MPT entry is created for their account.}''
+Without an \tm{MPToken} for the share issuance, the payee gets \tm{tecNO\_AUTH}, a cause the page
+omits, until it submits \tm{MPTokenAuthorize}.
 
 \repro
 \begin{steps}
-\item \tm{feature}: \tm{LendingProtocolV1\_1} is enabled.
-\item \tm{LoanBrokerSet} on an open-ended vault returns \tm{tesSUCCESS}.
-\item \tm{LoanBrokerSet} on a \tm{VaultKind: 1} vault returns \tm{tesSUCCESS} (\repo{bonus/scripts/_probe-h13-closed.mjs}{\_probe-h13-closed.mjs}).
+\item Public XRP vault, transferable shares, no freeze. A \tm{Payment} of shares to an account without \tm{MPToken} returns \tm{tecNO\_AUTH} (\repo{bonus/scripts/_probe-shares2.mjs}{\_probe-shares2.mjs}).
+\item The payee submits \tm{MPTokenAuthorize}, and the same \tm{Payment} returns \tm{tesSUCCESS} (\repo{bonus/scripts/_probe-shares3.mjs}{\_probe-shares3.mjs}).
 \end{steps}
 
-\txs open-ended~\tx{781F54B5E77A768F4C02A54E3C55902AA9F1AC96AA04037AB97CE93FFB5DBDE4}, closed-ended~\tx{1961BE21CC4011F50AA926E1494E9D51F94FC57B0E9C0C1B8F8ADF6FEDD09D40}
+\txs refused~\tx{789AAF7E228CC085199E2FB38B07A10DFC68A45C76C5FC3EFDB498BC5FD512A4}, opt-in~\tx{3AD6F7E37DF8778E03B12279F9CE4F3FD25B1C0FEECA774920E49ED2894F3EA4}, accepted~\tx{B20699B9EBB2E3B60439FD86316CEC44F9579DBFABED6C779675522233791601}
 
-\fix{State in the event brief which V1.1 rules the hackathon build enforces, and that the \#8076 restriction is reverted.}
+\fix{Replace the section's last sentence: the payee needs an \tm{MPToken} (\tm{MPTokenAuthorize}), otherwise \tm{tecNO\_AUTH}.}
 
 % ───────────── 8 ─────────────
 \finding{8}{Medium}{documentation/tutorials}{Vault shares carry \tm{lsfMPTCanTrade}, but \tm{OfferCreate} rejects them}
 
 \tm{VaultCreate} sets \tm{lsfMPTCanEscrow}, \tm{lsfMPTCanTrade} and \tm{lsfMPTCanTransfer} on the
 share issuance, with no field to change them. The xrpl.org \tm{MPTokenIssuance} reference says
-\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. No amendment
-enabled on the devnet opens the DEX to MPTs.
+\tm{lsfMPTCanTrade} lets holders trade ``\emph{using the XRP Ledger DEX or AMM}''. \tm{OfferCreate}
+accepts MPTs only under \tm{MPTokensV2} (XLS-82), which \tm{rippled} \tm{develop} marks as not
+supported.
 
 \repro
 \begin{steps}
@@ -429,7 +430,7 @@ enabled on the devnet opens the DEX to MPTs.
 \item \tm{OfferCreate} by a holder, \tm{TakerGets} the share MPT, \tm{TakerPays} XRP: \tm{temDISABLED}, a local rejection with no hash (\repo{bonus/scripts/_probe-shares.mjs}{\_probe-shares.mjs}).
 \end{steps}
 
-\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs an amendment not yet available, or leave \tm{lsfMPTCanTrade} unset on vault shares until then.}
+\fix{State on the \tm{MPTokenIssuance} reference that DEX trading of MPTs needs \tm{MPTokensV2}, or leave \tm{lsfMPTCanTrade} unset on vault shares until it ships.}
 
 % ───────────── 9 ─────────────
 \finding{9}{Low}{missing primitive}{No flag closes a vault to deposits}
@@ -457,7 +458,7 @@ the \tm{Vault} entry; the \tm{VaultSet} reference does not repeat it.
 \midrule
 The Lending Protocol concept page spells \tm{PrincipleOutstanding} and \tm{depostitor}. & documentation/tutorials\\
 \tm{validateVaultCreate} in \tm{xrpl@4.6.0} accepts any \tm{WithdrawalPolicy}; 0, 2, 3, 99 and 255 return \tm{temMALFORMED}. & client libraries\\
-The faucet ignores \tm{destination} and funds a new account instead. & other\\
+\tm{LoanManage} with no flag is an undocumented no-op (\tm{tesSUCCESS}). & documentation/tutorials\\
 \bottomrule
 \end{tabularx}}
 
@@ -468,7 +469,8 @@ to the drop, and cover rates cannot change on an existing broker (\tm{temINVALID
 vault phases behave as XLS-65 describes.
 
 \hs{Limits.} XRP only, so no clawback with an issued asset. Payment intervals of 60 to 90 s. One
-build. The minimum bar run, the guardrails and the escrow swap are in the
+build. The hashes are on the hackathon devnet, which may close after the event: to replay, change
+the endpoints in \tm{scripts/config.mjs}. Full runs in the
 \href{https://github.com/charlyppr/exit-lane-xrpl\#readme}{\color{blue}README}.
 
 \end{multicols}

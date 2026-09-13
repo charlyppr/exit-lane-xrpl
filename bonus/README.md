@@ -29,7 +29,7 @@ accounts' devnet XRP.
 | [`_probe-pay-states.mjs`](./scripts/_probe-pay-states.mjs), [`_probe-h2-race.mjs`](./scripts/_probe-h2-race.mjs) | 2, late `LoanPay` |
 | [`h1-default.mjs`](./scripts/h1-default.mjs) | 3, first-loss capital on default |
 | [`_probe-cliffs.mjs`](./scripts/_probe-cliffs.mjs) | 6, one code for two `LoanSet` causes |
-| [`_probe-h13-closed.mjs`](./scripts/_probe-h13-closed.mjs) | 7, V1.1 `LoanBrokerSet` restriction |
+| [`_probe-shares2.mjs`](./scripts/_probe-shares2.mjs), [`_probe-shares3.mjs`](./scripts/_probe-shares3.mjs) | 7, share `Payment` without `MPToken` |
 | [`_probe-shares.mjs`](./scripts/_probe-shares.mjs) | 8, `OfferCreate` on vault shares |
 | [`_probe-audit-hashes.mjs`](./scripts/_probe-audit-hashes.mjs) | Checks every hash cited in the deliverables on the ledger. Read-only. |
 
@@ -39,9 +39,9 @@ accounts' devnet XRP.
 |---|---|
 | Late payments | `_probe-latepayment`, `_probe-late-payoff`, `_probe-pay-blocked`, `_probe-h2-cleanup`, `_probe-h2-meta` (read-only) |
 | Default and first-loss cover | `h1-h3`, `_probe-default-cycle`, `_probe-default-boundary`, `_probe-grace`, `_probe-cover-floor`, `_probe-cover-floor2`, `_probe-broker-mutable` |
-| Vault shares as MPTs | `_probe-shares2` to `_probe-shares5`, `_probe-nontransferable`, `_probe-transferable-control`, `_probe-orphan-mpt` (read-only) |
+| Vault shares as MPTs | `_probe-shares4`, `_probe-shares5`, `_probe-nontransferable`, `_probe-transferable-control`, `_probe-orphan-mpt` (read-only) |
 | Vault lifecycle and caps | `_probe-vault-lifecycle`, `_probe-assetsmax-zero`, `_probe-vault-info-shape` (read-only) |
-| V1.1 and closed-ended vaults | `test-v11-blocking`, `_probe-h13-phases`, `_probe-h13-phases2`, `_probe-h13-phase3`, `_probe-h13-verify`, `_probe-h13-cleanup` |
+| V1.1 and closed-ended vaults | `test-v11-blocking`, `_probe-h13-closed`, `_probe-h13-phases`, `_probe-h13-phases2`, `_probe-h13-phase3`, `_probe-h13-verify`, `_probe-h13-cleanup` |
 | Observability | `_probe-h9-observability`, `_probe-pseudo-accounts` (both read-only) |
 | Network | `_probe-rpc-fallback`, `_probe-amendments` (read-only) |
 | First minimum-bar runs, replaced by `scripts/demo.mjs` | `steps-4-6`, `step-8-secondary` |

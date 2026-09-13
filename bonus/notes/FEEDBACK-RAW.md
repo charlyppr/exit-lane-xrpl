@@ -3832,3 +3832,45 @@ Pourquoi c'est une friction :
 Proposition :
   Indiquer dans la doc Lending (et dans l'explorer) que le temps de comparaison
   est l'heure de clôture du ledger parent, arrondie à `close_time_resolution`.
+
+---
+
+### [11:40] Vérification hors hackathon : le finding 7 sort, `xrpl@5.2.0` signe `CPT` sans condition
+Phase : livrables (vérification du rapport)
+Catégorie : documentation/tutorials + client libraries
+Sévérité : —
+Lib : xrpl@4.6.0 · xrpl@5.2.0 (lu dans la source) · rippled `develop` HEAD `9403736`
+
+Question : chaque finding vaut-il pour tout le monde, ou seulement pour le devnet du hackathon ?
+
+**La branche du nœud.** `gh api repos/XRPLF/rippled/compare/develop...ripple/lending-hackathon` :
+un commit d'avance, `440018c0fe` (revert de #8076), un commit de retard (`9403736199`, CI
+seulement). Tout comportement de protocole observé ici est celui de `develop`, sauf ce revert.
+
+**Finding 7 retiré.** Le revert de #8076 n'existe que sur `ripple/lending-hackathon`. Sur
+`develop`, `LoanBrokerSet` sur un vault open-ended est bien refusé sous `LendingProtocolV1_1`,
+comme le dit la doc V1.1. Rien à corriger pour un autre réseau. Remplacé par l'entrée [13:52*] :
+xrpl.org, page Single Asset Vault, section *Can a Depositor Transfer Shares to Another Account?*,
+écrit « *Otherwise, a new MPT entry is created for their account.* » ; le ledger répond
+`tecNO_AUTH` (`789AAF7E…`) tant que le destinataire n'a pas fait `MPTokenAuthorize`.
+`Payment.cpp:667` sur `develop`, tant que `MPTokensV2` est désactivé.
+
+**Nouvelle friction, `xrpl@5.2.0`.** Sorti en stable le 11/09 à 22h20 (PR xrpl.js #3462).
+`SIGNING_ENCODERS.counterparty` appelle `encodeForSigningCounterparty` sans condition. Or
+`rippled` (`Sign.cpp:58-67`) n'attend le préfixe `CPT` que sous `fixCleanup3_4_0`, absent de
+la release 3.3.0. Un `LoanSet` contresigné avec 5.2.0 est donc refusé sur tout réseau sans
+l'amendment, de la même façon que 4.6.0 l'est sur ce devnet. Déduit de la source, pas testé
+on-chain (le Track 1 interdit 5.2.0). Le finding 1 est réécrit en ce sens.
+
+**Autres recadrages, tous vérifiés sur `develop` et sur le master de xrpl-dev-portal :**
+  - Findings 2, 3, 4, 5, 6, 8, 9 : vrais sur `develop`, et aucune PR de doc ne les corrige.
+  - Finding 8 : l'amendment qui ouvre le DEX aux MPT existe, `MPTokensV2` (XLS-82),
+    `Supported::No` sur `develop`. Il est désormais nommé dans le rapport.
+  - Finding 5 : « Expose Clio on the devnet » visait l'événement ; remplacé par « servir
+    `mpt_holders` depuis `rippled` ».
+  - Issue mineure « le faucet ignore `destination` » retirée : faucet propre à l'événement.
+    Remplacée par `LoanManage` sans flag (`3B9E1C27…`). `LoanManage.cpp:414-423` le dit
+    voulu, « *No flags is valid - just a noop* », mais la référence xrpl.org ne le dit pas.
+    L'entrée [16:25] parlait de défaut ; c'est un choix de conception non documenté.
+  - La PR xrpl-dev-portal #3923 (ouverte) ajoute « Loans can only be impaired after missing
+    a payment » à *Manage a Loan*, mais garde la phrase d'intro contraire.
