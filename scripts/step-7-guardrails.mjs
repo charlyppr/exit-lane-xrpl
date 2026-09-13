@@ -1,15 +1,16 @@
-// ÉTAPE 7 du minimum bar Track 1 — « Démontrer une transaction rejetée par un
-// garde-fou du protocole ». C'est un livrable, pas un accident : chaque rejet
-// ci-dessous est provoqué délibérément, avec son code et son hash.
+// STEP 7 of the Track 1 minimum bar: "Demonstrate a transaction rejected by a
+// protocol guardrail". It is a deliverable, not an accident: every rejection
+// below is triggered deliberately, with its code and its hash.
 //
-// Le brief cite trois pistes : liquidité insuffisante, paiement hors calendrier,
-// comportement du first-loss cover. On couvre les trois, plus le contrôle de
-// permission rencontré à [13:26].
+// The brief lists three angles: insufficient liquidity, off-schedule payment,
+// first-loss cover behavior. We cover all three, plus the permission check
+// met at [13:26].
 //
-// Toutes les transactions sont soumises au ledger et VALIDÉES : un rejet `tec`
-// est un échec métier inscrit on-chain, avec un hash vérifiable dans l'explorer.
-// C'est la différence avec un rejet local (`tem`/`fails local checks`), qui ne
-// laisse aucune trace — distinction utile à faire pendant la démo.
+// All transactions are submitted to the ledger and VALIDATED: a `tec`
+// rejection is a business failure recorded on-chain, with a hash verifiable
+// in the explorer. That is the difference with a local rejection
+// (`tem`/`fails local checks`), which leaves no trace. A useful distinction
+// to make during the demo.
 
 import { Client, Wallet } from "xrpl";
 import { NET, txUrl, pctToRate } from "./config.mjs";
@@ -24,12 +25,12 @@ const fmt = (v) => `${(Number(v) / 1e6).toFixed(6)} XRP`;
 const log = (...a) => console.log(...a);
 
 const results = [];
-const record = (n, titre, attendu, obtenu, hash, ok) => {
-  results.push({ n, titre, attendu, obtenu, hash, ok });
-  log(`  attendu : rejet (${attendu})`);
-  log(`  obtenu  : ${obtenu}`);
+const record = (n, title, expected, actual, hash, ok) => {
+  results.push({ n, title, expected, actual, hash, ok });
+  log(`  expected: rejection (${expected})`);
+  log(`  actual  : ${actual}`);
   if (hash) log(`  ${txUrl(hash)}`);
-  log(ok ? "  ✅ garde-fou démontré" : "  ⚠️  PAS le comportement attendu — à investiguer");
+  log(ok ? "  ✅ guardrail demonstrated" : "  ⚠️  NOT the expected behavior, investigate");
 };
 
 const client = new Client(NET.wss);
@@ -41,15 +42,15 @@ try {
   const loan = await readEntry(client, LOAN_ID);
   const available = Number(vault.AssetsAvailable ?? 0);
 
-  log("État de départ");
+  log("Starting state");
   log(`  Vault AssetsTotal     : ${fmt(vault.AssetsTotal)}`);
   log(`  Vault AssetsAvailable : ${fmt(available)}`);
   log(`  Loan PrincipalOutstanding : ${fmt(loan.PrincipalOutstanding)}`);
   log(`  Loan PaymentRemaining     : ${loan.PaymentRemaining}`);
 
   // ── 1 ────────────────────────────────────────────────────────────────────
-  log("\n─── 1. Liquidité insuffisante — LoanSet au-delà du disponible ───");
-  log(`  On demande un prêt de 5 000 XRP alors que le vault n'a que ${fmt(available)}.`);
+  log("\n─── 1. Insufficient liquidity: LoanSet beyond what is available ───");
+  log(`  Requesting a 5,000 XRP loan while the vault only has ${fmt(available)}.`);
   const bw = Wallet.fromSeed(broker.seed);
   const cw = Wallet.fromSeed(borrower.seed);
   const prepared = await client.autofill({
@@ -66,74 +67,74 @@ try {
   const blob = signLoanSetCounterparty(bw.sign(prepared).tx_blob, borrower.seed);
   const r1 = await client.submitAndWait(blob);
   const c1 = r1.result.meta?.TransactionResult;
-  record(1, "Liquidité insuffisante (LoanSet > AssetsAvailable)",
+  record(1, "Insufficient liquidity (LoanSet > AssetsAvailable)",
     "tecINSUFFICIENT_FUNDS", c1, r1.result.hash, c1 === "tecINSUFFICIENT_FUNDS");
 
   // ── 2 ────────────────────────────────────────────────────────────────────
-  log("\n─── 2. Paiement hors calendrier — LoanPay sous-payé ───");
-  log(`  Échéance due : ${loan.PeriodicPayment} + ${loan.LoanServiceFee} drops de frais.`);
-  log("  On paie délibérément 1 XRP, très en dessous.");
+  log("\n─── 2. Off-schedule payment: underpaid LoanPay ───");
+  log(`  Installment due: ${loan.PeriodicPayment} + ${loan.LoanServiceFee} drops of fees.`);
+  log("  We deliberately pay 1 XRP, far below.");
   const r2 = await submitRaw(client, borrower.seed, {
     TransactionType: "LoanPay",
     LoanID: LOAN_ID,
     Amount: XRP(1),
-  }, { label: "LoanPay (sous-payé)" });
-  record(2, "Paiement insuffisant (LoanPay < échéance due)",
+  }, { label: "LoanPay (underpaid)" });
+  record(2, "Insufficient payment (LoanPay < installment due)",
     "tecINSUFFICIENT_PAYMENT", r2.code, r2.hash, r2.code === "tecINSUFFICIENT_PAYMENT");
 
   // ── 3 ────────────────────────────────────────────────────────────────────
-  log("\n─── 3. First-loss cover — retrait qui passerait sous le minimum ───");
+  log("\n─── 3. First-loss cover: a withdrawal that would drop below the minimum ───");
   const brokerNode = await readEntry(client, BROKER_ID);
   const cover = Number(brokerNode.CoverAvailable ?? 0);
   const debt = Number(brokerNode.DebtTotal ?? 0);
-  const coverRequis = debt * Number(brokerNode.CoverRateMinimum) / 100_000;
-  const seuil = cover - coverRequis;
+  const coverRequired = debt * Number(brokerNode.CoverRateMinimum) / 100_000;
+  const threshold = cover - coverRequired;
   log(`  CoverAvailable   : ${fmt(cover)}`);
   log(`  DebtTotal        : ${fmt(debt)}`);
   log(`  CoverRateMinimum : ${(Number(brokerNode.CoverRateMinimum) / 1000).toFixed(2)} %`);
-  log(`  → cover requis pour la dette en cours : ${fmt(coverRequis)}`);
-  log(`  → retirable sans violer le ratio      : ${fmt(seuil)}`);
+  log(`  → cover required for the outstanding debt : ${fmt(coverRequired)}`);
+  log(`  → withdrawable without breaking the ratio : ${fmt(threshold)}`);
 
-  // On demande PLUS que le seuil mais MOINS que le solde : les fonds existent,
-  // c'est le ratio de couverture qui bloque. C'est le vrai garde-fou du
-  // first-loss cover, à distinguer d'un simple « solde insuffisant ».
-  const trop = Math.round(cover - coverRequis / 2);
-  log(`  On retire ${fmt(trop)} : les fonds SONT là (${fmt(cover)} disponibles),`);
-  log(`  mais il ne resterait que ${fmt(cover - trop)} pour ${fmt(coverRequis)} requis.`);
+  // We request MORE than the threshold but LESS than the balance: the funds
+  // exist, the cover ratio is what blocks. That is the real first-loss cover
+  // guardrail, as opposed to a plain "insufficient balance".
+  const tooMuch = Math.round(cover - coverRequired / 2);
+  log(`  Withdrawing ${fmt(tooMuch)}: the funds ARE there (${fmt(cover)} available),`);
+  log(`  but only ${fmt(cover - tooMuch)} would remain for ${fmt(coverRequired)} required.`);
   const r3 = await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerCoverWithdraw",
     LoanBrokerID: BROKER_ID,
-    Amount: String(trop),
-  }, { label: "LoanBrokerCoverWithdraw (sous le minimum)" });
-  record(3, "First-loss cover protégé (retrait sous le ratio minimum)",
+    Amount: String(tooMuch),
+  }, { label: "LoanBrokerCoverWithdraw (below the minimum)" });
+  record(3, "First-loss cover protected (withdrawal below the minimum ratio)",
     "tecINSUFFICIENT_FUNDS", r3.code, r3.hash, String(r3.code).startsWith("tec"));
-  log("  ⚠️  note feedback : le code est `tecINSUFFICIENT_FUNDS` alors que les fonds");
-  log("      sont suffisants — c'est le RATIO qui est violé. Cf. FEEDBACK-RAW [14:22].");
+  log("  ⚠️  feedback note: the code is `tecINSUFFICIENT_FUNDS` even though the funds");
+  log("      are sufficient. The RATIO is what is violated. See FEEDBACK-RAW [14:22].");
 
   // ── 3 bis ────────────────────────────────────────────────────────────────
-  log("\n─── 3 bis. Contrôle positif — juste sous le seuil, ça passe ───");
-  log("  Sans ce contrôle, on ne prouve pas que la limite est au bon endroit :");
-  log("  on prouverait seulement que la transaction échoue toujours.");
-  const okAmount = Math.floor(seuil - 1e6); // 1 XRP de marge sous le seuil
+  log("\n─── 3 bis. Positive control: just under the threshold, it goes through ───");
+  log("  Without this control we do not prove the limit is in the right place:");
+  log("  we would only prove that the transaction always fails.");
+  const okAmount = Math.floor(threshold - 1e6); // 1 XRP of margin under the threshold
   const r3b = await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerCoverWithdraw",
     LoanBrokerID: BROKER_ID,
     Amount: String(okAmount),
   }, { label: `LoanBrokerCoverWithdraw ${fmt(okAmount)}` });
-  log(`  ${fmt(okAmount)} → ${r3b.code}  (attendu : tesSUCCESS)`);
+  log(`  ${fmt(okAmount)} → ${r3b.code}  (expected: tesSUCCESS)`);
   if (r3b.ok) {
-    log("  ✅ la limite est exactement le ratio de couverture annoncé par le ledger.");
-    // remise en état pour que le scénario reste rejouable tel quel
+    log("  ✅ the limit is exactly the cover ratio announced by the ledger.");
+    // restore the state so the scenario stays replayable as is
     await submitRaw(client, broker.seed, {
       TransactionType: "LoanBrokerCoverDeposit",
       LoanBrokerID: BROKER_ID,
       Amount: String(okAmount),
-    }, { label: "LoanBrokerCoverDeposit (remise en état)" });
+    }, { label: "LoanBrokerCoverDeposit (restore)" });
   }
 
   // ── 4 ────────────────────────────────────────────────────────────────────
-  log("\n─── 4. Contrôle de permission — LoanBrokerSet par un tiers ───");
-  log("  Un compte qui ne possède pas le vault tente d'y attacher un broker.");
+  log("\n─── 4. Permission check: LoanBrokerSet by a third party ───");
+  log("  An account that does not own the vault tries to attach a broker to it.");
   const r4 = await submitRaw(client, spare.seed, {
     TransactionType: "LoanBrokerSet",
     VaultID: VAULT_ID,
@@ -141,34 +142,34 @@ try {
     DebtMaximum: XRP(1_000),
     CoverRateMinimum: pctToRate(10),
     CoverRateLiquidation: pctToRate(5),
-  }, { label: "LoanBrokerSet (tiers)" });
-  record(4, "Permission (LoanBrokerSet par un non-propriétaire)",
+  }, { label: "LoanBrokerSet (third party)" });
+  record(4, "Permission (LoanBrokerSet by a non-owner)",
     "tecNO_PERMISSION", r4.code, r4.hash, r4.code === "tecNO_PERMISSION");
 
   // ── 5 ────────────────────────────────────────────────────────────────────
-  log("\n─── 5. Retrait au-delà de la liquidité non prêtée ───");
-  log("  Le prêteur tente de retirer 10 000 XRP : le principal prêté n'est pas");
-  log("  retirable tant que l'emprunteur ne l'a pas remboursé.");
+  log("\n─── 5. Withdrawal beyond the unlent liquidity ───");
+  log("  The lender tries to withdraw 10,000 XRP: the lent principal is not");
+  log("  withdrawable until the borrower has repaid it.");
   const r5 = await submitRaw(client, lender.seed, {
     TransactionType: "VaultWithdraw",
     VaultID: VAULT_ID,
     Amount: XRP(10_000),
-  }, { label: "VaultWithdraw (excessif)" });
-  record(5, "Retrait plafonné à la liquidité disponible",
+  }, { label: "VaultWithdraw (excessive)" });
+  record(5, "Withdrawal capped at the available liquidity",
     "tecINSUFFICIENT_FUNDS", r5.code, r5.hash, String(r5.code).startsWith("tec"));
 } catch (e) {
   log(`\n💥 ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 600));
 } finally {
   log("\n" + "═".repeat(72));
-  log("ÉTAPE 7 — garde-fous du protocole démontrés");
+  log("STEP 7: protocol guardrails demonstrated");
   log("═".repeat(72));
   for (const r of results) {
-    log(`${r.ok ? "✅" : "⚠️ "} ${r.n}. ${r.titre}`);
-    log(`     ${r.obtenu}${r.hash ? `  ${r.hash}` : ""}`);
+    log(`${r.ok ? "✅" : "⚠️ "} ${r.n}. ${r.title}`);
+    log(`     ${r.actual}${r.hash ? `  ${r.hash}` : ""}`);
   }
   const ok = results.filter((r) => r.ok).length;
-  log(`\n${ok}/${results.length} garde-fous déclenchés comme prévu.`);
-  log("Tous ces rejets sont VALIDÉS on-chain : chaque hash est vérifiable dans l'explorer.");
+  log(`\n${ok}/${results.length} guardrails triggered as expected.`);
+  log("All these rejections are VALIDATED on-chain: every hash is verifiable in the explorer.");
   await client.disconnect();
 }

@@ -1,4 +1,4 @@
-// GracePeriod : quel est le minimum accepté ? La doc n'en dit rien.
+// GracePeriod: what is the minimum accepted? The docs say nothing about it.
 import { Client, Wallet } from "xrpl";
 import { NET, pctToRate } from "../../scripts/config.mjs";
 import { loadAccounts, signLoanSetCounterparty } from "../../scripts/raw-submit.mjs";

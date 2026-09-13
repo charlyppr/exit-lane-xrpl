@@ -1,8 +1,8 @@
-// TRACK 1 — Custom Hackathon Devnet, Lending Protocol V1, xrpl.js stable.
+// TRACK 1: Custom Hackathon Devnet, Lending Protocol V1, xrpl.js stable.
 //
-// Source de vérité unique pour les endpoints. Ne jamais hardcoder une URL
-// ailleurs dans le projet : c'est comme ça qu'on finit à cheval sur deux
-// réseaux sans s'en rendre compte.
+// Single source of truth for the endpoints. Never hardcode a URL anywhere
+// else in the project: that is how you end up straddling two networks
+// without noticing.
 
 export const NET = {
   track: 1,
@@ -17,9 +17,9 @@ export const NET = {
 export const txUrl = (hash) => `${NET.explorer}transactions/${hash}`;
 export const acctUrl = (addr) => `${NET.explorer}accounts/${addr}`;
 
-// Les taux du Lending Protocol sont en 1/10 de point de base :
-// 0 à 100000 représente 0 % à 100 %. Donc 10 % s'écrit 10000.
-// Cf. hypothèse H6 — utiliser ces helpers systématiquement plutôt que
-// d'écrire les valeurs à la main.
+// Lending Protocol rates are expressed in 1/10 of a basis point:
+// 0 to 100000 means 0 % to 100 %. So 10 % is written 10000.
+// See hypothesis H6: always use these helpers instead of writing the
+// values by hand.
 export const pctToRate = (pct) => Math.round(pct * 1000);
 export const rateToPct = (rate) => rate / 1000;

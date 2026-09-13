@@ -1,4 +1,4 @@
-// Budget des 4 comptes : libre = balance - réserve. Plancher dur : lender >= 150 XRP libres.
+// Budget of the 4 accounts: free = balance - reserve. Hard floor: lender >= 150 XRP free.
 import { Client } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 import { loadAccounts } from "../../scripts/raw-submit.mjs";
@@ -17,7 +17,7 @@ for (const [name, a] of Object.entries(accts)) {
   const oc = r.result.account_data.OwnerCount;
   const reserve = baseR + oc * incR;
   const free = bal - reserve;
-  const flag = name === "lender" ? (free < 150 ? "  ⛔ SOUS LE PLANCHER" : "  ✅ > 150") : "";
-  console.log(`${name.padEnd(9)} balance ${bal.toFixed(6).padStart(12)} · OwnerCount ${String(oc).padStart(3)} · réservé ${String(reserve).padStart(4)} · libre ${free.toFixed(6).padStart(12)}${flag}`);
+  const flag = name === "lender" ? (free < 150 ? "  ⛔ BELOW THE FLOOR" : "  ✅ > 150") : "";
+  console.log(`${name.padEnd(9)} balance ${bal.toFixed(6).padStart(12)} · OwnerCount ${String(oc).padStart(3)} · reserved ${String(reserve).padStart(4)} · free ${free.toFixed(6).padStart(12)}${flag}`);
 }
 await c.disconnect();

@@ -20,29 +20,29 @@ const go = async (label, tx, wallet) => {
     const r = await c.submitAndWait(tx, { wallet, autofill: true });
     console.log("code:", r.result.meta?.TransactionResult, "| hash:", r.result.hash);
     return r.result;
-  } catch (e) { console.log("REJET:", (e.message ?? "").slice(0, 300)); return null; }
+  } catch (e) { console.log("REJECTED:", (e.message ?? "").slice(0, 300)); return null; }
 };
 
-// TEST 4 — opt-in du destinataire, puis re-tenter le transfert
-await go("TEST 4a : MPTokenAuthorize par l'acheteur", {
+// TEST 4: recipient opt-in, then retry the transfer
+await go("TEST 4a: MPTokenAuthorize by the buyer", {
   TransactionType: "MPTokenAuthorize", Account: buyer.address, MPTokenIssuanceID: SHARE_MPT,
 }, buyer);
 
-await go("TEST 4b : Payment de parts, 2e tentative", {
+await go("TEST 4b: Payment of shares, 2nd attempt", {
   TransactionType: "Payment", Account: lender.address, Destination: buyer.address,
   Amount: { mpt_issuance_id: SHARE_MPT, value: "1000000" },
 }, lender);
 
-// TEST 5 — dénouement de l'escrow de parts
+// TEST 5: settle the share escrow
 const esc = await c.request({ command: "tx", transaction: ESCROW_TX });
 const seq = esc.result.tx_json?.Sequence ?? esc.result.Sequence;
-console.log("\nOfferSequence de l'escrow:", seq);
-await go("TEST 5 : EscrowFinish avec le preimage", {
+console.log("\nOfferSequence of the escrow:", seq);
+await go("TEST 5: EscrowFinish with the preimage", {
   TransactionType: "EscrowFinish", Account: buyer.address, Owner: lender.address,
   OfferSequence: seq, Condition: `A0258020${(await import("node:crypto")).createHash("sha256").update(Buffer.from(PREIMAGE,"hex")).digest("hex").toUpperCase()}810120`,
   Fulfillment: `A0228020${PREIMAGE}`,
 }, buyer);
 
 const bal = await c.request({ command: "account_objects", account: buyer.address, type: "mptoken", ledger_index: "validated" });
-console.log("\nParts détenues par l'acheteur :", bal.result.account_objects.find(o=>o.MPTokenIssuanceID===SHARE_MPT)?.MPTAmount);
+console.log("\nShares held by the buyer:", bal.result.account_objects.find(o=>o.MPTokenIssuanceID===SHARE_MPT)?.MPTAmount);
 await c.disconnect();

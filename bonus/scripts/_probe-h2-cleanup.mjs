@@ -1,4 +1,4 @@
-// Démontage du banc H2 : 3 échéances restantes, en retard → LATE + montant large.
+// Teardown of the H2 bench: 3 remaining installments, late → LATE + large amount.
 import { Client, Wallet } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 import { submitRaw, loadAccounts, readEntry } from "../../scripts/raw-submit.mjs";
@@ -18,18 +18,18 @@ let guard = 0;
 while (n && Number(n.PaymentRemaining ?? 0) > 0 && guard++ < 6) {
   const large = Math.ceil(Number(n.PeriodicPayment)) + Number(n.LoanServiceFee ?? 0) + Number(n.LatePaymentFee ?? 0) + 500_000;
   const r = await safe(borrower.seed, { TransactionType: "LoanPay", LoanID: L, Amount: String(large), Flags: LATE },
-    `LoanPay large (reste ${n.PaymentRemaining})`);
+    `LoanPay large (remaining ${n.PaymentRemaining})`);
   if (!r.ok) break;
   n = await readEntry(c, L).catch(() => null);
 }
-console.log(`   prêt : ${n ? `PaymentRemaining ${n.PaymentRemaining ?? 0}` : "supprimé"}`);
+console.log(`   loan : ${n ? `PaymentRemaining ${n.PaymentRemaining ?? 0}` : "deleted"}`);
 await safe(broker.seed, { TransactionType: "LoanDelete", LoanID: L }, "LoanDelete");
 const bn = await readEntry(c, B).catch(() => null);
 if (bn && BigInt(bn.CoverAvailable ?? 0) > 0n) await safe(broker.seed,
   { TransactionType: "LoanBrokerCoverWithdraw", LoanBrokerID: B, Amount: String(bn.CoverAvailable) }, "CoverWithdraw");
 await safe(broker.seed, { TransactionType: "LoanBrokerDelete", LoanBrokerID: B }, "LoanBrokerDelete");
 const sf = await vaultSnapshot(c, V);
-console.log(`   vault : total ${fmt(sf.assetsTotal)} · dispo ${fmt(sf.assetsAvailable)} · part ${sf.navPerShare.toFixed(9)}`);
+console.log(`   vault : total ${fmt(sf.assetsTotal)} · available ${fmt(sf.assetsAvailable)} · share ${sf.navPerShare.toFixed(9)}`);
 const sh = await (async () => { const r = await c.request({ command: "account_objects", account: spareW.address, type: "mptoken", ledger_index: "validated" });
   return BigInt(r.result.account_objects.find((o) => o.MPTokenIssuanceID === sf.shareMPTID)?.MPTAmount ?? 0); })();
 if (sh > 0n) await safe(spare.seed, { TransactionType: "VaultWithdraw", VaultID: V,

@@ -1,4 +1,4 @@
-// Récupère les hashes des N dernières transactions d'un compte (type, code, heure).
+// Fetches the hashes of the last N transactions of an account (type, code, time).
 import { Client } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 import { loadAccounts } from "../../scripts/raw-submit.mjs";

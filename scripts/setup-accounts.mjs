@@ -1,12 +1,12 @@
-// Étape 1 du "Before you write code" : financer lender, borrower, broker
-// et un compte de réserve.
+// Step 1 of "Before you write code": fund lender, borrower, broker and a
+// spare account.
 //
-// Usage : node scripts/setup-accounts.mjs
-// Écrit .accounts.json (gitignored — il contient des seeds).
+// Usage: node scripts/setup-accounts.mjs
+// Writes .accounts.json (gitignored: it contains seeds).
 //
-// Relever dans bonus/notes/FEEDBACK-RAW.md : combien de comptes financés du premier coup,
-// le délai par compte, et tout échec silencieux (faucet qui répond 200 avec
-// un corps inattendu, compte non encore financé au moment de la lecture, etc.).
+// Record in bonus/notes/FEEDBACK-RAW.md: how many accounts were funded on the
+// first try, the delay per account, and any silent failure (faucet answering
+// 200 with an unexpected body, account not yet funded when read, etc.).
 
 import { writeFileSync, existsSync } from "node:fs";
 import { NET, acctUrl } from "./config.mjs";
@@ -23,7 +23,7 @@ async function fundOne(role) {
   });
 
   if (!r.ok) {
-    throw new Error(`faucet ${r.status} pour ${role}: ${await r.text()}`);
+    throw new Error(`faucet ${r.status} for ${role}: ${await r.text()}`);
   }
 
   const j = await r.json();
@@ -32,9 +32,9 @@ async function fundOne(role) {
   const seed = acc.secret ?? acc.seed ?? j.seed;
 
   if (!address || !seed) {
-    console.error(`Réponse faucet inattendue pour ${role} :`);
+    console.error(`Unexpected faucet response for ${role}:`);
     console.error(JSON.stringify(j, null, 2));
-    throw new Error("format de réponse faucet non reconnu");
+    throw new Error("unrecognized faucet response format");
   }
 
   return {
@@ -48,19 +48,19 @@ async function fundOne(role) {
 
 const main = async () => {
   if (existsSync(OUT)) {
-    console.log(".accounts.json existe déjà.");
-    console.log("Le supprimer d'abord si tu veux repartir de zéro.");
+    console.log(".accounts.json already exists.");
+    console.log("Delete it first if you want to start from scratch.");
     process.exit(0);
   }
 
-  console.log("Faucet :", NET.faucet);
+  console.log("Faucet:", NET.faucet);
   console.log("");
 
   const accounts = {};
   const failures = [];
 
-  // Séquentiel volontairement : un faucet sous rate limit répond mal en
-  // parallèle, et on veut pouvoir attribuer chaque échec à un rôle précis.
+  // Deliberately sequential: a rate-limited faucet misbehaves in parallel,
+  // and we want to attribute each failure to a specific role.
   for (const role of ROLES) {
     try {
       const a = await fundOne(role);
@@ -68,32 +68,32 @@ const main = async () => {
       console.log(`${role.padEnd(9)} ${a.address}  (${a.ms}ms)`);
     } catch (e) {
       failures.push({ role, error: e.message });
-      console.error(`${role.padEnd(9)} ÉCHEC — ${e.message}`);
+      console.error(`${role.padEnd(9)} FAILED: ${e.message}`);
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
 
   if (Object.keys(accounts).length) {
     writeFileSync(OUT, JSON.stringify(accounts, null, 2));
-    console.log("\nÉcrit dans .accounts.json");
-    console.log("\nExplorer :");
+    console.log("\nWritten to .accounts.json");
+    console.log("\nExplorer:");
     for (const a of Object.values(accounts)) {
       console.log(`  ${a.role.padEnd(9)} ${acctUrl(a.address)}`);
     }
   }
 
   if (failures.length) {
-    console.log("\n--- Pour bonus/notes/FEEDBACK-RAW.md ---");
-    console.log(`Comptes financés du premier coup : ${ROLES.length - failures.length}/${ROLES.length}`);
-    for (const f of failures) console.log(`  ${f.role} : ${f.error}`);
+    console.log("\n--- For bonus/notes/FEEDBACK-RAW.md ---");
+    console.log(`Accounts funded on the first try: ${ROLES.length - failures.length}/${ROLES.length}`);
+    for (const f of failures) console.log(`  ${f.role}: ${f.error}`);
     process.exit(1);
   }
 
-  console.log(`\n${ROLES.length}/${ROLES.length} comptes financés du premier coup.`);
-  console.log("→ noter le chiffre et les délais dans bonus/notes/FEEDBACK-RAW.md.");
+  console.log(`\n${ROLES.length}/${ROLES.length} accounts funded on the first try.`);
+  console.log("→ record the count and the delays in bonus/notes/FEEDBACK-RAW.md.");
 };
 
 main().catch((e) => {
-  console.error("\nÉCHEC :", e.message);
+  console.error("\nFAILED:", e.message);
   process.exit(1);
 });

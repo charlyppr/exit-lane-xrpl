@@ -21,26 +21,26 @@ const go = async (label, tx, wallet) => {
     console.log("code:", code, "\nhash:", r.result.hash, "\n", txUrl(r.result.hash));
     return { code, hash: r.result.hash };
   } catch (e) {
-    console.log("REJET:", (e.message ?? "").slice(0, 300));
+    console.log("REJECTED:", (e.message ?? "").slice(0, 300));
     return { code: "local-reject", err: e.message };
   }
 };
 
-// TEST 2 — transfert simple de parts (lsfMPTCanTransfer)
-await go("TEST 2 : Payment de 1 000 000 parts lender -> spare", {
+// TEST 2: simple transfer of shares (lsfMPTCanTransfer)
+await go("TEST 2: Payment of 1,000,000 shares lender -> spare", {
   TransactionType: "Payment",
   Account: lender.address,
   Destination: buyer.address,
   Amount: { mpt_issuance_id: SHARE_MPT, value: "1000000" },
 }, lender);
 
-// TEST 3 — escrow conditionnel de parts (lsfMPTCanEscrow) = jambe d'un swap atomique
+// TEST 3: conditional escrow of shares (lsfMPTCanEscrow) = one leg of an atomic swap
 const preimage = randomBytes(32);
 const cond = createHash("sha256").update(preimage).digest("toString" in preimage ? undefined : undefined);
 const condHex = createHash("sha256").update(preimage).digest("hex").toUpperCase();
 const CONDITION = `A0258020${condHex}810120`;
 const now = Math.floor(Date.now() / 1000) - 946684800;
-await go("TEST 3 : EscrowCreate de parts avec Condition (jambe HTLC)", {
+await go("TEST 3: EscrowCreate of shares with Condition (HTLC leg)", {
   TransactionType: "EscrowCreate",
   Account: lender.address,
   Destination: buyer.address,

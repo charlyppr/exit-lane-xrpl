@@ -1,13 +1,13 @@
-// H1 — le first-loss capital absorbe-t-il la première perte ?
+// H1: does the first-loss capital absorb the first loss?
 //
-// Question posée mot pour mot par le brief : « Did first-loss-capital
-// parameters behave as their names suggested? »
+// Question asked word for word by the brief: "Did first-loss-capital
+// parameters behave as their names suggested?"
 //
-// Décor isolé : un vault, un broker, UN SEUL prêt, pour que DebtTotal soit
-// sans ambiguïté. GracePeriod = 60 s, le minimum accepté par le protocole
-// (59 s → temINVALID, mesuré).
+// Isolated setup: one vault, one broker, ONE SINGLE loan, so that DebtTotal
+// is unambiguous. GracePeriod = 60 s, the minimum the protocol accepts
+// (59 s → temINVALID, measured).
 //
-// Usage : node bonus/scripts/h1-default.mjs
+// Usage: node bonus/scripts/h1-default.mjs
 
 import { Client, Wallet } from "xrpl";
 import { NET, pctToRate, txUrl } from "../../scripts/config.mjs";
@@ -30,7 +30,7 @@ try {
   const { lender, borrower, broker } = loadAccounts();
   const brokerW = Wallet.fromSeed(broker.seed), borrowerW = Wallet.fromSeed(borrower.seed);
 
-  title(`Décor isolé — vault ${DEPOSIT} XRP · cover ${COVER} XRP · CoverRateMinimum ${COVER_MIN} % · CoverRateLiquidation ${COVER_LIQ} %`);
+  title(`Isolated setup: vault ${DEPOSIT} XRP · cover ${COVER} XRP · CoverRateMinimum ${COVER_MIN} % · CoverRateLiquidation ${COVER_LIQ} %`);
   const v = await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate", Asset: { currency: "XRP" }, AssetsMaximum: XRP(10_000),
     WithdrawalPolicy: 1, Data: Buffer.from("CY-HACK H1 default").toString("hex").toUpperCase(),
@@ -53,7 +53,7 @@ try {
     TransactionType: "LoanBrokerCoverDeposit", LoanBrokerID: brokerId, Amount: XRP(COVER),
   }, { label: `CoverDeposit ${COVER}` });
 
-  step(`LoanSet — ${PRINCIPAL} XRP, PaymentInterval 60 s, GracePeriod 60 s`);
+  step(`LoanSet: ${PRINCIPAL} XRP, PaymentInterval 60 s, GracePeriod 60 s`);
   const prepared = await client.autofill({
     TransactionType: "LoanSet", Account: brokerW.address, LoanBrokerID: brokerId,
     Counterparty: borrowerW.address, PrincipalRequested: XRP(PRINCIPAL),
@@ -64,31 +64,31 @@ try {
   const lres = await client.submitAndWait(signLoanSetCounterparty(brokerW.sign(prepared).tx_blob, borrower.seed));
   log(`LoanSet ${lres.result.meta?.TransactionResult}\n  ${txUrl(lres.result.hash)}`);
   const loanId = createdNode(lres.result, "Loan")?.LedgerIndex;
-  if (!loanId) throw new Error("pas de Loan créé");
+  if (!loanId) throw new Error("no Loan created");
 
   const brk0 = await readEntry(client, brokerId);
   const vault0 = await vaultSnapshot(client, vaultId);
   const loan0 = await readEntry(client, loanId);
-  log(`\n  AVANT`);
+  log(`\n  BEFORE`);
   log(`    DebtTotal          ${fmt(brk0.DebtTotal ?? 0)}`);
   log(`    CoverAvailable     ${fmt(brk0.CoverAvailable ?? 0)}`);
   log(`    vault AssetsTotal  ${fmt(vault0.assetsTotal)}`);
-  log(`    valeur d'une part  ${vault0.navPerShare.toFixed(9)}`);
-  log(`    prêt : PrincipalOutstanding ${fmt(loan0.PrincipalOutstanding)}`);
+  log(`    value of one share ${vault0.navPerShare.toFixed(9)}`);
+  log(`    loan: PrincipalOutstanding ${fmt(loan0.PrincipalOutstanding)}`);
 
-  step("Attente de la 1re échéance — 65 s (PaymentInterval = 60 s)");
+  step("Waiting for the 1st due date: 65 s (PaymentInterval = 60 s)");
   await sleep(65_000);
 
-  step("LoanManage tfLoanImpair — perte enregistrée AVANT tout défaut");
+  step("LoanManage tfLoanImpair: loss recorded BEFORE any default");
   const imp = await submitRaw(client, broker.seed, {
     TransactionType: "LoanManage", LoanID: loanId, Flags: 131072,
   }, { label: "LoanManage impair" });
   const vaultImp = await vaultSnapshot(client, vaultId);
   log(`  vault AssetsTotal  ${fmt(vault0.assetsTotal)} → ${fmt(vaultImp.assetsTotal)}`);
-  log(`  valeur d'une part  ${vault0.navPerShare.toFixed(9)} → ${vaultImp.navPerShare.toFixed(9)}`);
-  log(`  ▸ l'impairment ${vaultImp.assetsTotal === vault0.assetsTotal ? "ne touche PAS" : "touche"} la valeur affichée aux déposants`);
+  log(`  value of one share ${vault0.navPerShare.toFixed(9)} → ${vaultImp.navPerShare.toFixed(9)}`);
+  log(`  ▸ the impairment ${vaultImp.assetsTotal === vault0.assetsTotal ? "does NOT affect" : "affects"} the value shown to depositors`);
 
-  step("Attente de la grace period — 70 s");
+  step("Waiting for the grace period: 70 s");
   await sleep(70_000);
 
   step("LoanManage tfLoanDefault");
@@ -102,27 +102,27 @@ try {
   const vaultLoss = Number(vault0.assetsTotal) - Number(vault1.assetsTotal);
   const debt = Number(brk0.DebtTotal ?? 0);
   const principal = Number(loan0.PrincipalOutstanding);
-  const attendu = Math.min(debt * (COVER_MIN / 100) * (COVER_LIQ / 100), principal);
+  const expected = Math.min(debt * (COVER_MIN / 100) * (COVER_LIQ / 100), principal);
 
-  title("RÉSULTAT H1");
-  log(`  Défaut sur un principal de              ${fmt(principal)}`);
-  log(`  First-loss capital ponctionné           ${fmt(Math.round(coverUsed))}`);
-  log(`  Perte encaissée par les déposants       ${fmt(Math.round(vaultLoss))}`);
-  log(`  First-loss capital ENCORE disponible    ${fmt(brk1.CoverAvailable ?? 0)}`);
-  log(`\n  Formule documentée :`);
-  log(`    min(DebtTotal × CoverRateMinimum × CoverRateLiquidation, défaut)`);
-  log(`    = min(${fmt(debt)} × ${COVER_MIN}% × ${COVER_LIQ}%, ${fmt(principal)}) = ${fmt(Math.round(attendu))}`);
-  log(`    observé : ${fmt(Math.round(coverUsed))}  → ${Math.abs(attendu - coverUsed) < 2 ? "CONFORME à la formule" : "ÉCART avec la formule"}`);
-  const part = coverUsed + vaultLoss > 0 ? (100 * coverUsed) / (coverUsed + vaultLoss) : 0;
-  log(`\n  ▸▸ Le « first-loss capital » a absorbé ${part.toFixed(2)} % de la perte,`);
-  log(`     alors que ${fmt(brk1.CoverAvailable ?? 0)} restaient disponibles pour l'absorber.`);
+  title("H1 RESULT");
+  log(`  Default on a principal of               ${fmt(principal)}`);
+  log(`  First-loss capital drawn                ${fmt(Math.round(coverUsed))}`);
+  log(`  Loss borne by depositors                ${fmt(Math.round(vaultLoss))}`);
+  log(`  First-loss capital STILL available      ${fmt(brk1.CoverAvailable ?? 0)}`);
+  log(`\n  Documented formula:`);
+  log(`    min(DebtTotal × CoverRateMinimum × CoverRateLiquidation, default)`);
+  log(`    = min(${fmt(debt)} × ${COVER_MIN}% × ${COVER_LIQ}%, ${fmt(principal)}) = ${fmt(Math.round(expected))}`);
+  log(`    observed: ${fmt(Math.round(coverUsed))}  → ${Math.abs(expected - coverUsed) < 2 ? "MATCHES the formula" : "DEVIATES from the formula"}`);
+  const share = coverUsed + vaultLoss > 0 ? (100 * coverUsed) / (coverUsed + vaultLoss) : 0;
+  log(`\n  ▸▸ The "first-loss capital" absorbed ${share.toFixed(2)} % of the loss,`);
+  log(`     while ${fmt(brk1.CoverAvailable ?? 0)} remained available to absorb it.`);
   log(`\n  vault AssetsTotal ${fmt(vault0.assetsTotal)} → ${fmt(vault1.assetsTotal)}`);
-  log(`  valeur d'une part ${vault0.navPerShare.toFixed(9)} → ${vault1.navPerShare.toFixed(9)}`);
+  log(`  value of one share ${vault0.navPerShare.toFixed(9)} → ${vault1.navPerShare.toFixed(9)}`);
   log(`\n  VaultID ${vaultId}\n  BrokerID ${brokerId}\n  LoanID ${loanId}`);
   log(`  impair  ${imp.code} ${imp.hash}`);
   log(`  default ${def.code} ${def.hash}`);
 } catch (e) {
-  log(`\n💥 ARRÊT : ${e.message}`);
+  log(`\n💥 ABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 600));
 } finally {
   await client.disconnect();

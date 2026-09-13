@@ -1,28 +1,27 @@
-// Deck Exit Lane — 10 slides.
+// Exit Lane deck, 10 slides.
 //
-// Deux sources visuelles à réconcilier : le deck officiel Ripple / XRPL Lending
-// Protocol (« final lending intro.pdf », relevé au pixel) pour les slides, et
-// l'explorer XRPL pour les preuves on-chain (captures bonus/deck-source/shots/).
+// Two visual sources to reconcile: the official Ripple / XRPL Lending Protocol
+// deck ("final lending intro.pdf", measured to the pixel) for the slides, and
+// the XRPL explorer for the on-chain proofs (screenshots in bonus/deck-source/shots/).
 //
-//   slides   navy #001C5C · bleu #006AFF · ciel #6DC3FF · corps #5F666E
-//            rail dégradé de 0,10" à gauche, canevas 13,333 × 7,5"
-//   fenêtres fond #000000 · bord #343437 · gris #A2A2A4 · orange #FF884B
-//            menthe #84F0B6 · violet #B480FF   (relevés sur les captures)
+//   slides   navy #001C5C · blue #006AFF · sky #6DC3FF · body #5F666E
+//            gradient rail 0.10" wide on the left, canvas 13.333 × 7.5"
+//   windows  background #000000 · edge #343437 · grey #A2A2A4 · orange #FF884B
+//            mint #84F0B6 · purple #B480FF   (sampled from the screenshots)
 //
-// Terminal et captures partagent le même composant `win` : fond noir de
-// l'explorer, barre à pastilles, adresse en monospace. L'orange de l'explorer
-// marque tout échec, sur les slides comme dans les fenêtres.
+// Terminal and screenshots share the same `win` component: the explorer's black
+// background, a bar with traffic-light dots, a monospace address line. The
+// explorer's orange marks every failure, on the slides as well as in the windows.
 //
-// Typo : Poppins partout (Bold titres et chiffres, Medium intitulés, Regular
-// corps, Light phrases longues), Menlo pour le code.
+// Type: Poppins everywhere (Bold for titles and figures, Medium for labels,
+// Regular for body, Light for long sentences), Menlo for code.
 //
-// Règle de contenu : une idée par slide, un chiffre ou une capture plutôt qu'une
-// phrase. Les petites informations qui servent la preuve (hash, flags, délai)
-// vivent dans la barre d'adresse des fenêtres ; une légende d'une ligne sous
-// chaque fenêtre dit ce qu'elle prouve. Numéro de page en bas à droite, sauf
-// sur la slide de titre.
+// Content rule: one idea per slide, a figure or a screenshot rather than a
+// sentence. The small pieces of evidence (hash, flags, delay) live in the
+// windows' address bar; a one-line caption under each window says what it
+// proves. Page number bottom right, except on the title slide.
 //
-//   npm install pptxgenjs          # dans un dossier temporaire, PAS dans le projet
+//   npm install pptxgenjs          # in a temporary folder, NOT in the project
 //   node bonus/deck-source/build-deck.cjs deck/exit-lane.pptx
 
 const mod = require("pptxgenjs");
@@ -42,24 +41,24 @@ p.subject = "XRPL Lending Protocol Hackathon · Track 1";
 
 const NAVY = "001C5C", BLUE = "006AFF", SKY = "6DC3FF", GREY = "5F666E",
       MUT = "8A9199", LINE = "E2E5E8", WHITE = "FFFFFF", SOFT = "C9D4E8",
-      ORANGE = "F2703A",                                  // orange explorer, assombri pour le blanc
+      ORANGE = "F2703A",                                  // explorer orange, darkened for white backgrounds
       CHIP = { bg: "EBF4FF", tx: "0045C6" },
       CHIPFAIL = { bg: "FFEEE5", tx: "B8481A" },
       CHIPDARK = { bg: "12357E", tx: SKY };
 
-// fenêtres : palette de l'explorer
+// windows: explorer palette
 const X = { bg: "000000", edge: "343437", dim: "A2A2A4", ink: "FFFFFF",
             ok: "84F0B6", bad: "FF884B", cmd: "B480FF" };
 
-const FH = "Poppins";          // titres et chiffres, en gras
-const FB = "Poppins";          // corps
-const FMED = "Poppins Medium"; // intitulés
-const FL = "Poppins Light";    // phrases longues
+const FH = "Poppins";          // titles and figures, bold
+const FB = "Poppins";          // body
+const FMED = "Poppins Medium"; // labels
+const FL = "Poppins Light";    // long sentences
 const FM = "Menlo";            // code
 
-const ML = 0.88, MR = 12.45, CW = 11.57;   // marges et largeur de contenu
+const ML = 0.88, MR = 12.45, CW = 11.57;   // margins and content width
 
-/* ── rail dégradé (PNG 24×1500 généré à partir des relevés du PDF) ───────── */
+/* ── gradient rail (24×1500 PNG generated from the PDF measurements) ──────── */
 
 const RAIL = "image/png;base64," +
   "iVBORw0KGgoAAAANSUhEUgAAABgAAAXcCAIAAAC3VNmqAAADoklEQVR42u3dwXHTQQzF4V2PZzikAwqhBTrImSszudMSfaSE" +
@@ -105,7 +104,7 @@ const rule = (sl, y, color, x, w) => sl.addShape(p.ShapeType.rect, {
   x: x ?? ML, y, w: w ?? CW, h: 0.01, fill: { color: color ?? LINE }, line: { type: "none" },
 });
 
-/* capsule de code : Menlo, largeur calculée sur l'avance réelle (0,6 em) + 0,22" de chaque côté */
+/* code chip: Menlo, width computed from the actual advance (0.6 em) + 0.22" on each side */
 const chip = (sl, t, o) => {
   const fs = o.fs ?? 9.5, c = o.c ?? CHIP, h = 0.32;
   const w = t.length * 0.6 * fs / 72 + 0.44;
@@ -125,14 +124,14 @@ const badge = (sl, n, o) => {
 const title = (sl, t, dark) =>
   txt(sl, t, { x: ML, y: 0.78, w: CW, h: 0.72, fs: 32, bold: true, color: dark ? WHITE : NAVY, ff: FH });
 
-/* grand chiffre + libellé */
+/* big figure + label */
 const stat = (sl, n, l, o) => {
   const size = o.fs ?? 36;
   txt(sl, n, { x: o.x, y: o.y, w: o.w, h: size / 52, fs: size, bold: true, color: o.color ?? NAVY, ff: FH });
   txt(sl, l, { x: o.x, y: o.y + size / 52 + 0.02, w: o.w, h: 0.3, fs: 13, color: o.lcolor ?? GREY });
 };
 
-/* fenêtre commune au terminal et à l'explorer : fond noir, pastilles, adresse */
+/* window shared by the terminal and the explorer: black background, dots, address */
 const BAR = 0.42;
 const win = (sl, o) => {
   sl.addShape(p.ShapeType.roundRect, { x: o.x, y: o.y, w: o.w, h: o.h,
@@ -144,8 +143,8 @@ const win = (sl, o) => {
   rule(sl, o.y + BAR, X.edge, o.x, o.w);
 };
 
-/* captures de l'explorer dans une fenêtre. Même grossissement pour toutes
-   (2415 px de capture = largeur utile), sauf une capture plus large, réduite. */
+/* explorer screenshots inside a window. Same magnification for all of them
+   (2415 px of screenshot = usable width), except one wider screenshot, scaled down. */
 const explorer = (sl, o) => {
   const padX = 0.2, padY = 0.14, inner = o.w - 2 * padX, k = inner / 2415;
   const imgs = o.files.map((n) => { const [pw, ph] = dim(n); const s = Math.min(k, inner / pw); return { n, w: pw * s, h: ph * s }; });
@@ -156,7 +155,7 @@ const explorer = (sl, o) => {
   return h;
 };
 
-/* terminal : lignes de segments [texte, couleur] ; une ligne marquée fail reçoit une pastille orange */
+/* terminal: lines of [text, color] segments; a line marked fail gets an orange dot */
 const term = (sl, o) => {
   const fs = o.fs ?? 11, step = o.step ?? 0.28;
   const h = BAR + 0.36 + o.lines.length * step;
@@ -174,12 +173,12 @@ const term = (sl, o) => {
 };
 const fail = (segs) => Object.assign(segs, { fail: true });
 
-/* légende d'une ligne sous une fenêtre : ce que la capture prouve */
+/* one-line caption under a window: what the screenshot proves */
 const CAP = 0.3;
 const caption = (sl, t, o) =>
   txt(sl, t, { x: o.x, y: o.y + 0.08, w: o.w, h: CAP - 0.08, fs: 11.5, color: GREY, ff: FL });
 
-/* ── notes orateur : le pitch minuté, 4 min pile. ───────────────────────── */
+/* ── speaker notes: the timed pitch, exactly 4 min. ─────────────────────── */
 
 const NOTES = [
 `0:00 → 0:15 (15 s)
@@ -236,7 +235,7 @@ Everything is in FEEDBACK.md, and in three pages in FEEDBACK.pdf. The 143 hashes
 let slideNo = 0;
 const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
 
-/* ══ 1 — titre ═══════════════════════════════════════════════════════════ */
+/* ══ 1 - title ═══════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
   let cx = ML;
@@ -249,7 +248,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* ══ 2 — le problème ═════════════════════════════════════════════════════ */
+/* ══ 2 - the problem ═════════════════════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "Open on paper, closed in practice");
@@ -265,7 +264,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* ══ 3 — la réponse ══════════════════════════════════════════════════════ */
+/* ══ 3 - the answer ══════════════════════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "Sell the vault share, not the loan");
@@ -289,7 +288,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* ══ 4 — démo ════════════════════════════════════════════════════════════ */
+/* ══ 4 - demo ════════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
   txt(sl, "Live demo.", { x: ML - 0.05, y: 2.75, w: 5.2, h: 1.0, fs: 56, bold: true, color: WHITE, ff: FH });
@@ -314,7 +313,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* ══ 5 — exécution ═══════════════════════════════════════════════════════ */
+/* ══ 5 - execution ═══════════════════════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "Minimum bar: 8 of 8");
@@ -338,7 +337,7 @@ const notes = (sl) => sl.addNotes(NOTES[slideNo++]);
   notes(sl);
 }
 
-/* lignes « constat | détail » sous les preuves, la dernière porte la correction proposée */
+/* "finding | detail" rows under the proofs, the last one carries the proposed fix */
 const facts = (sl, y0, rows) => {
   rule(sl, y0 - 0.25);
   rows.forEach(([label, text], i) => {
@@ -348,7 +347,7 @@ const facts = (sl, y0, rows) => {
   });
 };
 
-/* ══ 6 — friction 1 : fixCleanup3_4_0 ════════════════════════════════════ */
+/* ══ 6 - friction 1: fixCleanup3_4_0 ═════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "fixCleanup3_4_0: enabled, missing from xrpl.org");
@@ -378,7 +377,7 @@ const facts = (sl, y0, rows) => {
   notes(sl);
 }
 
-/* ══ 7 — friction 2 : paiement en retard ═════════════════════════════════ */
+/* ══ 7 - friction 2: late payment ════════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "A late LoanPay requires tfLoanLatePayment");
@@ -398,7 +397,7 @@ const facts = (sl, y0, rows) => {
   notes(sl);
 }
 
-/* ══ 8 — friction 3 : first-loss capital ═════════════════════════════════ */
+/* ══ 8 - friction 3: first-loss capital ══════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "First-loss capital: 0.5% of a defaulted loan");
@@ -424,12 +423,12 @@ const facts = (sl, y0, rows) => {
   notes(sl);
 }
 
-/* ══ 9 — feedback : les six autres ═══════════════════════════════════════ */
+/* ══ 9 - feedback: the six others ════════════════════════════════════════ */
 {
   const sl = slide();
   title(sl, "Six more findings");
 
-  // numéro = section de FEEDBACK.md
+  // number = section of FEEDBACK.md
   const F = [
     [4, "Sole-holder exception missing from xrpl.org", "LossUnrealized"],
     [5, "No loan_info or loan_broker_info", "unknownCmd"],
@@ -451,7 +450,7 @@ const facts = (sl, y0, rows) => {
   notes(sl);
 }
 
-/* ══ 10 — clôture ════════════════════════════════════════════════════════ */
+/* ══ 10 - closing ════════════════════════════════════════════════════════ */
 {
   const sl = slide(true);
   title(sl, "Nine findings, three pages", true);
@@ -466,4 +465,4 @@ const facts = (sl, y0, rows) => {
   notes(sl);
 }
 
-p.writeFile({ fileName: process.argv[2] || "deck/exit-lane.pptx" }).then((f) => console.log("écrit :", f));
+p.writeFile({ fileName: process.argv[2] || "deck/exit-lane.pptx" }).then((f) => console.log("written:", f));

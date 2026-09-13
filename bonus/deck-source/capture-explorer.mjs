@@ -1,10 +1,10 @@
-// Captures de l'explorer XRPL pour feedback-report.pdf.
+// XRPL explorer screenshots for feedback-report.pdf.
 //   node bonus/deck-source/capture-explorer.mjs          → bonus/deck-source/shots/*.png
-//   node bonus/deck-source/capture-explorer.mjs '^d-'    → seulement les captures dont le nom correspond
-// Chrome headless piloté par le protocole DevTools : aucune dépendance (fetch et
-// WebSocket sont natifs dans Node ≥ 22). Chaque capture est un recadrage
-// rectangulaire d'une vraie page de l'explorer ; rien n'est retouché. Le bandeau
-// cookies est refusé (« Reject All »). Vue zoomée : viewport 460 px, rendu ×5,25 ; le hash figure dans la légende du PDF.
+//   node bonus/deck-source/capture-explorer.mjs '^d-'    → only the screenshots whose name matches
+// Headless Chrome driven through the DevTools protocol: no dependency (fetch and
+// WebSocket are native in Node >= 22). Each screenshot is a rectangular crop of
+// a real explorer page; nothing is retouched. The cookie banner is declined
+// ("Reject All"). Zoomed view: 460 px viewport, rendered at ×5.25; the hash appears in the PDF caption.
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -13,22 +13,22 @@ import { join } from "node:path";
 
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const EXPLORER = "https://custom.xrpl.org/lending-hackathon.dev.ripplex.io:51233/transactions/";
-// fileURLToPath, pas .pathname : le chemin du repo contient un espace, que
-// .pathname laisse encodé en %20 — et mkdirSync crée alors un faux dossier.
+// fileURLToPath, not .pathname: the repo path contains a space, which
+// .pathname leaves encoded as %20, and mkdirSync then creates a bogus folder.
 const OUT = fileURLToPath(new URL("./shots/", import.meta.url));
 const PROFILE = mkdtempSync(join(tmpdir(), "xrpl-shots-"));
 const W = 460, DPR = 5.25, port = 9340;
 mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Une page = une transaction dans un onglet ; chaque crop est une expression JS
-// qui renvoie la liste des éléments à englober.
-// Gabarits de recadrage : titre (type + statut), ligne du hash, section de
-// l'onglet Detailed, ligne clé/valeur de l'onglet Simple.
+// One page = one transaction in a tab; each crop is a JS expression that
+// returns the list of elements to enclose.
+// Crop templates: title (type + status), hash row, section of the Detailed
+// tab, key/value row of the Simple tab.
 const T = { e: `titleRow()`, px: 12, py: [6, 6] };
-// Pastille de statut seule, sans le titre : le titre de l'explorer (≈ 40 px CSS)
-// sort à ≈ 22 pt dans le rapport, deux fois le corps du texte. Le rapport utilise
-// B, le deck garde T.
+// Status badge alone, without the title: the explorer title (≈ 40 CSS px)
+// comes out at ≈ 22 pt in the report, twice the body text. The report uses
+// B, the deck keeps T.
 const B = { e: `[document.querySelector('.transaction .summary .tx-status')]`, px: 12, py: [6, 4] };
 const H = { e: `[hashRow()]`, px: 12, py: [3, 3] };
 const S = (name) => ({ e: `[section('${name}')]`, px: 12, py: [2, 4] });
@@ -53,18 +53,18 @@ const PAGES = [
     "f6a-type": T, "f6a-badge": B, "f6a-status": S("Status") } },
   { hash: "B92A90F59EBF79108B5414F61A12656F321EBC264E1BB186FCC14CAF259F9CAA", tab: "Detailed", crops: {
     "f6b-type": T, "f6b-badge": B, "f6b-status": S("Status") } },
-  // « LoanBrokerCoverWithdraw » ne tient pas en 540 px : le titre seul, en 820.
+  // "LoanBrokerCoverWithdraw" does not fit in 540 px: the title alone, at 820.
   { hash: "68DD97D949602FD470E0FA80B2526C3FDCFA3449095F7A7879F4D4430845D45E", tab: "Simple", w: 820, crops: {
     "f3b-type": T } },
   { hash: "A336D71E738AA27C2B449DE05A0FE5C8945733A53420B9B4D8390172404CC1E2", tab: "Simple", crops: {
     "f5a-type": T, "f5a-badge": B, "f5a-max": K("Assets Maximum"), "f5a-date": K("DATE/TIME (UTC)") } },
   { hash: "D27E21CBB4C55F70963BEDB00DFDB28A4C25B8A355619CAE85566CA63E25B956", tab: "Simple", crops: {
     "f5b-type": T, "f5b-badge": B, "f5b-amount": K("Amount"), "f5b-date": K("DATE/TIME (UTC)") } },
-  // Deck : le retrait refusé de la démo (scène 2).
+  // Deck: the demo's refused withdrawal (scene 2).
   { hash: "7AB5622EAEFC70A6B005EAED9411EA3D62539A16E5EF5D8C8E33F8BE493CF934", tab: "Detailed", crops: {
     "d-wall-type": T, "d-wall-status": S("Status") } },
 ];
-// node bonus/deck-source/capture-explorer.mjs '^d-'     → seulement les captures dont le nom correspond
+// node bonus/deck-source/capture-explorer.mjs '^d-'     → only the screenshots whose name matches
 // node bonus/deck-source/capture-explorer.mjs 'badge$'
 const ONLY = process.argv[2] ? new RegExp(process.argv[2]) : null;
 const wanted = (k) => !ONLY || ONLY.test(k);
@@ -76,7 +76,7 @@ const HELPERS = `
   window.section = (name) => __leaf(new RegExp('^'+name+'$'))[0].parentElement;
   window.kv = (label) => { const want=label.toUpperCase();
     const e=[...document.querySelectorAll('*')].find(x=>x.children.length===0&&(x.innerText||'').trim().toUpperCase()===want);
-    if(!e) throw new Error('libellé introuvable: '+label);
+    if(!e) throw new Error('label not found: '+label);
     let p=e.parentElement; for(let i=0;i<3&&p&&(p.innerText||'').trim().length<=label.length+1;i++) p=p.parentElement; return p; };
   window.metaItems = (re) => [...document.querySelectorAll('li')].filter(li => re.test((li.innerText||'').trim().split('\\n')[0].trim()));
   window.vaultPairs = (props) => { const pairs=[...document.querySelectorAll('.json-view--pair')];
@@ -84,11 +84,11 @@ const HELPERS = `
     const obj=vault.parentElement; const ff=[...obj.children].find(c=>c.querySelector?.(':scope > .json-view--property')?.innerText==='FinalFields');
     const inner=[...ff.querySelectorAll('.json-view--pair')].filter(p=>props.includes(p.querySelector(':scope > .json-view--property')?.innerText));
     const first=inner[0], last=inner[inner.length-1];
-    // englober toutes les lignes entre la première et la dernière propriété voulue
+    // enclose every row between the first and the last wanted property
     const between=[...ff.querySelectorAll(':scope .json-view--pair')].filter(p=>{const a=first.compareDocumentPosition(p),b=last.compareDocumentPosition(p);
       return (p===first||p===last||((a & Node.DOCUMENT_POSITION_FOLLOWING)&&(b & Node.DOCUMENT_POSITION_PRECEDING))) && p.parentElement===first.parentElement;});
     return between; };
-  window.__box = (els, px, py) => { if(!els||!els.length) throw new Error('crop vide'); const rs=els.map(e=>e.getBoundingClientRect());
+  window.__box = (els, px, py) => { if(!els||!els.length) throw new Error('empty crop'); const rs=els.map(e=>e.getBoundingClientRect());
     const [pt, pb] = Array.isArray(py) ? py : [py, py];
     const x=Math.max(0,Math.min(...rs.map(r=>r.left))-px), y=Math.min(...rs.map(r=>r.top))+scrollY-pt;
     const r=Math.min(innerWidth,Math.max(...rs.map(r=>r.right))+px), b=Math.max(...rs.map(r=>r.bottom))+scrollY+pb;

@@ -1,12 +1,12 @@
-// Helper pour soumettre un type de transaction que le SDK stable ne connaît
-// peut-être pas (VaultCreate, LoanBrokerSet, LoanSet, LoanPay...).
+// Helper to submit a transaction type the stable SDK may not know about
+// (VaultCreate, LoanBrokerSet, LoanSet, LoanPay...).
 //
-// Le brief demande explicitement : "Did the SDK support the needed transaction
-// types, or did you construct raw JSON?" — donc chaque fois que ce helper est
-// nécessaire au lieu d'un type natif, c'est un item de feedback catégorie
-// `client libraries`. Remplir le tableau de l'hypothèse H5 au fur et à mesure.
+// The brief asks explicitly: "Did the SDK support the needed transaction
+// types, or did you construct raw JSON?" So every time this helper is needed
+// instead of a native type, it is a feedback item in the `client libraries`
+// category. Fill in the hypothesis H5 table as you go.
 //
-// Usage :
+// Usage:
 //   import { submitRaw, submitMultiSigned, loadAccounts } from "./raw-submit.mjs";
 //   const { lender } = loadAccounts();
 //   await submitRaw(client, lender.seed, { TransactionType: "VaultDeposit", ... });
@@ -21,14 +21,14 @@ export function loadAccounts() {
   try {
     return JSON.parse(readFileSync(new URL("../.accounts.json", import.meta.url)));
   } catch {
-    throw new Error("Lance d'abord : node scripts/setup-accounts.mjs");
+    throw new Error("Run first: node scripts/setup-accounts.mjs");
   }
 }
 
 /**
- * Autofill + sign + submit d'une transaction arbitraire, typée ou non.
- * Ne lève pas sur un échec `tec` / `tem` : ces échecs sont souvent le
- * résultat recherché (étape 7 du minimum bar, hypothèses H2, H3, H10).
+ * Autofill + sign + submit of an arbitrary transaction, typed or not.
+ * Does not throw on a `tec` / `tem` failure: those failures are often the
+ * expected result (step 7 of the minimum bar, hypotheses H2, H3, H10).
  */
 export async function submitRaw(client, seed, tx, { label = "" } = {}) {
   const wallet = Wallet.fromSeed(seed);
@@ -38,8 +38,8 @@ export async function submitRaw(client, seed, tx, { label = "" } = {}) {
   try {
     prepared = await client.autofill(payload);
   } catch (e) {
-    // Un autofill qui casse sur un type inconnu est en soi un item de feedback.
-    console.error(`[autofill KO] ${label || tx.TransactionType} : ${e.message}`);
+    // An autofill that breaks on an unknown type is a feedback item in itself.
+    console.error(`[autofill failed] ${label || tx.TransactionType}: ${e.message}`);
     throw e;
   }
 
@@ -56,11 +56,12 @@ export async function submitRaw(client, seed, tx, { label = "" } = {}) {
 }
 
 /**
- * LoanSet exige la signature du broker ET de l'emprunteur (cf. hypothèse H4).
- * Deux approches possibles selon ce que le protocole accepte :
- *   - multisign XRPL classique (nécessite une SignerList configurée)
- *   - un champ de signature dédié dans le corps de LoanSet
- * Tester les deux, chronométrer, et consigner ce qui a marché.
+ * LoanSet requires the signature of the broker AND the borrower (see
+ * hypothesis H4). Two possible approaches depending on what the protocol
+ * accepts:
+ *   - classic XRPL multisign (requires a configured SignerList)
+ *   - a dedicated signature field in the LoanSet body
+ * Test both, time them, and record which one worked.
  */
 export async function submitMultiSigned(client, tx, seeds, { label = "" } = {}) {
   const wallets = seeds.map((s) => Wallet.fromSeed(s));
@@ -80,10 +81,10 @@ export async function submitMultiSigned(client, tx, seeds, { label = "" } = {}) 
 }
 
 /**
- * Lit une entrée de ledger par son index. Utile pour relire Vault,
- * LoanBroker et Loan après chaque étape, et vérifier si les champs dérivés
- * (utilisation, liquidité, rendement) sont lisibles ou doivent être
- * recalculés à la main — cf. hypothèse H9.
+ * Reads a ledger entry by its index. Useful to re-read Vault, LoanBroker and
+ * Loan after each step, and to check whether the derived fields
+ * (utilization, liquidity, yield) are readable or must be recomputed by
+ * hand. See hypothesis H9.
  */
 export async function readEntry(client, index) {
   const res = await client.request({
@@ -95,23 +96,23 @@ export async function readEntry(client, index) {
 }
 
 /**
- * Signature `Counterparty` d'un LoanSet (l'emprunteur contresigne le prêt).
+ * `Counterparty` signature of a LoanSet (the borrower countersigns the loan).
  *
- * ⚠️ NE PAS utiliser `signLoanSetByCounterparty` de xrpl@4.6.0 : ce helper
- * signe avec `encodeForSigning` (préfixe générique STX) alors que rippled
- * attend `encodeForSigningCounterparty`. Résultat : rejet local
- * « fails local checks: Counterparty: Invalid signature. » Vérifié le 12/09,
- * cf. FEEDBACK-RAW [13:31]. Le bon encodage est exposé par
- * ripple-binary-codec 2.11.0, que le SDK embarque déjà.
+ * ⚠️ DO NOT use `signLoanSetByCounterparty` from xrpl@4.6.0: that helper
+ * signs with `encodeForSigning` (generic STX prefix) while rippled expects
+ * `encodeForSigningCounterparty`. Result: local rejection
+ * "fails local checks: Counterparty: Invalid signature." Verified on 12/09,
+ * see FEEDBACK-RAW [13:31]. The correct encoding is exposed by
+ * ripple-binary-codec 2.11.0, which the SDK already bundles.
  *
- * @param {string} signedBlob  tx_blob du LoanSet DÉJÀ signé par le broker
- * @param {string} seed        seed de la counterparty (emprunteur)
- * @returns {string} tx_blob complet, prêt à soumettre
+ * @param {string} signedBlob  tx_blob of the LoanSet ALREADY signed by the broker
+ * @param {string} seed        seed of the counterparty (borrower)
+ * @returns {string} complete tx_blob, ready to submit
  */
 export function signLoanSetCounterparty(signedBlob, seed) {
   const w = Wallet.fromSeed(seed);
   const tx = decode(signedBlob);
-  if (tx.TransactionType !== "LoanSet") throw new Error("LoanSet attendu.");
+  if (tx.TransactionType !== "LoanSet") throw new Error("LoanSet expected.");
   const forSigning = encodeForSigningCounterparty({
     ...tx,
     CounterpartySignature: { SigningPubKey: w.publicKey },

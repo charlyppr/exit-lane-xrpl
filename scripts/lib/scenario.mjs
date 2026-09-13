@@ -1,12 +1,12 @@
-// Le scénario du use case, en un seul exemplaire.
+// The use-case scenario, in a single copy.
 //
-// Deux enveloppes l'utilisent :
-//   - bonus/scripts/step-8-secondary.mjs : mode preuve, enchaîné, pour capturer des hashes.
-//   - demo.mjs             : mode pitch, avec pauses et narration.
-// Un seul code : impossible de répéter avec l'un et de présenter l'autre.
+// Two wrappers use it:
+//   - bonus/scripts/step-8-secondary.mjs : proof mode, chained, to capture hashes.
+//   - demo.mjs                           : pitch mode, with pauses and narration.
+// One code path: you cannot rehearse with one and present the other.
 //
-// L'objet `ui` reçoit les événements. Voir demo.mjs pour une implémentation
-// bavarde, bonus/scripts/step-8-secondary.mjs pour une implémentation sobre.
+// The `ui` object receives the events. See demo.mjs for a verbose
+// implementation, bonus/scripts/step-8-secondary.mjs for a quiet one.
 
 import { Wallet } from "xrpl";
 import { createHash, randomBytes } from "node:crypto";
@@ -22,24 +22,23 @@ const createdNode = (result, type) =>
   (result?.meta?.AffectedNodes ?? []).find((n) => n.CreatedNode?.LedgerEntryType === type)?.CreatedNode ?? null;
 const seqOf = (res) => res.result?.tx_json?.Sequence ?? res.result?.Sequence;
 
-// Les montants sont calibrés pour que la démo soit REJOUABLE une vingtaine de
-// fois sans réapprovisionner les comptes. Ce n'est pas de la frugalité mal
-// placée : dans un vault open-ended intégralement prêté, les parts que la
-// vendeuse n'a pas cédées restent immobilisées DÉFINITIVEMENT — AssetsAvailable
-// vaut zéro, VaultWithdraw est refusé, et le prêt court jusqu'à son terme.
-// Chaque répétition brûle donc du capital sans retour, plus 2 XRP de réserve
-// de compte par vault créé. À 100 XRP de dépôt, six répétitions vidaient la
-// vendeuse. Cf. FEEDBACK-RAW [15:52].
+// Amounts are calibrated so the demo can be REPLAYED about twenty times
+// without refilling the accounts. This is not misplaced frugality: in a fully
+// lent open-ended vault, the shares the seller did not sell stay locked
+// PERMANENTLY. AssetsAvailable is zero, VaultWithdraw is refused, and the loan
+// runs to its term. Every rehearsal therefore burns capital with no return,
+// plus 2 XRP of account reserve per vault created. At a 100 XRP deposit, six
+// rehearsals drained the seller. See FEEDBACK-RAW [15:52].
 export const CFG = {
-  deposit: 25,           // XRP déposés par la vendeuse → 25 000 000 parts
-  cover: 5,              // XRP de first-loss capital (min. requis : 10 % de 25)
-  sharesToSell: 7_500_000n,   // 30 % de sa position
-  decotePct: 97n,        // prix de cession, en % de la valeur
-  redeem: 2_500_000n,    // parts rendues par l'acheteur à la fin
+  deposit: 25,           // XRP deposited by the seller → 25,000,000 shares
+  cover: 5,              // XRP of first-loss capital (minimum required: 10 % of 25)
+  sharesToSell: 7_500_000n,   // 30 % of her position
+  discountPct: 97n,      // sale price, as a % of the value
+  redeem: 2_500_000n,    // shares redeemed by the buyer at the end
 };
 
 /**
- * Joue le scénario complet et renvoie { timeline, ids }.
+ * Plays the full scenario and returns { timeline, ids }.
  * @param {object} ui  { scene, step, line, beat, pause }
  */
 export async function runScenario(client, accounts, ui, cfg = CFG) {
@@ -53,15 +52,15 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
   const mark = (label, r) => (timeline.push({ label, code: r.code, hash: r.hash }), r);
   const ids = { vaultId: null, brokerId: null, loanId: null, shareMPTID: null };
 
-  ui.line(`Vendeuse  ${sellerW.address}   déposante`);
-  ui.line(`Acheteur  ${buyerW.address}   n'a jamais déposé`);
-  ui.line(`Broker    ${brokerW.address}   = propriétaire du vault`);
-  ui.line(`Emprunt.  ${borrowerW.address}`);
+  ui.line(`Seller    ${sellerW.address}   depositor`);
+  ui.line(`Buyer     ${buyerW.address}   never deposited`);
+  ui.line(`Broker    ${brokerW.address}   = vault owner`);
+  ui.line(`Borrower  ${borrowerW.address}`);
 
-  // ── SCÈNE 1 ────────────────────────────────────────────────────────────
-  await ui.scene(1, "Un vault open-ended finance du crédit PME");
+  // ── SCENE 1 ────────────────────────────────────────────────────────────
+  await ui.scene(1, "An open-ended vault funds SME credit");
 
-  ui.step("VaultCreate — aucun VaultKind : open-ended est le défaut");
+  ui.step("VaultCreate: no VaultKind, open-ended is the default");
   const vault = mark("VaultCreate", await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate",
     Asset: { currency: "XRP" },
@@ -69,47 +68,47 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
     WithdrawalPolicy: 1,
     Data: Buffer.from("CY-HACK PME credit fund").toString("hex").toUpperCase(),
   }, { label: "VaultCreate" }));
-  if (!vault.ok) throw new Error(`VaultCreate : ${vault.code}`);
+  if (!vault.ok) throw new Error(`VaultCreate: ${vault.code}`);
   ids.vaultId = createdNode(vault.result, "Vault")?.LedgerIndex;
 
-  ui.step(`VaultDeposit — la trésorière place ${cfg.deposit} XRP`);
+  ui.step(`VaultDeposit: the treasurer places ${cfg.deposit} XRP`);
   if (!mark("VaultDeposit", await submitRaw(client, lender.seed, {
     TransactionType: "VaultDeposit", VaultID: ids.vaultId, Amount: XRP(cfg.deposit),
-  }, { label: "VaultDeposit" })).ok) throw new Error("dépôt refusé");
+  }, { label: "VaultDeposit" })).ok) throw new Error("deposit refused");
 
-  ui.step("LoanBrokerSet — l'intermédiaire de crédit, puis son first-loss capital");
+  ui.step("LoanBrokerSet: the credit intermediary, then its first-loss capital");
   const brk = mark("LoanBrokerSet", await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerSet", VaultID: ids.vaultId,
     ManagementFeeRate: pctToRate(2), DebtMaximum: XRP(1_000),
     CoverRateMinimum: pctToRate(10), CoverRateLiquidation: pctToRate(5),
     Data: Buffer.from("CY-HACK broker").toString("hex").toUpperCase(),
   }, { label: "LoanBrokerSet" }));
-  if (!brk.ok) throw new Error(`LoanBrokerSet : ${brk.code}`);
+  if (!brk.ok) throw new Error(`LoanBrokerSet: ${brk.code}`);
   ids.brokerId = createdNode(brk.result, "LoanBroker")?.LedgerIndex;
 
   mark("CoverDeposit", await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerCoverDeposit", LoanBrokerID: ids.brokerId, Amount: XRP(cfg.cover),
   }, { label: "LoanBrokerCoverDeposit" }));
 
-  ui.step("LoanSet — le broker prête TOUTE la liquidité disponible");
+  ui.step("LoanSet: the broker lends ALL the available liquidity");
   let snap = await vaultSnapshot(client, ids.vaultId);
   for (const frac of [100n, 95n, 90n]) {
     const principal = (snap.assetsAvailable * frac) / 100n;
-    ui.line(`  tentative à ${frac} % de la liquidité → ${fmt(principal)}`);
+    ui.line(`  attempt at ${frac} % of the liquidity → ${fmt(principal)}`);
     const prepared = await client.autofill({
       TransactionType: "LoanSet", Account: brokerW.address, LoanBrokerID: ids.brokerId,
       Counterparty: borrowerW.address, PrincipalRequested: String(principal),
-      // 4 échéances MENSUELLES : le capital est immobilisé ~4 mois. C'est ce qui
-      // rend la décote défendable. À 4 échéances quotidiennes, attendre le terme
-      // ne coûtait que 0,055 XRP sur 100 quand la cession en coûtait 3 : la
-      // vendeuse perdait 55× plus à vendre qu'à patienter, et le use case ne
-      // tenait pas sous un calcul de coin de table.
+      // 4 MONTHLY installments: the capital is locked for about 4 months. That
+      // is what makes the discount defensible. With 4 daily installments,
+      // waiting for the term cost only 0.055 XRP per 100 while the sale cost 3:
+      // the seller lost 55x more by selling than by waiting, and the use case
+      // did not survive a back-of-the-envelope calculation.
       InterestRate: pctToRate(8), PaymentInterval: 2_592_000, PaymentTotal: 4,
       GracePeriod: 86_400, LoanOriginationFee: XRP(0.25), LoanServiceFee: XRP(0.125),
       LatePaymentFee: XRP(0.0625), ClosePaymentFee: XRP(0.0625),
     });
-    // ⚠️ helper maison : signLoanSetByCounterparty du SDK signe le mauvais
-    // payload, rippled rejette en local. Cf. FEEDBACK-RAW [13:31].
+    // ⚠️ home-made helper: the SDK's signLoanSetByCounterparty signs the wrong
+    // payload and rippled rejects it locally. See FEEDBACK-RAW [13:31].
     const blob = signLoanSetCounterparty(brokerW.sign(prepared).tx_blob, borrower.seed);
     const res = await client.submitAndWait(blob);
     const code = res.result.meta?.TransactionResult;
@@ -117,100 +116,100 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
     ui.tx?.("LoanSet", code, res.result.hash);
     if (code === "tesSUCCESS") { ids.loanId = createdNode(res.result, "Loan")?.LedgerIndex; break; }
   }
-  if (!ids.loanId) throw new Error("aucun LoanSet n'est passé");
+  if (!ids.loanId) throw new Error("no LoanSet went through");
 
   snap = await vaultSnapshot(client, ids.vaultId);
   ids.shareMPTID = snap.shareMPTID;
   ui.line("\n" + render(snap));
-  ui.beat("Un seul prêt a absorbé 100 % du vault. Aucun avertissement.");
+  ui.beat("A single loan absorbed 100 % of the vault. No warning.");
 
-  // ── SCÈNE 2 ────────────────────────────────────────────────────────────
-  await ui.scene(2, "Le mur : le vault est ouvert en droit, fermé en fait");
+  // ── SCENE 2 ────────────────────────────────────────────────────────────
+  await ui.scene(2, "The wall: the vault is open on paper, closed in practice");
 
   const sellerShares = await shareBalance(client, sellerW.address, snap.shareMPTID);
-  ui.line(`  Elle détient ${sellerShares} parts, valorisées ${fmt(sharesToDrops(snap, sellerShares))}`);
-  ui.line(`  Le vault ne peut en rendre que ${fmt(snap.assetsAvailable)}.`);
+  ui.line(`  She holds ${sellerShares} shares, worth ${fmt(sharesToDrops(snap, sellerShares))}`);
+  ui.line(`  The vault can only give back ${fmt(snap.assetsAvailable)}.`);
 
-  ui.step("VaultWithdraw — la déposante tente de récupérer son argent");
-  const wall = mark("VaultWithdraw (refusé)", await submitRaw(client, lender.seed, {
+  ui.step("VaultWithdraw: the depositor tries to get her money back");
+  const wall = mark("VaultWithdraw (refused)", await submitRaw(client, lender.seed, {
     TransactionType: "VaultWithdraw", VaultID: ids.vaultId,
     Amount: { mpt_issuance_id: snap.shareMPTID, value: String(cfg.sharesToSell) },
-  }, { label: "VaultWithdraw ← LE MUR" }));
+  }, { label: "VaultWithdraw ← THE WALL" }));
   ui.beat(wall.code === "tesSUCCESS"
-    ? "⚠️ le retrait est passé : liquidité non nulle, scène à rejouer."
-    : `⛔ ${wall.code} — elle ne peut pas sortir avant l'échéance des prêts.`);
+    ? "⚠️ the withdrawal went through: liquidity was not zero, replay the scene."
+    : `⛔ ${wall.code}: she cannot exit before the loans mature.`);
 
-  // ── SCÈNE 3 ────────────────────────────────────────────────────────────
-  await ui.scene(3, "La cession : échange atomique, sans tiers de confiance");
+  // ── SCENE 3 ────────────────────────────────────────────────────────────
+  await ui.scene(3, "The sale: atomic swap, no trusted third party");
 
-  const valeur = sharesToDrops(snap, cfg.sharesToSell);
-  const prix = (valeur * cfg.decotePct) / 100n;
-  ui.line(`  ${cfg.sharesToSell} parts valent ${fmt(valeur)} au prix du vault.`);
-  ui.line(`  Cédées à ${cfg.decotePct} % → ${fmt(prix)}.`);
-  ui.line(`  La décote n'achète pas du rendement : elle achète 4 mois d'avance.`);
+  const value = sharesToDrops(snap, cfg.sharesToSell);
+  const price = (value * cfg.discountPct) / 100n;
+  ui.line(`  ${cfg.sharesToSell} shares are worth ${fmt(value)} at the vault's price.`);
+  ui.line(`  Sold at ${cfg.discountPct} % → ${fmt(price)}.`);
+  ui.line(`  The discount does not buy yield: it buys 4 months of time.`);
 
-  ui.step("MPTokenAuthorize — l'acheteur déclare accepter ces parts");
-  // Sans cet opt-in, tout Payment de parts échoue en tecNO_AUTH — cause absente
-  // des cinq scénarios d'échec listés par la doc.
+  ui.step("MPTokenAuthorize: the buyer declares they accept these shares");
+  // Without this opt-in, any Payment of shares fails with tecNO_AUTH, a cause
+  // missing from the five failure scenarios listed in the docs.
   mark("MPTokenAuthorize", await submitRaw(client, spare.seed, {
     TransactionType: "MPTokenAuthorize", MPTokenIssuanceID: snap.shareMPTID,
-  }, { label: "MPTokenAuthorize (acheteur)" }));
+  }, { label: "MPTokenAuthorize (buyer)" }));
 
   const preimage = randomBytes(32);
   const digest = createHash("sha256").update(preimage).digest("hex").toUpperCase();
   const CONDITION = `A0258020${digest}810120`;
   const FULFILLMENT = `A0228020${preimage.toString("hex").toUpperCase()}`;
-  ui.line(`\n  Secret tiré par l'acheteur, empreinte publiée : ${digest.slice(0, 32)}…`);
+  ui.line(`\n  Secret drawn by the buyer, published fingerprint: ${digest.slice(0, 32)}…`);
 
-  ui.step("EscrowCreate #1 — l'ACHETEUR verrouille son paiement, expire à +2 h");
-  // L'acheteur s'engage en premier : la vendeuse n'expose ses parts qu'après.
-  const escBuyer = mark("Escrow paiement", await submitRaw(client, spare.seed, {
+  ui.step("EscrowCreate #1: the BUYER locks their payment, expires at +2 h");
+  // The buyer commits first: the seller only exposes her shares afterwards.
+  const escBuyer = mark("Escrow payment", await submitRaw(client, spare.seed, {
     TransactionType: "EscrowCreate", Destination: sellerW.address,
-    Amount: String(prix), Condition: CONDITION, CancelAfter: rippleNow() + 7200,
-  }, { label: "EscrowCreate (paiement)" }));
-  if (!escBuyer.ok) throw new Error(`escrow paiement : ${escBuyer.code}`);
+    Amount: String(price), Condition: CONDITION, CancelAfter: rippleNow() + 7200,
+  }, { label: "EscrowCreate (payment)" }));
+  if (!escBuyer.ok) throw new Error(`payment escrow: ${escBuyer.code}`);
 
-  ui.step("EscrowCreate #2 — la VENDEUSE verrouille ses parts, expire à +1 h");
-  // Expiration plus courte côté vendeuse : une fois le secret révélé, elle doit
-  // avoir le temps d'encaisser. Inverser les durées casse la sécurité.
-  const escSeller = mark("Escrow parts", await submitRaw(client, lender.seed, {
+  ui.step("EscrowCreate #2: the SELLER locks her shares, expires at +1 h");
+  // Shorter expiry on the seller's side: once the secret is revealed, she must
+  // have time to collect. Swapping the durations breaks the security.
+  const escSeller = mark("Escrow shares", await submitRaw(client, lender.seed, {
     TransactionType: "EscrowCreate", Destination: buyerW.address,
     Amount: { mpt_issuance_id: snap.shareMPTID, value: String(cfg.sharesToSell) },
     Condition: CONDITION, CancelAfter: rippleNow() + 3600,
-  }, { label: "EscrowCreate (parts)" }));
-  if (!escSeller.ok) throw new Error(`escrow parts : ${escSeller.code}`);
+  }, { label: "EscrowCreate (shares)" }));
+  if (!escSeller.ok) throw new Error(`shares escrow: ${escSeller.code}`);
 
-  ui.step("EscrowFinish #1 — l'acheteur prend les parts et RÉVÈLE le secret");
-  const fin1 = mark("EscrowFinish (parts)", await submitRaw(client, spare.seed, {
+  ui.step("EscrowFinish #1: the buyer takes the shares and REVEALS the secret");
+  const fin1 = mark("EscrowFinish (shares)", await submitRaw(client, spare.seed, {
     TransactionType: "EscrowFinish", Owner: sellerW.address, OfferSequence: seqOf(escSeller),
     Condition: CONDITION, Fulfillment: FULFILLMENT,
-  }, { label: "EscrowFinish (parts → acheteur)" }));
-  if (!fin1.ok) throw new Error(`finish parts : ${fin1.code}`);
+  }, { label: "EscrowFinish (shares → buyer)" }));
+  if (!fin1.ok) throw new Error(`shares finish: ${fin1.code}`);
 
-  ui.step("Le secret est public — la vendeuse le relit DANS LE LEDGER");
-  // On ne réutilise pas la variable locale : c'est la publication du
-  // Fulfillment on-chain qui rend l'échange atomique. La démo doit le montrer.
+  ui.step("The secret is public: the seller reads it back FROM THE LEDGER");
+  // We do not reuse the local variable: publishing the Fulfillment on-chain is
+  // what makes the swap atomic. The demo has to show it.
   const onchain = await client.request({ command: "tx", transaction: fin1.hash });
-  const relu = onchain.result?.tx_json?.Fulfillment ?? onchain.result?.Fulfillment;
-  ui.line(`  relu dans ${fin1.hash.slice(0, 16)}… → ${String(relu).slice(0, 26)}…`);
-  ui.line(`  identique au secret de l'acheteur : ${relu === FULFILLMENT ? "OUI" : "NON ⚠️"}`);
+  const readBack = onchain.result?.tx_json?.Fulfillment ?? onchain.result?.Fulfillment;
+  ui.line(`  read back from ${fin1.hash.slice(0, 16)}… → ${String(readBack).slice(0, 26)}…`);
+  ui.line(`  identical to the buyer's secret: ${readBack === FULFILLMENT ? "YES" : "NO ⚠️"}`);
 
-  ui.step("EscrowFinish #2 — la vendeuse encaisse avec ce secret relu");
-  const fin2 = mark("EscrowFinish (paiement)", await submitRaw(client, lender.seed, {
+  ui.step("EscrowFinish #2: the seller collects with that read-back secret");
+  const fin2 = mark("EscrowFinish (payment)", await submitRaw(client, lender.seed, {
     TransactionType: "EscrowFinish", Owner: buyerW.address, OfferSequence: seqOf(escBuyer),
-    Condition: CONDITION, Fulfillment: relu,
-  }, { label: "EscrowFinish (XRP → vendeuse)" }));
+    Condition: CONDITION, Fulfillment: readBack,
+  }, { label: "EscrowFinish (XRP → seller)" }));
   ui.beat(fin2.ok
-    ? "Échange bouclé. Ni notaire, ni séquestre, ni confiance."
+    ? "Swap complete. No notary, no custodian, no trust."
     : `⚠️ ${fin2.code}`);
 
-  // ── SCÈNE 4 ────────────────────────────────────────────────────────────
-  await ui.scene(4, "Retour au vault : le nouveau porteur est payé");
+  // ── SCENE 4 ────────────────────────────────────────────────────────────
+  await ui.scene(4, "Back to the vault: the new holder gets paid");
 
-  ui.step("LoanPay — l'emprunteur rembourse une échéance");
+  ui.step("LoanPay: the borrower repays one installment");
   const loan = await readEntry(client, ids.loanId);
-  // Montant dû = ceil(PeriodicPayment) + LoanServiceFee. PeriodicPayment est
-  // annoncé avec des décimales de drop ; ceil() seul → tecINSUFFICIENT_PAYMENT.
+  // Amount due = ceil(PeriodicPayment) + LoanServiceFee. PeriodicPayment is
+  // reported with fractional drops; ceil() alone → tecINSUFFICIENT_PAYMENT.
   const toPay = String(Math.ceil(Number(loan.PeriodicPayment)) + Number(loan.LoanServiceFee));
   ui.line(`  PeriodicPayment ${loan.PeriodicPayment} + LoanServiceFee ${loan.LoanServiceFee}`);
   mark("LoanPay", await submitRaw(client, borrower.seed, {
@@ -220,16 +219,16 @@ export async function runScenario(client, accounts, ui, cfg = CFG) {
   snap = await vaultSnapshot(client, ids.vaultId);
   ui.line("\n" + render(snap));
 
-  ui.step("VaultWithdraw — par l'acheteur, qui n'a JAMAIS déposé ici");
+  ui.step("VaultWithdraw: by the buyer, who NEVER deposited here");
   const buyerShares = await shareBalance(client, buyerW.address, snap.shareMPTID);
   const redeem = buyerShares < cfg.redeem ? buyerShares : cfg.redeem;
-  ui.line(`  Il détient ${buyerShares} parts, il en rend ${redeem}.`);
-  const out = mark("VaultWithdraw (acheteur)", await submitRaw(client, spare.seed, {
+  ui.line(`  They hold ${buyerShares} shares and redeem ${redeem}.`);
+  const out = mark("VaultWithdraw (buyer)", await submitRaw(client, spare.seed, {
     TransactionType: "VaultWithdraw", VaultID: ids.vaultId,
     Amount: { mpt_issuance_id: snap.shareMPTID, value: String(redeem) },
-  }, { label: "VaultWithdraw (porteur secondaire)" }));
+  }, { label: "VaultWithdraw (secondary holder)" }));
   ui.beat(out.ok
-    ? "Le vault paie un compte qui n'y a jamais déposé. La part porte le droit."
+    ? "The vault pays an account that never deposited in it. The share carries the right."
     : `⚠️ ${out.code}`);
 
   return { timeline, ids, snap };

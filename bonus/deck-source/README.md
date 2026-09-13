@@ -1,58 +1,57 @@
-# Deck — Exit Lane
+# Deck: Exit Lane
 
-Sources du deck et de `FEEDBACK.pdf`. Les fichiers livrés sont dans [`deck/`](../../deck)
-et à la racine du repo ; toutes les commandes ci-dessous se lancent depuis la racine.
+Sources of the deck and of `FEEDBACK.pdf`. The delivered files live in [`deck/`](../../deck)
+and at the repository root; every command below runs from the root.
 
-[`deck/exit-lane.pptx`](../../deck/exit-lane.pptx) : 10 slides, 16:9 en 13,333 × 7,5 pouces, notes orateur minutées dans chaque slide.
-[`deck/exit-lane.pdf`](../../deck/exit-lane.pdf) — le même deck exporté par PowerPoint, filet de sécurité pour
-projeter sans dépendre d'une machine qui ait les bonnes polices.
+[`deck/exit-lane.pptx`](../../deck/exit-lane.pptx): 10 slides, 16:9 at 13.333 × 7.5 inches, timed speaker notes in every slide.
+[`deck/exit-lane.pdf`](../../deck/exit-lane.pdf): the same deck exported by PowerPoint, a safety net for
+projecting without depending on a machine that has the right fonts.
 
 ## Design system
 
-Deux sources à réconcilier : le deck officiel Ripple / XRPL Lending Protocol
-(« final lending intro.pdf ») pour les slides, l'explorer XRPL pour les preuves.
+Two sources to reconcile: the official Ripple / XRPL Lending Protocol deck
+("final lending intro.pdf") for the slides, the XRPL explorer for the proofs.
 
-| Rôle | Valeur |
+| Role | Value |
 |---|---|
-| Fond sombre / titres | `#001C5C` |
-| Accent | `#006AFF`, sur fond sombre `#6DC3FF` |
-| Texte courant | `#5F666E` |
-| Échec (chiffres, capsules) | `#F2703A`, l'orange de l'explorer assombri pour le blanc |
-| Capsule de code | fond `#EBF4FF`, texte `#0045C6`, hauteur 0,32", 0,22" de marge de chaque côté |
-| Fenêtre (terminal et explorer) | fond `#000000`, bord `#343437`, gris `#A2A2A4`, menthe `#84F0B6`, orange `#FF884B`, violet `#B480FF` |
-| Rail de gauche | dégradé 8 bandes, 0,10" de large, pleine hauteur |
+| Dark background / titles | `#001C5C` |
+| Accent | `#006AFF`, on a dark background `#6DC3FF` |
+| Body text | `#5F666E` |
+| Failure (figures, chips) | `#F2703A`, the explorer's orange darkened for white backgrounds |
+| Code chip | background `#EBF4FF`, text `#0045C6`, height 0.32", 0.22" of padding on each side |
+| Window (terminal and explorer) | background `#000000`, edge `#343437`, grey `#A2A2A4`, mint `#84F0B6`, orange `#FF884B`, purple `#B480FF` |
+| Left rail | 8-band gradient, 0.10" wide, full height |
 
-Les couleurs des fenêtres sont relevées sur les captures elles-mêmes : le
-terminal et l'explorer partagent le composant `win` (fond noir, pastilles,
-barre d'adresse en monospace). La barre d'adresse porte les petites
-informations de preuve : hash abrégé, flags, délai.
+The window colors are sampled from the screenshots themselves: the terminal
+and the explorer share the `win` component (black background, traffic-light
+dots, monospace address bar). The address bar carries the small pieces of
+evidence: shortened hash, flags, delay.
 
-**Polices.** Poppins partout : Bold pour les titres et les chiffres, Medium pour
-les intitulés, Regular pour le corps, Light pour les phrases longues. Menlo pour
-le code. Les quatre graisses de Poppins sont installées sur la machine et
-embarquées dans le PDF.
+**Fonts.** Poppins everywhere: Bold for titles and figures, Medium for labels,
+Regular for body, Light for long sentences. Menlo for code. All four Poppins
+weights are installed on the machine and embedded in the PDF.
 
-Langue : tout le texte visible et les notes orateur sont en anglais.
+Language: all visible text and the speaker notes are in English.
 
-Règle de contenu : un titre, ni surtitre ni bandeau, « CY-HACK » une seule fois
-sur la slide 1, aucun emoji, un chiffre ou une capture plutôt qu'une phrase.
-Chaque fenêtre (capture ou terminal) porte une légende d'une ligne, Poppins Light
-11,5 pt, qui dit ce qu'elle prouve. Numéro de page `n / 10` en bas à droite,
-sauf sur la slide de titre.
+Content rule: one title, no kicker and no banner, "CY-HACK" only once on
+slide 1, no emoji, a figure or a screenshot rather than a sentence. Every
+window (screenshot or terminal) carries a one-line caption, Poppins Light
+11.5 pt, that says what it proves. Page number `n / 10` bottom right, except
+on the title slide.
 
-Grille : marge gauche 0,88", bord droit 12,45".
+Grid: left margin 0.88", right edge 12.45".
 
-## Régénérer
+## Rebuild
 
 ```bash
-npm install pptxgenjs      # dans un dossier temporaire, PAS dans le projet
+npm install pptxgenjs      # in a temporary folder, NOT in the project
 node bonus/deck-source/build-deck.cjs deck/exit-lane.pptx
 ```
 
-`pptxgenjs` n'est volontairement pas une dépendance du projet : `package.json`
-fige `xrpl` et ne doit rien résoudre d'autre.
+`pptxgenjs` is deliberately not a project dependency: `package.json` pins
+`xrpl` and must resolve nothing else.
 
-Réexporter le PDF, PowerPoint étant installé sur la machine :
+Re-export the PDF, with PowerPoint installed on the machine:
 
 ```bash
 osascript -e 'tell application "Microsoft PowerPoint"
@@ -62,78 +61,77 @@ osascript -e 'tell application "Microsoft PowerPoint"
 end tell'
 ```
 
-## Pitch en 4 minutes
+## The 4-minute pitch
 
-Le texte à dire est dans les notes de chaque slide (mode présentateur).
+The script is in the notes of each slide (presenter view).
 
-| # | Slide | Temps | Contenu |
+| # | Slide | Time | Content |
 |---|---|---|---|
-| 1 | Exit Lane | 0:00 → 0:15 | Track, promesse du vault open-ended |
-| 2 | Ouvert en droit, fermé en fait | 0:15 → 0:40 | 100 % prêté, retrait refusé (capture `7AB5622E`) |
-| 3 | Céder la part de vault, pas le prêt | 0:40 → 1:00 | Les 4 transactions de l'échange |
-| 4 | Démo live | 1:00 → 2:00 | `node scripts/demo.mjs --auto`, 56 s mesurées |
-| 5 | Minimum bar : 8 sur 8 | 2:00 → 2:10 | 8 étapes, 15/15 types |
-| 6 | fixCleanup3_4_0 : actif, absent d'xrpl.org | 2:10 → 2:40 | Friction 1 et sa correction, terminaux `tecTOO_SOON` et signature |
-| 7 | Un LoanPay en retard exige tfLoanLatePayment | 2:40 → 3:05 | Friction 2 et sa correction, captures `96C38704` et `EFAD383F` |
-| 8 | First-loss capital : 0,5 % d'un prêt en défaut | 3:05 → 3:35 | Friction 3 et sa correction, captures `923F7D61` et `68DD97D9` |
-| 9 | Six autres constats | 3:35 → 3:50 | Findings 4 à 9 |
-| 10 | Neuf constats, trois pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
+| 1 | Exit Lane | 0:00 → 0:15 | Track, the open-ended vault's promise |
+| 2 | Open on paper, closed in practice | 0:15 → 0:40 | 100% lent, withdrawal refused (screenshot `7AB5622E`) |
+| 3 | Sell the vault share, not the loan | 0:40 → 1:00 | The 4 transactions of the exchange |
+| 4 | Live demo | 1:00 → 2:00 | `node scripts/demo.mjs --auto`, 56 s measured |
+| 5 | Minimum bar: 8 of 8 | 2:00 → 2:10 | 8 steps, 15/15 types |
+| 6 | fixCleanup3_4_0: enabled, missing from xrpl.org | 2:10 → 2:40 | Friction 1 and its fix, `tecTOO_SOON` and signature terminals |
+| 7 | A late LoanPay requires tfLoanLatePayment | 2:40 → 3:05 | Friction 2 and its fix, screenshots `96C38704` and `EFAD383F` |
+| 8 | First-loss capital: 0.5% of a defaulted loan | 3:05 → 3:35 | Friction 3 and its fix, screenshots `923F7D61` and `68DD97D9` |
+| 9 | Six more findings | 3:35 → 3:50 | Findings 4 to 9 |
+| 10 | Nine findings, three pages | 3:50 → 4:00 | 143/143 hashes, repo, `FEEDBACK.pdf` |
 
-Les slides 6 à 8 sont les trois frictions les plus importantes demandées par le
-brief, dans l'ordre du rapport, chacune avec sa correction proposée.
+Slides 6 to 8 are the three most important frictions the brief asks for, in
+the report's order, each with its proposed fix.
 
-Avant de monter sur scène : terminal ouvert à la racine du repo, commande
-`node scripts/demo.mjs --auto` déjà tapée, `node scripts/check-connection.mjs`
-passé dans les 10 minutes précédentes. Si la démo ne bouge pas pendant 15 s :
-Ctrl+C, revenir à la slide 4, dont le terminal est le run de référence.
+Before going on stage: terminal open at the repository root, the command
+`node scripts/demo.mjs --auto` already typed, `node scripts/check-connection.mjs`
+passed within the previous 10 minutes. If the demo does not move for 15 s:
+Ctrl+C, go back to slide 4, whose terminal is the reference run.
 
-## État de vérification
+## Verification status
 
-Rendu par Microsoft PowerPoint et relu slide par slide sur le PDF exporté :
-pas de débordement, pas de chevauchement. À refaire après toute modification
-de `build-deck.cjs`.
+Rendered by Microsoft PowerPoint and proofread slide by slide on the exported
+PDF: no overflow, no overlap. To redo after any change to `build-deck.cjs`.
 
-Contenu aligné sur `FEEDBACK.md` au 13/09 0h30 (sévérités, catégories officielles, corrections proposées). Retirés du deck parce que
-l'audit de 22h45 les a invalidés : prix de part « surévalué de 150 % »,
-« `AssetsMaximum: 0` non documenté », « flag V1.1 qui ment », « `tfLoanLatePayment`
-non documenté », « PR xrpl.js pour signer `LoanSet` », « 8 appels RPC ».
+Content aligned with `FEEDBACK.md` as of 13/09 0h30 (severities, official categories, proposed fixes). Removed from the deck because
+the 22h45 audit invalidated them: share price "overvalued by 150%",
+"`AssetsMaximum: 0` undocumented", "V1.1 flag that lies", "`tfLoanLatePayment`
+undocumented", "xrpl.js PR to sign `LoanSet`", "8 RPC calls".
 
-Capture supplémentaire du deck : `node bonus/deck-source/capture-explorer.mjs d-`.
+Extra screenshot for the deck: `node bonus/deck-source/capture-explorer.mjs d-`.
 
-## `FEEDBACK.pdf` : le rapport de feedback
+## `FEEDBACK.pdf`: the feedback report
 
-Même contenu que `FEEDBACK.md`, dans la DA du deck, avec de vraies captures de
-l'explorer. Trois pages : pour chaque constat, catégorie, sévérité, librairie,
-description, étapes de repro, transactions cliquables et correction proposée ;
-plus les six questions du brief et trois problèmes mineurs. Source
-`bonus/deck-source/feedback-report.tex`, PDF publié à la racine du repo.
+Same content as `FEEDBACK.md`, in the deck's visual style, with real explorer
+screenshots. Three pages: for each finding, category, severity, library,
+description, repro steps, clickable transactions and proposed fix; plus the
+brief's six questions and three minor issues. Source
+`bonus/deck-source/feedback-report.tex`, PDF published at the repository root.
 
 ```bash
-node bonus/deck-source/capture-explorer.mjs                             # captures → bonus/deck-source/shots/
+node bonus/deck-source/capture-explorer.mjs                             # screenshots → bonus/deck-source/shots/
 tectonic -X compile bonus/deck-source/feedback-report.tex --outdir bonus/deck-source && mv bonus/deck-source/feedback-report.pdf FEEDBACK.pdf
 ```
 
-`capture-explorer.mjs` pilote Chrome headless (protocole DevTools, sans
-dépendance), refuse le bandeau cookies, et recadre chaque capture sur un élément
-du DOM de l'explorer. Viewport 460 px, rendu ×5,25 : le PDF place toutes les
-captures au même grossissement.
+`capture-explorer.mjs` drives headless Chrome (DevTools protocol, no
+dependency), declines the cookie banner, and crops each screenshot to an
+element of the explorer's DOM. 460 px viewport, rendered at ×5.25: the PDF
+places every screenshot at the same magnification.
 
-Taille des captures dans le rapport : 460 px CSS pour la largeur d'une colonne,
-soit ≈ 0,56 pt par px CSS. Le texte de l'explorer sort alors entre 7 et 10 pt,
-comme les tableaux et le corps. Le titre de transaction de l'explorer
-(≈ 40 px CSS, donc ≈ 22 pt) n'est pas repris : le rapport utilise la pastille
-de statut seule (`*-badge`) et nomme la transaction dans la légende. Le deck,
-lui, garde les titres (`*-type`). Chaque capture forme un bloc insécable avec
-sa légende et son hash.
+Screenshot size in the report: 460 CSS px for the width of one column,
+about 0.56 pt per CSS px. The explorer's text then comes out between 7 and 10 pt,
+like the tables and the body. The explorer's transaction title
+(about 40 CSS px, so about 22 pt) is not reused: the report uses the status
+badge alone (`*-badge`) and names the transaction in the caption. The deck,
+on the other hand, keeps the titles (`*-type`). Each screenshot forms an
+unbreakable block with its caption and its hash.
 
 ```bash
-node bonus/deck-source/capture-explorer.mjs 'badge$'    # ne refaire qu'une famille de captures
+node bonus/deck-source/capture-explorer.mjs 'badge$'    # redo only one family of screenshots
 ```
 
-Pièges rencontrés, notés dans les fichiers :
+Pitfalls met along the way, noted in the files:
 
-1. Option `Color=` de fontspec : casse `xdvipdfmx` avec `tcolorbox`
-   (`typecheck: Invalid object type`). Colorer avec `\color`.
-2. `HelveticaNeue.ttc` sans faces déclarées : `\bfseries` sort en *Bold Italic*.
-3. `new URL(...).pathname` garde l'espace du chemin encodé en `%20` ; utiliser
+1. fontspec's `Color=` option: breaks `xdvipdfmx` with `tcolorbox`
+   (`typecheck: Invalid object type`). Color with `\color` instead.
+2. `HelveticaNeue.ttc` without declared faces: `\bfseries` comes out as *Bold Italic*.
+3. `new URL(...).pathname` keeps the path's space encoded as `%20`; use
    `fileURLToPath`.

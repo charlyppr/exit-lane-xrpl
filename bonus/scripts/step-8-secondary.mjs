@@ -1,18 +1,18 @@
-// ÉTAPE 8 DU MINIMUM BAR — mode preuve : enchaîné, sans pause, pour capturer
-// des hashes à coller dans FEEDBACK-RAW.md.
+// STEP 8 OF THE MINIMUM BAR, proof mode: chained, no pause, to capture
+// hashes to paste into FEEDBACK-RAW.md.
 //
-// Le scénario lui-même est dans scripts/lib/scenario.mjs, partagé avec demo.mjs.
-// Pour la version narrée du pitch : node scripts/demo.mjs
+// The scenario itself lives in scripts/lib/scenario.mjs, shared with demo.mjs.
+// For the narrated pitch version: node scripts/demo.mjs
 //
-// Thèse : un vault open-ended promet le retrait à tout moment, mais les prêts
-// qu'il finance sont à terme fixe. Dès que le capital est intégralement prêté,
-// AssetsAvailable tombe à zéro et le déposant ne peut plus sortir. On cède alors
-// ses parts de gré à gré par échange atomique (deux escrows croisés partageant
-// une même Condition PREIMAGE-SHA-256).
+// Thesis: an open-ended vault promises withdrawal at any time, but the loans
+// it funds are fixed-term. As soon as the capital is fully lent out,
+// AssetsAvailable drops to zero and the depositor can no longer exit. The
+// shares are then sold over the counter through an atomic swap (two crossed
+// escrows sharing the same PREIMAGE-SHA-256 Condition).
 //
-// Ce qui est cédé est la PART DU DÉPOSANT, jamais le Loan : XLS-66 n'offre
-// aucune cession de créance. Le DEX n'est pas une option : OfferCreate sur un
-// MPT renvoie temDISABLED (XLS-82 non déployé).
+// What is sold is the DEPOSITOR'S SHARE, never the Loan: XLS-66 offers no
+// assignment of receivables. The DEX is not an option: OfferCreate on an
+// MPT returns temDISABLED (XLS-82 not deployed).
 
 import { Client } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
@@ -21,7 +21,7 @@ import { runScenario } from "../../scripts/lib/scenario.mjs";
 
 const log = (...a) => console.log(...a);
 const ui = {
-  async scene(n, t) { log(`\n${"═".repeat(70)}\n  SCÈNE ${n} — ${t}\n${"═".repeat(70)}`); },
+  async scene(n, t) { log(`\n${"═".repeat(70)}\n  SCENE ${n}: ${t}\n${"═".repeat(70)}`); },
   step(t) { log(`\n── ${t} ${"─".repeat(Math.max(0, 60 - t.length))}`); },
   line(t) { log(t); },
   beat(t) { log(`\n  ▸▸ ${t}\n`); },
@@ -31,13 +31,13 @@ const client = new Client(NET.wss);
 let out = null;
 try {
   await client.connect();
-  log(`Réseau    ${NET.wss}`);
+  log(`Network   ${NET.wss}`);
   out = await runScenario(client, loadAccounts(), ui);
 } catch (e) {
-  log(`\n💥 ARRÊT : ${e.message}`);
+  log(`\n💥 ABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 600));
 } finally {
-  log("\n─── Récapitulatif (à coller dans FEEDBACK-RAW.md) ───");
+  log("\n─── Summary (to paste into FEEDBACK-RAW.md) ───");
   for (const t of out?.timeline ?? []) {
     log(`  ${String(t.label).padEnd(26)} ${String(t.code).padEnd(22)} ${t.hash ?? ""}`);
   }

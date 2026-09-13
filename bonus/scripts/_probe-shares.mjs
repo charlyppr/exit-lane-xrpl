@@ -1,6 +1,6 @@
-// PROBE — les parts de vault sont-elles vraiment un "first-class asset" ?
-// Flags de l'issuance observés = 56 = CanEscrow|CanTrade|CanTransfer.
-// On teste ce que ces flags permettent réellement.
+// PROBE: are vault shares really a "first-class asset"?
+// Observed issuance Flags = 56 = CanEscrow|CanTrade|CanTransfer.
+// We test what these flags actually allow.
 import xrpl from "xrpl";
 import { readFileSync } from "node:fs";
 import { NET } from "../../scripts/config.mjs";
@@ -24,7 +24,7 @@ for (const role of ["lender", "borrower", "broker", "spare"]) {
 }
 
 const lender = xrpl.Wallet.fromSeed(by("lender").seed);
-console.log("\n--- TEST 1 : OfferCreate avec un MPT (flag CanTrade posé) ---");
+console.log("\n--- TEST 1: OfferCreate with an MPT (CanTrade flag set) ---");
 const offer = {
   TransactionType: "OfferCreate",
   Account: lender.address,
@@ -35,7 +35,7 @@ try {
   const res = await c.submitAndWait(offer, { wallet: lender, autofill: true });
   console.log("code:", res.result.meta?.TransactionResult, "hash:", res.result.hash);
 } catch (e) {
-  console.log("REJET:", e.message?.slice(0, 400));
+  console.log("REJECTED:", e.message?.slice(0, 400));
   console.log("data:", JSON.stringify(e.data ?? {}).slice(0, 400));
 }
 await c.disconnect();

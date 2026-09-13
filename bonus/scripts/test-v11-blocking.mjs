@@ -1,20 +1,20 @@
-// TEST DÉCISIF — LendingProtocolV1_1 est actif sur ce devnet (cf. FEEDBACK-RAW [13:05]).
-// Question à trancher : un LoanSet passe-t-il sur un vault OPEN-ENDED, ou V1.1
-// restreint-il les prêts aux vaults fermés ? Toute la prémisse du Track 1 en dépend.
+// DECISIVE TEST: LendingProtocolV1_1 is active on this devnet (see FEEDBACK-RAW [13:05]).
+// Question to settle: does a LoanSet go through on an OPEN-ENDED vault, or does V1.1
+// restrict loans to closed vaults? The whole premise of Track 1 depends on it.
 //
-// Couvre les étapes 1 à 3 du minimum bar. Chaque échec est un résultat, pas un bug :
-// on capture le code et le hash, on continue le plus loin possible.
+// Covers steps 1 to 3 of the minimum bar. Every failure is a result, not a bug:
+// we capture the code and the hash, and keep going as far as possible.
 
 import { Client, Wallet } from "xrpl";
 import { NET, txUrl, pctToRate } from "../../scripts/config.mjs";
 import { loadAccounts, submitRaw, signLoanSetCounterparty } from "../../scripts/raw-submit.mjs";
 
-const XRP = (n) => String(Math.round(n * 1_000_000)); // en drops
+const XRP = (n) => String(Math.round(n * 1_000_000)); // in drops
 
 const log = (...a) => console.log(...a);
 const step = (n, t) => log(`\n─── ${n}. ${t} ${"─".repeat(Math.max(0, 46 - t.length))}`);
 
-// Retrouve un nœud créé dans les métadonnées, par type de ledger entry.
+// Finds a created node in the metadata, by ledger entry type.
 function createdNode(result, entryType) {
   const nodes = result?.meta?.AffectedNodes ?? [];
   for (const n of nodes) {
@@ -36,17 +36,17 @@ try {
   await client.connect();
   const { lender, borrower, broker } = loadAccounts();
 
-  log(`Réseau   : ${NET.wss}`);
-  log(`broker   : ${broker.address}  (propriétaire du vault — contrainte du protocole)`);
-  log(`lender   : ${lender.address}  (déposant)`);
+  log(`Network  : ${NET.wss}`);
+  log(`broker   : ${broker.address}  (vault owner, a protocol constraint)`);
+  log(`lender   : ${lender.address}  (depositor)`);
   log(`borrower : ${borrower.address}`);
 
   // ─────────────────────────────────────────────────────────────────────────
-  step(1, "VaultCreate — single asset, open-ended, XRP");
-  // Il n'existe AUCUN champ de durée/fermeture dans VaultCreate (xrpl 4.6.0) :
-  // open-ended est le comportement par défaut, pas une option à demander.
-  // Le vault est créé par le BROKER : `tecNO_PERMISSION` confirme que seul le
-  // propriétaire du vault peut y attacher un LoanBroker (cf. FEEDBACK-RAW [13:2x]).
+  step(1, "VaultCreate: single asset, open-ended, XRP");
+  // There is NO duration/closing field in VaultCreate (xrpl 4.6.0):
+  // open-ended is the default behaviour, not an option to request.
+  // The vault is created by the BROKER: `tecNO_PERMISSION` confirms that only
+  // the vault owner can attach a LoanBroker to it (see FEEDBACK-RAW [13:2x]).
   const vault = mark("VaultCreate", await submitRaw(client, broker.seed, {
     TransactionType: "VaultCreate",
     Asset: { currency: "XRP" },
@@ -55,58 +55,58 @@ try {
     Data: Buffer.from("CY-HACK track1 open-ended").toString("hex").toUpperCase(),
   }, { label: "VaultCreate" }));
 
-  if (!vault.ok) throw new Error(`VaultCreate a échoué : ${vault.code} — on ne peut pas continuer.`);
+  if (!vault.ok) throw new Error(`VaultCreate failed: ${vault.code}, cannot continue.`);
 
   const vaultNode = createdNode(vault.result, "Vault");
   found.vaultId = vaultNode?.LedgerIndex ?? null;
-  log(`  VaultID : ${found.vaultId ?? "INTROUVABLE dans les métadonnées"}`);
+  log(`  VaultID : ${found.vaultId ?? "NOT FOUND in the metadata"}`);
   if (vaultNode?.NewFields) {
     const f = vaultNode.NewFields;
-    log(`  champs  : ${Object.keys(f).join(", ")}`);
+    log(`  fields  : ${Object.keys(f).join(", ")}`);
   }
-  if (!found.vaultId) throw new Error("VaultID introuvable — item de feedback (métadonnées).");
+  if (!found.vaultId) throw new Error("VaultID not found, feedback item (metadata).");
 
   // ─────────────────────────────────────────────────────────────────────────
-  step(2, "VaultDeposit — le prêteur apporte 300 XRP");
+  step(2, "VaultDeposit: the lender brings 300 XRP");
   const dep = mark("VaultDeposit", await submitRaw(client, lender.seed, {
     TransactionType: "VaultDeposit",
     VaultID: found.vaultId,
     Amount: XRP(300),
   }, { label: "VaultDeposit" }));
-  if (!dep.ok) log(`  ⚠️  dépôt refusé (${dep.code}) — on tente la suite quand même.`);
+  if (!dep.ok) log(`  ⚠️  deposit refused (${dep.code}), trying the rest anyway.`);
 
   // ─────────────────────────────────────────────────────────────────────────
-  step(3, "LoanBrokerSet — création du broker sur ce vault");
+  step(3, "LoanBrokerSet: creating the broker on this vault");
   const brk = mark("LoanBrokerSet", await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerSet",
     VaultID: found.vaultId,
     ManagementFeeRate: pctToRate(2),      // 2 %
     DebtMaximum: XRP(1_000),
-    CoverRateMinimum: pctToRate(10),      // first-loss cover : 10 %
+    CoverRateMinimum: pctToRate(10),      // first-loss cover: 10 %
     CoverRateLiquidation: pctToRate(5),
     Data: Buffer.from("CY-HACK broker").toString("hex").toUpperCase(),
   }, { label: "LoanBrokerSet" }));
 
-  if (!brk.ok) throw new Error(`LoanBrokerSet a échoué : ${brk.code}`);
+  if (!brk.ok) throw new Error(`LoanBrokerSet failed: ${brk.code}`);
 
   const brkNode = createdNode(brk.result, "LoanBroker");
   found.brokerId = brkNode?.LedgerIndex ?? null;
-  log(`  LoanBrokerID : ${found.brokerId ?? "INTROUVABLE"}`);
-  if (!found.brokerId) throw new Error("LoanBrokerID introuvable — item de feedback (métadonnées).");
+  log(`  LoanBrokerID : ${found.brokerId ?? "NOT FOUND"}`);
+  if (!found.brokerId) throw new Error("LoanBrokerID not found, feedback item (metadata).");
 
   // ─────────────────────────────────────────────────────────────────────────
-  step(4, "LoanBrokerCoverDeposit — first-loss cover");
-  // CoverRateMinimum à 10 % : sans cover déposé, un LoanSet devrait être refusé.
-  // On dépose de quoi couvrir 100 XRP de principal.
+  step(4, "LoanBrokerCoverDeposit: first-loss cover");
+  // CoverRateMinimum at 10 %: without any cover deposited, a LoanSet should be refused.
+  // We deposit enough to cover 100 XRP of principal.
   const cov = mark("LoanBrokerCoverDeposit", await submitRaw(client, broker.seed, {
     TransactionType: "LoanBrokerCoverDeposit",
     LoanBrokerID: found.brokerId,
     Amount: XRP(50),
   }, { label: "LoanBrokerCoverDeposit" }));
-  if (!cov.ok) log(`  ⚠️  cover refusé (${cov.code}) — le LoanSet suivant échouera peut-être pour ça.`);
+  if (!cov.ok) log(`  ⚠️  cover refused (${cov.code}), the next LoanSet may fail because of it.`);
 
   // ─────────────────────────────────────────────────────────────────────────
-  step(5, "LoanSet — LE TEST : prêt sur un vault OPEN-ENDED");
+  step(5, "LoanSet, THE TEST: a loan on an OPEN-ENDED vault");
   const brokerWallet = Wallet.fromSeed(broker.seed);
   const borrowerWallet = Wallet.fromSeed(borrower.seed);
 
@@ -117,8 +117,8 @@ try {
     Counterparty: borrowerWallet.address,
     PrincipalRequested: XRP(100),
     InterestRate: pctToRate(8),   // 8 %
-    PaymentInterval: 86_400,      // 1 jour
-    PaymentTotal: 4,              // 4 échéances
+    PaymentInterval: 86_400,      // 1 day
+    PaymentTotal: 4,              // 4 installments
     GracePeriod: 3_600,
     LoanOriginationFee: XRP(1),
     LoanServiceFee: XRP(0.5),
@@ -129,15 +129,15 @@ try {
   log("  autofill…");
   const prepared = await client.autofill(loanSet);
 
-  log("  signature broker (first party)…");
+  log("  broker signature (first party)…");
   const signedByBroker = brokerWallet.sign(prepared);
 
-  // ⚠️ PAS `signLoanSetByCounterparty` du SDK : il signe le mauvais payload
-  // et rippled rejette en local. Cf. FEEDBACK-RAW [13:31].
-  log("  signature borrower (contournement maison — bug SDK [13:31])…");
+  // ⚠️ NOT the SDK's `signLoanSetByCounterparty`: it signs the wrong payload
+  // and rippled rejects it locally. See FEEDBACK-RAW [13:31].
+  log("  borrower signature (in-house workaround, SDK bug [13:31])…");
   const fullyBlob = signLoanSetCounterparty(signedByBroker.tx_blob, borrower.seed);
 
-  log("  soumission…");
+  log("  submitting…");
   const res = await client.submitAndWait(fullyBlob);
   const code = res.result.meta?.TransactionResult ?? "?";
   const hash = res.result.hash;
@@ -151,24 +151,24 @@ try {
 
   log("\n" + "═".repeat(64));
   if (code === "tesSUCCESS") {
-    log("✅ VERDICT : LoanSet PASSE sur un vault open-ended.");
-    log("   LendingProtocolV1_1 actif n'interdit PAS le Track 1.");
+    log("✅ VERDICT: LoanSet GOES THROUGH on an open-ended vault.");
+    log("   LendingProtocolV1_1 being active does NOT forbid Track 1.");
     log(`   LoanID : ${found.loanId}`);
-    log("   → La règle n°4 de CLAUDE.md ne se déclenche pas. On construit.");
+    log("   → Rule #4 of CLAUDE.md does not trigger. We build.");
   } else {
-    log(`❌ VERDICT : LoanSet REFUSÉ — code ${code}`);
-    log("   Si le code indique un vault non fermé, V1.1 bloque bien le Track 1.");
-    log("   → Capturer ce hash et aller voir un mentor AVANT de continuer.");
+    log(`❌ VERDICT: LoanSet REFUSED, code ${code}`);
+    log("   If the code points to a non-closed vault, V1.1 really does block Track 1.");
+    log("   → Capture this hash and go see a mentor BEFORE continuing.");
   }
   log("═".repeat(64));
 } catch (e) {
-  log(`\n💥 ARRÊT : ${e.message}`);
+  log(`\n💥 ABORTED: ${e.message}`);
   if (e.data) log(JSON.stringify(e.data, null, 2).slice(0, 800));
 } finally {
-  log("\n─── Récapitulatif (à coller dans FEEDBACK-RAW.md) ───");
+  log("\n─── Summary (to paste into FEEDBACK-RAW.md) ───");
   for (const t of timeline) log(`  ${t.label.padEnd(24)} ${String(t.code).padEnd(18)} ${t.hash ?? ""}`);
-  log(`  VaultID       : ${found.vaultId ?? "—"}`);
-  log(`  LoanBrokerID  : ${found.brokerId ?? "—"}`);
-  log(`  LoanID        : ${found.loanId ?? "—"}`);
+  log(`  VaultID       : ${found.vaultId ?? "-"}`);
+  log(`  LoanBrokerID  : ${found.brokerId ?? "-"}`);
+  log(`  LoanID        : ${found.loanId ?? "-"}`);
   await client.disconnect();
 }

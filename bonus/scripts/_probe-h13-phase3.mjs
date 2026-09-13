@@ -1,5 +1,5 @@
-// Phase 3 (rachat) du vault C, et récupération des 20 XRP du lender.
-// Double emploi : dernier maillon du test de phases + nettoyage du capital.
+// Phase 3 (redemption) of vault C, and recovery of the lender's 20 XRP.
+// Dual purpose: last link of the phase test + capital cleanup.
 import { Client, Wallet } from "xrpl";
 import { encode, encodeForSigning } from "ripple-binary-codec";
 import { sign as kpSign } from "ripple-keypairs";
@@ -23,10 +23,10 @@ const submit = async (w, tx, label, expected) => {
     const p = await c.autofill({ Account: w.address, ...tx });
     const r = await c.submitAndWait(signRaw(p, w));
     const code = r.result.meta.TransactionResult;
-    log(`  ${label.padEnd(30)} ${code.padEnd(20)} ${expected ? (code === expected ? "✓ conforme" : `✗ doc: ${expected}`) : ""}`);
+    log(`  ${label.padEnd(30)} ${code.padEnd(20)} ${expected ? (code === expected ? "✓ matches doc" : `✗ doc: ${expected}`) : ""}`);
     log(`    ${txUrl(r.result.hash)}`);
     return code;
-  } catch (e) { log(`  ${label.padEnd(30)} rejet: ${e.message}`); return "throw"; }
+  } catch (e) { log(`  ${label.padEnd(30)} rejected: ${e.message}`); return "throw"; }
 };
 const node = async (i) => {
   try { return (await c.request({ command: "ledger_entry", index: i, ledger_index: "validated" })).result.node; }
@@ -34,16 +34,16 @@ const node = async (i) => {
 };
 const ct = (await c.request({ command: "ledger", ledger_index: "validated" })).result.ledger.close_time;
 const v = await node(C);
-log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "RACHAT" : "INVESTISSEMENT"}`);
+log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
 log(`AssetsTotal ${Number(v.AssetsTotal ?? 0) / 1e6} XRP`);
 
-log("\n─── PHASE 3 · RACHAT");
+log("\n─── PHASE 3 · REDEMPTION");
 await submit(lw, { TransactionType: "VaultWithdraw", VaultID: C, Amount: v.AssetsTotal ?? "0" },
-  "VaultWithdraw (rachat)", "tesSUCCESS");
+  "VaultWithdraw (redemption)", "tesSUCCESS");
 
-log("\n─── Nettoyage : VaultDelete sur les vaults de test");
-await submit(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (vide)", "tesSUCCESS");
-await submit(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attaché)", null);
+log("\n─── Cleanup: VaultDelete on the test vaults");
+await submit(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (empty)", "tesSUCCESS");
+await submit(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attached)", null);
 
 const bal = (await c.request({ command: "account_info", account: lw.address, ledger_index: "validated" })).result.account_data.Balance;
 log(`\nlender : ${(Number(bal) / 1e6).toFixed(6)} XRP`);

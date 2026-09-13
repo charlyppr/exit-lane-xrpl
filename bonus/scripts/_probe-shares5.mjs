@@ -15,14 +15,14 @@ const vi = async (tag) => {
   const v = r.result.vault;
   console.log(`${tag} AssetsTotal=${v.AssetsTotal} AssetsAvailable=${v.AssetsAvailable ?? "ABSENT(=0)"} shares out=${v.shares.OutstandingAmount}`);
 };
-await vi("avant :");
+await vi("before:");
 const dep = await c.submitAndWait({ TransactionType:"VaultDeposit", Account:lender.address, VaultID:VAULT, Amount: xrpl.xrpToDrops("10") }, { wallet: lender, autofill:true });
 console.log("VaultDeposit 10 XRP:", dep.result.meta?.TransactionResult);
-await vi("après :");
+await vi("after:");
 
-console.log("\n--- TEST 6bis : VaultWithdraw par le porteur SECONDAIRE, liquidité disponible ---");
+console.log("\n--- TEST 6bis: VaultWithdraw by the SECONDARY holder, liquidity available ---");
 const r = await c.submitAndWait({ TransactionType:"VaultWithdraw", Account:buyer.address, VaultID:VAULT, Amount:{ mpt_issuance_id: SHARE_MPT, value:"500000" } }, { wallet: buyer, autofill:true });
 console.log("code:", r.result.meta?.TransactionResult, "| hash:", r.result.hash);
 const b = await c.request({ command:"account_info", account: buyer.address, ledger_index:"validated" });
-console.log("XRP acheteur:", xrpl.dropsToXrp(b.result.account_data.Balance));
+console.log("buyer XRP:", xrpl.dropsToXrp(b.result.account_data.Balance));
 await c.disconnect();

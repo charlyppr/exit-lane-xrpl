@@ -15,7 +15,7 @@ const send = async (tx, label) => {
     const r = await c.submitAndWait(signRaw(p, sw));
     log(`  ${label.padEnd(26)} ${r.result.meta.TransactionResult}`);
     log(`    ${txUrl(r.result.hash)}`); return r.result.meta.TransactionResult;
-  } catch (e) { log(`  ${label.padEnd(26)} rejet: ${e.message}`); return "throw"; } };
+  } catch (e) { log(`  ${label.padEnd(26)} rejected: ${e.message}`); return "throw"; } };
 await send({ TransactionType: "LoanBrokerDelete", LoanBrokerID: BRK }, "LoanBrokerDelete");
 await send({ TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A");
 const ai = await c.request({ command: "account_info", account: sw.address, ledger_index: "validated" });

@@ -1,10 +1,10 @@
-// VÉRIFICATION du point dur de la sonde H13 : sur un vault closed-ended dont
-// la RedemptionDate est dans le futur, VaultWithdraw a renvoyé tesSUCCESS.
-// Avant d'en faire un item de rapport, il faut prouver que des fonds ont
-// réellement bougé — un tesSUCCESS qui ne déplace rien serait un autre sujet.
+// VERIFICATION of the hard point of the H13 probe: on a closed-ended vault
+// whose RedemptionDate is in the future, VaultWithdraw returned tesSUCCESS.
+// Before turning it into a report item, we must prove that funds actually
+// moved; a tesSUCCESS that moves nothing would be a different topic.
 //
-// On mesure : solde du déposant, parts MPT, état du vault, avant/après un
-// retrait total. Puis on regarde si `vault_info` expose les champs V1.1.
+// We measure: depositor balance, MPT shares, vault state, before/after a
+// full withdrawal. Then we check whether `vault_info` exposes the V1.1 fields.
 
 import { Client, Wallet } from "xrpl";
 import { encode, encodeForSigning } from "ripple-binary-codec";
@@ -44,8 +44,8 @@ const shares = async (addr, mptID) => {
 
 const v0 = await vault();
 log(`VaultKind        : ${v0.VaultKind}`);
-log(`SubscriptionDate : ${v0.SubscriptionDate}  (maintenant ${nowRipple()} → ${v0.SubscriptionDate > nowRipple() ? "fenêtre OUVERTE" : "fenêtre CLOSE"})`);
-log(`RedemptionDate   : ${v0.RedemptionDate}  (${v0.RedemptionDate > nowRipple() ? `dans ${v0.RedemptionDate - nowRipple()} s → PÉRIODE D'INVESTISSEMENT` : "échue"})`);
+log(`SubscriptionDate : ${v0.SubscriptionDate}  (now ${nowRipple()} → ${v0.SubscriptionDate > nowRipple() ? "window OPEN" : "window CLOSED"})`);
+log(`RedemptionDate   : ${v0.RedemptionDate}  (${v0.RedemptionDate > nowRipple() ? `in ${v0.RedemptionDate - nowRipple()} s → INVESTMENT PERIOD` : "past"})`);
 log(`LEVersion        : ${v0.LEVersion}`);
 log(`AssetsTotal      : ${Number(v0.AssetsTotal) / 1e6} XRP`);
 log(`AssetsAvailable  : ${Number(v0.AssetsAvailable) / 1e6} XRP`);
@@ -53,10 +53,10 @@ log(`ShareMPTID       : ${v0.ShareMPTID}`);
 
 const b0 = await balance(lenderW.address);
 const s0 = await shares(lenderW.address, v0.ShareMPTID);
-log(`\nlender : ${b0.toFixed(6)} XRP · ${s0} parts`);
+log(`\nlender : ${b0.toFixed(6)} XRP · ${s0} shares`);
 
-// ── Retrait TOTAL avant RedemptionDate ────────────────────────────────────
-log(`\n─── VaultWithdraw de la totalité (${Number(v0.AssetsTotal) / 1e6} XRP) avant RedemptionDate`);
+// ── FULL withdrawal before RedemptionDate ─────────────────────────────────
+log(`\n─── VaultWithdraw of the whole balance (${Number(v0.AssetsTotal) / 1e6} XRP) before RedemptionDate`);
 const prepared = await client.autofill({
   TransactionType: "VaultWithdraw",
   Account: lenderW.address,
@@ -72,30 +72,30 @@ const v1 = await vault().catch(() => null);
 const b1 = await balance(lenderW.address);
 const s1 = v1 ? await shares(lenderW.address, v1.ShareMPTID) : "0";
 
-log(`\nAPRÈS`);
-log(`  lender          : ${b1.toFixed(6)} XRP (Δ ${(b1 - b0).toFixed(6)}) · ${s1} parts (avant ${s0})`);
+log(`\nAFTER`);
+log(`  lender          : ${b1.toFixed(6)} XRP (Δ ${(b1 - b0).toFixed(6)}) · ${s1} shares (before ${s0})`);
 if (v1) {
-  log(`  AssetsTotal     : ${Number(v1.AssetsTotal) / 1e6} XRP (avant ${Number(v0.AssetsTotal) / 1e6})`);
+  log(`  AssetsTotal     : ${Number(v1.AssetsTotal) / 1e6} XRP (before ${Number(v0.AssetsTotal) / 1e6})`);
   log(`  AssetsAvailable : ${Number(v1.AssetsAvailable) / 1e6} XRP`);
 } else {
-  log("  vault supprimé");
+  log("  vault deleted");
 }
 
 const moved = b1 - b0;
 log(`\nVERDICT : ${moved > 0.1
-  ? `les fonds ONT bougé (+${moved.toFixed(6)} XRP) — le verrou closed-ended n'est pas appliqué.`
-  : "aucun mouvement significatif — tesSUCCESS sans effet, autre sujet."}`);
+  ? `funds DID move (+${moved.toFixed(6)} XRP): the closed-ended lock is not enforced.`
+  : "no significant movement: tesSUCCESS with no effect, different topic."}`);
 
-// ── vault_info expose-t-il les champs V1.1 ? ──────────────────────────────
+// ── does vault_info expose the V1.1 fields? ───────────────────────────────
 log("\n─── vault_info");
 try {
   const vi = await client.request({ command: "vault_info", vault_id: VAULT_A, ledger_index: "validated" });
   const keys = Object.keys(vi.result.vault ?? vi.result);
-  log(`  champs renvoyés : ${keys.join(", ")}`);
+  log(`  fields returned : ${keys.join(", ")}`);
   const v11 = ["VaultKind", "SubscriptionDate", "RedemptionDate", "LEVersion"].filter((k) => keys.includes(k));
-  log(`  champs V1.1 exposés : ${v11.length ? v11.join(", ") : "AUCUN"}`);
+  log(`  V1.1 fields exposed : ${v11.length ? v11.join(", ") : "NONE"}`);
 } catch (e) {
-  log(`  vault_info KO : ${e.message}`);
+  log(`  vault_info FAILED : ${e.message}`);
 }
 
 await client.disconnect();

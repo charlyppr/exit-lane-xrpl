@@ -1,10 +1,10 @@
-// CORRECTION DE MON PROPRE TEST — les retraits de _probe-h13-closed.mjs ont eu
-// lieu AVANT SubscriptionDate, donc en phase de souscription. La doc V1.1
-// n'interdit le retrait qu'en phase d'INVESTISSEMENT (`tecTOO_SOON`) et le
-// dépôt en investissement ou rachat (`tecEXPIRED`). Le vault A a franchi sa
-// SubscriptionDate depuis : on reteste dans la bonne phase.
+// CORRECTION OF MY OWN TEST: the withdrawals in _probe-h13-closed.mjs took
+// place BEFORE SubscriptionDate, so during the subscription phase. The V1.1
+// doc only forbids withdrawal in the INVESTMENT phase (`tecTOO_SOON`) and
+// deposit in the investment or redemption phase (`tecEXPIRED`). Vault A has
+// since passed its SubscriptionDate: we retest in the right phase.
 //
-// Attendu par la doc, sur un vault closed-ended en phase d'investissement :
+// Expected by the doc, on a closed-ended vault in the investment phase:
 //   VaultDeposit  → tecEXPIRED
 //   VaultWithdraw → tecTOO_SOON
 
@@ -36,41 +36,41 @@ const submit = async (tx, label, expected) => {
     const prepared = await client.autofill({ Account: w.address, ...tx });
     const res = await client.submitAndWait(signRaw(prepared, w));
     const code = res.result.meta?.TransactionResult;
-    log(`  ${label.padEnd(34)} ${code.padEnd(20)} attendu ${expected} ${code === expected ? "✓" : "✗ DIVERGENCE"}`);
+    log(`  ${label.padEnd(34)} ${code.padEnd(20)} expected ${expected} ${code === expected ? "✓" : "✗ DIVERGENCE"}`);
     log(`    ${txUrl(res.result.hash)}`);
     return { code, hash: res.result.hash };
   } catch (e) {
-    log(`  ${label.padEnd(34)} REJET LOCAL/tem : ${e.message}`);
+    log(`  ${label.padEnd(34)} LOCAL/tem REJECTION : ${e.message}`);
     return { code: "throw", hash: null };
   }
 };
 
 const v = (await client.request({ command: "ledger_entry", index: VAULT_A, ledger_index: "validated" })).result.node;
 const now = nowRipple();
-const phase = now < v.SubscriptionDate ? "SOUSCRIPTION"
-  : now < v.RedemptionDate ? "INVESTISSEMENT" : "RACHAT";
+const phase = now < v.SubscriptionDate ? "SUBSCRIPTION"
+  : now < v.RedemptionDate ? "INVESTMENT" : "REDEMPTION";
 
-log(`vault A — VaultKind=${v.VaultKind}`);
-log(`  SubscriptionDate ${v.SubscriptionDate} (il y a ${now - v.SubscriptionDate} s)`);
-log(`  RedemptionDate   ${v.RedemptionDate} (dans ${v.RedemptionDate - now} s)`);
-log(`  maintenant       ${now}`);
-log(`  PHASE ACTUELLE   ${phase}\n`);
+log(`vault A - VaultKind=${v.VaultKind}`);
+log(`  SubscriptionDate ${v.SubscriptionDate} (${now - v.SubscriptionDate} s ago)`);
+log(`  RedemptionDate   ${v.RedemptionDate} (in ${v.RedemptionDate - now} s)`);
+log(`  now              ${now}`);
+log(`  CURRENT PHASE    ${phase}\n`);
 
-if (phase !== "INVESTISSEMENT") {
-  log(`⚠️  Le vault n'est pas en phase d'investissement — test non concluant, arrêt.`);
+if (phase !== "INVESTMENT") {
+  log(`⚠️  The vault is not in the investment phase: test inconclusive, stopping.`);
 } else {
-  log("─── Ce que la doc V1.1 promet en phase d'investissement");
+  log("─── What the V1.1 doc promises in the investment phase");
   const dep = await submit({ TransactionType: "VaultDeposit", VaultID: VAULT_A, Amount: XRP(10) },
-    "VaultDeposit en investissement", "tecEXPIRED");
+    "VaultDeposit in investment", "tecEXPIRED");
   const wit = await submit({ TransactionType: "VaultWithdraw", VaultID: VAULT_A, Amount: XRP(5) },
-    "VaultWithdraw en investissement", "tecTOO_SOON");
+    "VaultWithdraw in investment", "tecTOO_SOON");
 
   log("\n═══ VERDICT");
-  log(`  dépôt    : ${dep.code} ${dep.code === "tecEXPIRED" ? "— conforme à la doc" : "— DIVERGENCE"}`);
-  log(`  retrait  : ${wit.code} ${wit.code === "tecTOO_SOON" ? "— conforme à la doc" : "— DIVERGENCE"}`);
+  log(`  deposit    : ${dep.code} ${dep.code === "tecEXPIRED" ? "(matches doc)" : "(DIVERGENCE)"}`);
+  log(`  withdrawal : ${wit.code} ${wit.code === "tecTOO_SOON" ? "(matches doc)" : "(DIVERGENCE)"}`);
   if (dep.code === "tesSUCCESS" || wit.code === "tesSUCCESS") {
-    log("  ⚠️  Une opération interdite par la doc a RÉUSSI en phase d'investissement.");
-    log("      → règle n°5 de CLAUDE.md : mentor en privé avant toute publication.");
+    log("  ⚠️  An operation forbidden by the doc SUCCEEDED in the investment phase.");
+    log("      → rule 5 of CLAUDE.md: mentor in private before any publication.");
   }
 }
 

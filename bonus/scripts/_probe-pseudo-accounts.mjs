@@ -1,4 +1,4 @@
-// Quel pseudo-compte appartient au Vault, lequel au LoanBroker, dans une tx. Lecture seule.
+// Which pseudo-account belongs to the Vault and which to the LoanBroker, in a given tx. Read-only.
 import { Client } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 const c = new Client(NET.wss, { connectionTimeout: 20000 });

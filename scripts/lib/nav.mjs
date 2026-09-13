@@ -1,19 +1,19 @@
-// Lecture de l'état d'un Single Asset Vault et des grandeurs dérivées.
+// Reads the state of a Single Asset Vault and the derived quantities.
 //
-// Raison d'être : `vault_info` renvoie les champs BRUTS du ledger. Aucune des
-// grandeurs dont un déposant a besoin — valeur d'une part, taux d'utilisation,
-// capital immobilisé — n'est exposée. Chaque client devra donc réimplémenter
-// cette arithmétique, et divergera sur les arrondis. C'est l'hypothèse H9, et
-// ce fichier en est la preuve : 60 lignes pour afficher quatre chiffres.
+// Why this file exists: `vault_info` returns the RAW ledger fields. None of
+// the quantities a depositor needs (value of one share, utilization rate,
+// locked capital) is exposed. Every client has to reimplement this
+// arithmetic, and they will diverge on rounding. That is hypothesis H9, and
+// this file is the evidence: 60 lines to display four numbers.
 //
-// Piège vérifié le 12/09 (FEEDBACK-RAW [14:05]) : `AssetsAvailable` DISPARAÎT
-// du nœud quand il vaut zéro. Un client naïf lit `undefined`, affiche "NaN" ou
-// plante, exactement au moment le plus critique pour un déposant — celui où il
-// ne peut plus retirer.
+// Pitfall verified on 12/09 (FEEDBACK-RAW [14:05]): `AssetsAvailable`
+// DISAPPEARS from the node when it equals zero. A naive client reads
+// `undefined`, prints "NaN" or crashes, exactly at the most critical moment
+// for a depositor: the one where they can no longer withdraw.
 
 const DROPS = 1_000_000n;
 
-/** Formate des drops (BigInt|string|number) en "12.345678 XRP". */
+/** Formats drops (BigInt|string|number) as "12.345678 XRP". */
 export const fmt = (drops) => {
   const d = BigInt(drops);
   const neg = d < 0n;
@@ -22,8 +22,8 @@ export const fmt = (drops) => {
 };
 
 /**
- * Photographie d'un vault à un ledger validé.
- * Toutes les quantités sont des BigInt en drops (ou en parts).
+ * Snapshot of a vault at a validated ledger.
+ * All quantities are BigInt in drops (or in shares).
  */
 export async function vaultSnapshot(client, vaultId) {
   const res = await client.request({
@@ -34,7 +34,7 @@ export async function vaultSnapshot(client, vaultId) {
   const v = res.result.vault;
 
   const assetsTotal = BigInt(v.AssetsTotal ?? 0);
-  // ⚠️ Absence du champ = zéro. Ne jamais écrire `BigInt(v.AssetsAvailable)`.
+  // ⚠️ Missing field means zero. Never write `BigInt(v.AssetsAvailable)`.
   const assetsAvailable = BigInt(v.AssetsAvailable ?? 0);
   const sharesOutstanding = BigInt(v.shares?.OutstandingAmount ?? 0);
   const lent = assetsTotal - assetsAvailable;
@@ -48,7 +48,7 @@ export async function vaultSnapshot(client, vaultId) {
     assetsAvailable,
     sharesOutstanding,
     lent,
-    // Champs dérivés, absents du protocole :
+    // Derived fields, absent from the protocol:
     utilization: assetsTotal === 0n ? 0 : Number(lent) / Number(assetsTotal),
     navPerShare: sharesOutstanding === 0n ? 1 : Number(assetsTotal) / Number(sharesOutstanding),
     availableAbsent: v.AssetsAvailable === undefined,
@@ -56,15 +56,15 @@ export async function vaultSnapshot(client, vaultId) {
   };
 }
 
-/** Valeur en drops d'un paquet de parts, au prix du vault. Arrondi vers le bas. */
+/** Value in drops of a bundle of shares, at the vault's price. Rounded down. */
 export const sharesToDrops = (snap, shares) =>
   snap.sharesOutstanding === 0n ? 0n : (BigInt(shares) * snap.assetsTotal) / snap.sharesOutstanding;
 
-/** Nombre de parts qu'achèterait un montant en drops, au prix du vault. */
+/** Number of shares an amount in drops would buy, at the vault's price. */
 export const dropsToShares = (snap, drops) =>
   snap.assetsTotal === 0n ? 0n : (BigInt(drops) * snap.sharesOutstanding) / snap.assetsTotal;
 
-/** Solde de parts d'un compte. Renvoie 0n si le compte n'a pas fait son opt-in. */
+/** Share balance of an account. Returns 0n if the account never opted in. */
 export async function shareBalance(client, address, shareMPTID) {
   try {
     const r = await client.request({
@@ -80,15 +80,15 @@ export async function shareBalance(client, address, shareMPTID) {
   }
 }
 
-/** Bloc d'état lisible à l'écran pendant la démo. */
+/** Human-readable state block shown on screen during the demo. */
 export function render(snap) {
   const pct = (snap.utilization * 100).toFixed(1);
   return [
-    `  Actif total        ${fmt(snap.assetsTotal)}`,
-    `  Prêté              ${fmt(snap.lent)}  (${pct} % du vault)`,
-    `  Disponible         ${fmt(snap.assetsAvailable)}` +
-      (snap.availableAbsent ? "   ← champ ABSENT du nœud, pas zéro explicite" : ""),
-    `  Parts en circul.   ${snap.sharesOutstanding}`,
-    `  Valeur d'une part  ${snap.navPerShare.toFixed(9)}  (1.000000000 à l'ouverture)`,
+    `  Total assets        ${fmt(snap.assetsTotal)}`,
+    `  Lent                ${fmt(snap.lent)}  (${pct} % of the vault)`,
+    `  Available           ${fmt(snap.assetsAvailable)}` +
+      (snap.availableAbsent ? "   ← field ABSENT from the node, not an explicit zero" : ""),
+    `  Shares outstanding  ${snap.sharesOutstanding}`,
+    `  Value of one share  ${snap.navPerShare.toFixed(9)}  (1.000000000 at opening)`,
   ].join("\n");
 }

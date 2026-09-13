@@ -1,4 +1,4 @@
-// Heures de clôture exactes (ledger) de transactions citées. Lecture seule.
+// Exact (ledger) close times of the cited transactions. Read-only.
 import { Client } from "xrpl";
 import { NET } from "../../scripts/config.mjs";
 const c = new Client(NET.wss, { connectionTimeout: 20000 });

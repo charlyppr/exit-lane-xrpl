@@ -1,9 +1,9 @@
-// Repli JSON-RPC : le WSS (51233) refuse le handshake, le RPC (51234) répond.
-// xrpl.js n'a pas de transport HTTP — `Client` est WebSocket uniquement — donc
-// tout doit être refait à la main : Fee, Sequence, LastLedgerSequence, signature,
-// submit, attente de validation. Item de feedback `client libraries`.
+// JSON-RPC fallback: the WSS (51233) refuses the handshake, the RPC (51234) answers.
+// xrpl.js has no HTTP transport (`Client` is WebSocket only), so everything
+// has to be redone by hand: Fee, Sequence, LastLedgerSequence, signing,
+// submit, waiting for validation. Feedback item under `client libraries`.
 //
-// Objet : phase 3 (rachat) du vault C + récupération des 20 XRP du lender.
+// Purpose: phase 3 (redemption) of vault C + recovering the lender's 20 XRP.
 import { Wallet } from "xrpl";
 import { encode, encodeForSigning } from "ripple-binary-codec";
 import { sign as kpSign } from "ripple-keypairs";
@@ -31,7 +31,7 @@ const signRaw = (tx, w) => {
   return encode(t);
 };
 
-// L'équivalent maison de client.autofill + submitAndWait, en 25 lignes.
+// Home-made equivalent of client.autofill + submitAndWait, in 25 lines.
 async function send(w, tx, label, expected) {
   const ai = await rpc("account_info", { account: w.address, ledger_index: "validated" });
   const li = (await rpc("ledger", { ledger_index: "validated" })).ledger_index;
@@ -41,20 +41,20 @@ async function send(w, tx, label, expected) {
     Fee: "20",
     Sequence: ai.account_data.Sequence,
     LastLedgerSequence: Number(li) + 20,
-    NetworkID: 4001,          // network_id > 1024 → NetworkID obligatoire
+    NetworkID: 4001,          // network_id > 1024 → NetworkID is mandatory
   };
   const sub = await rpc("submit", { tx_blob: signRaw(full, w) });
   const hash = sub.tx_json?.hash;
   let code = sub.engine_result;
-  // Attente de validation : pas de submitAndWait ici non plus.
+  // Wait for validation: no submitAndWait here either.
   for (let i = 0; i < 15 && hash; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     try {
       const t = await rpc("tx", { transaction: hash });
       if (t.validated) { code = t.meta?.TransactionResult ?? code; break; }
-    } catch { /* pas encore trouvée */ }
+    } catch { /* not found yet */ }
   }
-  log(`  ${label.padEnd(30)} ${String(code).padEnd(20)} ${expected ? (code === expected ? "✓ conforme" : `✗ doc: ${expected}`) : ""}`);
+  log(`  ${label.padEnd(30)} ${String(code).padEnd(20)} ${expected ? (code === expected ? "✓ as documented" : `✗ doc: ${expected}`) : ""}`);
   if (hash) log(`    ${txUrl(hash)}`);
   return code;
 }
@@ -63,20 +63,20 @@ const { spare, lender } = loadAccounts();
 const lw = Wallet.fromSeed(lender.seed), sw = Wallet.fromSeed(spare.seed);
 
 const si = await rpc("server_info");
-log(`RPC OK — build ${si.info.build_version} · ledgers ${si.info.complete_ledgers}`);
+log(`RPC OK, build ${si.info.build_version} · ledgers ${si.info.complete_ledgers}`);
 
 const ct = (await rpc("ledger", { ledger_index: "validated" })).ledger.close_time;
 const v = (await rpc("ledger_entry", { index: C, ledger_index: "validated" })).node;
-log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "RACHAT" : "INVESTISSEMENT"}`);
+log(`close_time ${ct} · RedemptionDate ${v.RedemptionDate} → phase ${ct > v.RedemptionDate ? "REDEMPTION" : "INVESTMENT"}`);
 log(`AssetsTotal ${Number(v.AssetsTotal ?? 0) / 1e6} XRP\n`);
 
-log("─── PHASE 3 · RACHAT");
+log("─── PHASE 3 · REDEMPTION");
 await send(lw, { TransactionType: "VaultWithdraw", VaultID: C, Amount: v.AssetsTotal ?? "0" },
-  "VaultWithdraw (rachat)", "tesSUCCESS");
+  "VaultWithdraw (redemption)", "tesSUCCESS");
 
-log("\n─── Nettoyage");
-await send(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (vidé)", "tesSUCCESS");
-await send(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attaché)", null);
+log("\n─── Cleanup");
+await send(sw, { TransactionType: "VaultDelete", VaultID: C }, "VaultDelete C (emptied)", "tesSUCCESS");
+await send(sw, { TransactionType: "VaultDelete", VaultID: A }, "VaultDelete A (broker attached)", null);
 
 const bal = (await rpc("account_info", { account: lw.address, ledger_index: "validated" })).account_data.Balance;
-log(`\nlender : ${(Number(bal) / 1e6).toFixed(6)} XRP`);
+log(`\nlender: ${(Number(bal) / 1e6).toFixed(6)} XRP`);

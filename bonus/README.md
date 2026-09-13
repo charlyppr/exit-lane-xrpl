@@ -17,7 +17,7 @@ Written in French during the event.
 
 ## `scripts/`
 
-Exploration and reproduction scripts, comments in French. Run them from the repository root
+Exploration and reproduction scripts. Run them from the repository root
 after `node scripts/setup-accounts.mjs`; they reuse `scripts/config.mjs`, `scripts/raw-submit.mjs`
 and `scripts/lib/`. Unless marked read-only, a script submits transactions and spends the test
 accounts' devnet XRP.
@@ -51,8 +51,7 @@ accounts' devnet XRP.
 ## `deck-source/`
 
 Sources of [`deck/exit-lane.pptx`](../deck/exit-lane.pptx) and [`FEEDBACK.pdf`](../FEEDBACK.pdf).
-Design system, pitch timing and build commands are in its [`README.md`](./deck-source/README.md),
-in French.
+Design system, pitch timing and build commands are in its [`README.md`](./deck-source/README.md).
 
 | File | Role |
 |---|---|
